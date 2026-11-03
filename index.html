@@ -22,7 +22,10 @@ button.primary{background:#2c4a86;border-color:#3d63b0}
 button.rec{background:#7a2530;border-color:#a8384a}
 .file input{display:none}
 #drop{border:2px dashed var(--line);border-radius:10px;padding:10px;text-align:center;color:var(--sub);font-size:12.5px;margin-top:10px}
-#drop.over{border-color:var(--acc);color:var(--acc)}
+#drop.over,#dropB.over{border-color:var(--acc);color:var(--acc)}
+.drops{display:flex;gap:8px;flex-wrap:wrap}.drops>div{flex:1 1 220px}
+#dropB{border:2px dashed var(--line);border-radius:10px;padding:10px;text-align:center;color:var(--sub);font-size:12.5px;margin-top:10px}
+#tbAB{display:inline-flex;gap:4px;align-items:center}#tbAB[hidden]{display:none}#tbAB button{padding:4px 10px}
 #meterWrap{height:10px;background:var(--panel2);border-radius:5px;overflow:hidden;margin-top:12px}
 #meterBar{height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--warn) 80%,var(--bad));transition:width .06s}
 #status{margin-top:8px;color:var(--sub);min-height:1.6em}
@@ -159,7 +162,7 @@ input[type=range]{accent-color:var(--acc)}
   <div class="tb-in">
     <h1 class="tb-title">楽曲アナライザ</h1>
     <nav id="tbNav" aria-label="セクション"></nav>
-    <span class="tb-right"><label class="sub"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
+    <span class="tb-right"><span id="tbAB" hidden><button id="tbPlay" title="再生 / 停止（Space）">▶</button><button id="tbA" class="ab" title="A を聴く（X で切り替え）">A</button><button id="tbB" class="ab" title="B を聴く（X で切り替え）">B</button></span><label class="sub"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
   </div>
   <div class="tb-in tb-status"><span id="tbStatus" class="sub" aria-live="polite"></span></div>
 </div>
@@ -172,7 +175,7 @@ input[type=range]{accent-color:var(--acc)}
     <tr><td><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></td><td>拡大 / 縮小 / 全体表示</td></tr>
     <tr><td><kbd>Ctrl</kbd>+ホイール</td><td>カーソル位置で拡大・縮小</td></tr>
     <tr><td><kbd>Shift</kbd>+ホイール</td><td>拡大中に左右へ移動</td></tr>
-    <tr><td><kbd>X</kbd></td><td>A（現在の曲）と B（リファレンス）を切り替え</td></tr>
+    <tr><td><kbd>X</kbd></td><td>A（現在の曲）と B（比べる曲）を、同じ位置のまま切り替え</td></tr>
     <tr><td><kbd>M</kbd></td><td>再生位置にマーカーを追加</td></tr>
     <tr><td><kbd>?</kbd></td><td>この一覧を開く</td></tr>
   </table>
@@ -186,11 +189,13 @@ input[type=range]{accent-color:var(--acc)}
 <section class="panel">
   <h2>1. 読み込み</h2>
   <div class="row">
-    <label class="file primary">音声ファイルを選択<input type="file" id="file" accept="audio/*"></label>
+    <label class="file primary">音声ファイルを選択（A）<input type="file" id="file" accept="audio/*"></label>
+    <label class="file" id="fileBLabel">比べる曲を選択（B）<input type="file" id="fileB" accept="audio/*"></label>
+    <span id="bInfo" class="sub"></span><button id="bClear" hidden>B を外す</button>
     <label class="sub"><input type="checkbox" id="optTrim" checked> 前後の無音をトリム</label>
   </div>
   <div id="status">待機中</div>
-  <div id="drop">音声ファイルをここにドロップしても解析できます</div>
+  <div class="drops"><div id="drop">A：ここにドロップして解析（2 曲まとめてドロップすると A と B に入ります）</div><div id="dropB">B：比べる曲をここにドロップ</div></div>
   <div class="sub" style="margin-top:8px">🔒 読み込んだ自分の楽曲ファイルはこのPC内だけで処理され、外部には送信されません。</div>
   <div id="quick" class="note" style="margin-top:10px"><b>はじめかた</b>
     <ol>
@@ -202,7 +207,7 @@ input[type=range]{accent-color:var(--acc)}
     <details class="help"><summary>見る・聴く・比べる</summary><ul>
       <li>4. のグラフはクリックで再生、ドラッグで範囲選択（範囲のスペクトラム・ループ再生・書き出し）。拡大するとスペクトログラムをその範囲で計算し直します。操作の一覧は上のバーの「?」から。</li>
       <li>構成は似た区間に A / B / C… を付け、繰り返す区間のうち最も大きいものを「サビ候補」とします。5. と 8. の「比較範囲」でサビだけを比べられます。</li>
-      <li>「試聴音量」で、原音・ラウドネス一致・各配信サービスの音量を切り替えて聴けます。音声つきで保存した曲（自分のファイルのみ）を比較対象にすると、<kbd>X</kbd> キーで A / B を聴き比べられます（「位置：サビ同士」でサビの頭をそろえます）。</li>
+      <li>「試聴音量」で、原音・ラウドネス一致・各配信サービスの音量を切り替えて聴けます。<b>1. の「比べる曲を選択（B）」</b>でファイルを選ぶか、音声つきで保存した曲を比較対象にすると、上のバーの A / B ボタンや <kbd>X</kbd> キーで、同じ位置のまま聴き比べられます（「位置：サビ同士」でサビの頭をそろえます。範囲選択のループ再生中も切り替えられます）。B のファイルは保存されず、ページを閉じると消えます。</li>
       <li>チェック結果の基準は「ジャンル」で切り替えられます（目安です）。比較対象を選ぶと、リファレンスとの差もチェックします。</li>
       <li><b>PSR</b>（3 秒ごとのピークとショートタームラウドネスの差）は潰れ具合の目安です。曲の一番大きい区間で 8 dB を下回ると潰れて聞こえやすいとされます（Ian Shepherd の目安）。<b>DR 値</b>は TT DR Meter と同じ計算です。</li>
       <li>5. の「ターゲット比較」では、保存した好きな曲から作ったターゲット（許容範囲）と音色を比べ、近づけるための EQ（マッチ EQ）を提案します。再生にかけて聴き比べられます。</li>
@@ -3015,6 +3020,35 @@ async function loadFile(file){
   }catch(e){setStatus("ファイルを読み込めませんでした: "+e.message,true);}
 }
 
+// A/B 比較用の B：ファイルから読み込み、このページを開いている間だけ保持する（保存一覧には入れない）
+async function loadFileB(file){
+  if(busy||rec)return;
+  stopPlay();if(abSide==="B"){abSide="A";lastPos=0;}
+  busy=true;updateButtons();
+  try{
+    setStatus("B の曲を読み込み中…");await tick();
+    const d=await decodeFile(file);
+    const {res,chs}=await analyze(d.chs,d.fs,{trim:$("optTrim").checked,layout:d.layout});
+    Object.assign(res,{label:file.name,source:d.source,resampled:d.resampled,gaps:0});
+    const s=snapshot(res,file.name.replace(/\.[^.]+$/,""));s.hasAudio=true;
+    tempRef=s;tempAudio={id:s.id,chs:chs.map(c=>c.subarray(res.trimStart,res.trimEnd)),fs:d.fs};
+    refId=s.id;
+    setStatus("B を読み込みました（"+file.name+" / "+fmtT(res.dur)+"）"+(current?"。X キーか上のバーの A / B で切り替えられます":"。続けて A の曲を読み込んでください"));
+  }catch(e){console.error(e);setStatus("B のファイルを読み込めませんでした: "+e.message,true);}
+  finally{busy=false;updateButtons();}
+  showBInfo();if(current)refresh();
+}
+function clearB(){
+  if(!tempRef)return;
+  if(refId===tempRef.id)refId=null;
+  tempRef=null;tempAudio=null;showBInfo();
+  if(current)refresh();else{refAudio=null;updateAB();}
+}
+function showBInfo(){
+  $("bInfo").textContent=tempRef?"B: "+tempRef.name+"（"+fmtT(tempRef.dur)+"）":"";
+  $("bClear").hidden=!tempRef;
+}
+
 /* ---------- 解析（Web Worker） ---------- */
 const WORKER_MAIN=`
 self.onmessage=e=>{
@@ -3312,7 +3346,7 @@ function drawSegTable(m){
 /* ---------- 再生 ---------- */
 // 音声を20秒ずつAudioBufferにして途切れなく予約再生する（全体を一度にコピーしないためメモリを使いすぎない）
 // A=現在の曲（トリム後の範囲）、B=リファレンス（保存した音声）。出力は試聴音量のゲインを通り、メーター用アナライザへ
-const CHUNK=20;let playCtx=null,fltIn=null,outGain=null,anMix=null,anL=null,anR=null,player=null,playTimer=0,lastPos=0,abSide="A",refAudio=null,refAudioErr=null,liveRaf=0;
+const CHUNK=20;let playCtx=null,fltIn=null,outGain=null,anMix=null,anL=null,anR=null,player=null,playTimer=0,lastPos=0,abSide="A",refAudio=null,refAudioErr=null,liveRaf=0,tempRef=null,tempAudio=null,abSwitching=false;
 function ensureCtx(){
   if(!playCtx){
     playCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -3354,9 +3388,10 @@ function playPosNow(){
 function showPos(pos){
   $("playPos").textContent=(refAudio?abSide+" ":"")+(isZoomed()?fmtT2(pos):fmtT(pos))+" / "+fmtT(sideDur(abSide));
   const ph=$("playhead");
-  if(abSide!=="A"||!current||pos<view.t0||pos>view.t1){ph.style.display="none";return;}
+  const posA=abSide==="A"?pos:mapPos(pos,abSide,"A"); // B の再生中も、A の波形上の対応位置を示す
+  if(!current||posA<view.t0||posA>view.t1){ph.style.display="none";return;}
   const w=parseFloat($("cvTime").style.width)||0;
-  ph.style.display="block";ph.style.left=vX(pos,w)+"px";
+  ph.style.display="block";ph.style.left=vX(posA,w)+"px";
 }
 function playFrom(t,side,loop){
   side=side||abSide;
@@ -3369,7 +3404,7 @@ function playFrom(t,side,loop){
   outGain.gain.cancelScheduledValues(playCtx.currentTime);outGain.gain.value=Math.pow(10,listenGain(side)/20);
   const now=playCtx.currentTime+0.05,p={side,src:S,dur,loop,srcs:[],segs:[],nextPos:t,nextTime:now};
   player=p;scheduleChunk(p);updateAB();
-  $("btnPlay").textContent="■ 停止";$("live").hidden=false;if(loop)$("selPlay").textContent="■ ループ停止";
+  $("btnPlay").textContent="■ 停止";$("tbPlay").textContent="■";$("live").hidden=false;if(loop)$("selPlay").textContent="■ ループ停止";
   playTimer=setInterval(()=>{
     if(player!==p)return;
     const pos=playPosNow();
@@ -3383,9 +3418,9 @@ function playFrom(t,side,loop){
 }
 function stopPlay(){
   if(player){lastPos=playPosNow();for(const x of player.srcs){try{x.stop();}catch(e){}}player=null;}
-  clearInterval(playTimer);$("btnPlay").textContent="▶ 再生";$("selPlay").textContent="▶ ループ再生";
+  clearInterval(playTimer);$("btnPlay").textContent="▶ 再生";$("tbPlay").textContent="▶";$("selPlay").textContent="▶ ループ再生";
 }
-function currentRef(){return refId==null?null:loadSaved().find(x=>x.id===refId)||null;}
+function currentRef(){if(refId==null)return null;if(tempRef&&tempRef.id===refId)return tempRef;return loadSaved().find(x=>x.id===refId)||null;}
 // 試聴音量：原音 / ラウドネス一致（BをAに合わせる。比較範囲がサビならサビ同士で合わせる）/ 各配信サービスの正規化
 function listenGain(side){return listenGain0(side)+(side==="A"&&aVariant==="diff"&&cdc&&cdc.cur===current?cdc.boost:0);}
 function listenGain0(side){
@@ -3413,9 +3448,20 @@ function mapPos(pos,from,to){
 }
 function switchAB(to){
   to=to||(abSide==="A"?"B":"A");
-  if(to===abSide||(to==="B"&&!refAudio))return;
-  const pos=Math.max(0,Math.min(sideDur(to)-0.1,mapPos(playPosNow(),abSide,to)));
-  if(player)playFrom(pos,to);else{abSide=to;lastPos=pos;showPos(pos);updateAB();}
+  if(abSwitching||to===abSide||(to==="B"&&!refAudio))return;
+  const target=()=>Math.max(0,Math.min(sideDur(to)-0.1,mapPos(playPosNow(),abSide,to)));
+  if(!player){lastPos=target();abSide=to;showPos(lastPos);updateAB();return;}
+  // プチッというノイズが比較の邪魔をしないよう、短くフェードしてから切り替える（ループ範囲も引き継ぐ）
+  const was=player,from=abSide;abSwitching=true;
+  outGain.gain.cancelScheduledValues(playCtx.currentTime);outGain.gain.setTargetAtTime(0,playCtx.currentTime,0.004);
+  setTimeout(()=>{
+    abSwitching=false;
+    if(player!==was)return; // フェード中に停止された
+    const lp=was.loop,pos=target();
+    playFrom(pos,to,lp?{a:mapPos(lp.a,from,to),b:mapPos(lp.b,from,to)}:null);
+    const g=outGain.gain,t=playCtx.currentTime;
+    g.cancelScheduledValues(t);g.setValueAtTime(0,t);g.setValueAtTime(0,t+0.05);g.linearRampToValueAtTime(Math.pow(10,listenGain(to)/20),t+0.07);
+  },20);
 }
 function updateAB(){
   const ref=currentRef(),box=$("abBox"),note=$("abNote");
@@ -3423,7 +3469,13 @@ function updateAB(){
   if(!ready&&abSide==="B"){if(player&&player.side==="B")stopPlay();abSide="A";lastPos=0;}
   const gA=listenGain("A"),gText=$("listenMode").value==="orig"?"":"試聴音量 A "+fmtG(gA)+(ready?" / B "+fmtG(listenGain("B")):"");
   box.hidden=!ready;
-  if(ready){$("btnA").classList.toggle("on",abSide==="A");$("btnB").classList.toggle("on",abSide==="B");$("btnB").textContent="B "+ref.name;note.textContent=gText;}
+  $("tbAB").hidden=!(ready&&current);
+  $("tbA").classList.toggle("on",abSide==="A");$("tbB").classList.toggle("on",abSide==="B");
+  if(ready)$("tbB").title="B "+ref.name+"（X で切り替え）";
+  if(ready){$("btnA").classList.toggle("on",abSide==="A");$("btnB").classList.toggle("on",abSide==="B");$("btnB").textContent="B "+ref.name;
+    // 大きい音のほうが良く聞こえやすいので、音量差があれば知らせる
+    const dL=current&&Number.isFinite(current.lufs)&&ref.lufs!=null?ref.lufs-current.lufs:NaN;
+    note.textContent=gText||(Math.abs(dL)>=0.5?"B は A より "+(dL>0?"+":"")+f1(dL)+" dB（LUFS）。音量をそろえて比べるなら試聴音量を「ラウドネス一致」に":"");}
   else if(ref&&ref.hasAudio)note.textContent=refAudioErr===ref.id?"リファレンスの音声を読み込めませんでした（ブラウザの保存領域から消えた可能性があります）":"リファレンスの音声を読み込み中…";
   else if(ref)note.textContent=(ref.source==="tab"?"比較対象「"+ref.name+"」はタブ録音のため音声を保存していません（A/B 試聴はできず、数値での比較のみ）":"比較対象「"+ref.name+"」には音声がないため A/B 試聴できません（「音声も保存」をオンにして保存し直してください）")+(gText?"　"+gText:"");
   else note.textContent=gText;
@@ -3436,6 +3488,7 @@ async function loadRefAudio(id){
 }
 function syncRefAudio(){
   const ref=currentRef();
+  if(ref&&tempRef&&ref.id===tempRef.id){refAudio=tempAudio;updateAB();return;}
   if(!ref||!ref.hasAudio){refAudio=null;updateAB();return;}
   if(refAudio&&refAudio.id===ref.id){updateAB();return;}
   refAudio=null;updateAB();const id=ref.id;
@@ -3960,7 +4013,7 @@ function renderDiagSum(m,cks,cnt){
 }
 function refresh(){
   const m=current;if(!m)return;
-  const list=loadSaved();const ref=list.find(x=>x.id===refId)||null;
+  const list=loadSaved();const ref=currentRef();
   // 重要度順に並べ、件数を表示。「問題なし」はたたむ
   const cks=makeChecks(m,ref),ord={bad:0,warn:1,info:2,ok:3},cnt={bad:0,warn:0,info:0,ok:0};for(const c of cks)cnt[c.lv]++;
   const main=cks.filter(c=>c.lv!=="ok").sort((a,b)=>ord[a.lv]-ord[b.lv]),oks=cks.filter(c=>c.lv==="ok");
@@ -4004,7 +4057,7 @@ function snapshot(m,name){
   return s;
 }
 function renderSaved(list){
-  const tb=$("tbRef");tb.innerHTML="<option value=''>比較なし</option>"+list.map(x=>"<option value='"+x.id+"'>"+esc(x.name)+(x.hasAudio?" ♪":"")+"</option>").join("");tb.value=refId==null?"":String(refId);
+  const tb=$("tbRef");tb.innerHTML="<option value=''>比較なし</option>"+(tempRef?"<option value='"+tempRef.id+"'>B: "+esc(tempRef.name)+" ♪</option>":"")+list.map(x=>"<option value='"+x.id+"'>"+esc(x.name)+(x.hasAudio?" ♪":"")+"</option>").join("");tb.value=refId==null?"":String(refId);
   const el=$("savedList");
   if(!list.length){el.innerHTML="<div class='sub'>保存した結果はまだありません。好きな曲（リファレンス）を録音して保存しておくと、自作曲と比較できます。</div>";return;}
   el.innerHTML=list.map(x=>"<div class='saved'><span><b>"+esc(x.name)+"</b>"+(x.source?"<span class='tag'>"+esc(SRC[x.source]||x.source)+"</span>":"")+(x.hasAudio?"<span class='tag'>音声あり</span>":"")+" <small class='sub'>"+esc(x.date)+" / "+f1(x.lufs)+" LUFS</small></span><button data-ref='"+x.id+"'>"+(x.id===refId?"比較中 ✓":"これと比較")+"</button><button data-del='"+x.id+"'>削除</button></div>").join("");
@@ -4679,15 +4732,22 @@ function setVariant(v){
 }
 /* ---------- イベント ---------- */
 $("file").onchange=e=>{if(e.target.files[0])loadFile(e.target.files[0]);e.target.value="";};
+$("fileB").onchange=e=>{if(e.target.files[0])loadFileB(e.target.files[0]);e.target.value="";};
+$("bClear").onclick=clearB;
 $("optTrim").onchange=()=>{if(lastRaw&&!busy&&!rec){const r=lastRaw;run(r.chs,r.fs,{label:r.label,source:r.source,resampled:r.resampled,gaps:r.gaps,layout:r.layout});}};
 $("saveFmt").innerHTML=Object.entries(SAVE_FORMATS).map(([k,f])=>"<option value='"+k+"'>"+f.name+"</option>").join("");
 $("saveFmt").value=SAVE_FORMATS[pref.get("tabAnalyzerSaveFmt","wav24")]?pref.get("tabAnalyzerSaveFmt","wav24"):"wav24";
 $("saveFmt").onchange=e=>pref.set("tabAnalyzerSaveFmt",e.target.value);
 const drop=$("drop");let dragDepth=0;
-document.addEventListener("dragenter",e=>{e.preventDefault();dragDepth++;drop.classList.add("over");});
+document.addEventListener("dragenter",e=>{e.preventDefault();dragDepth++;drop.classList.add("over");$("dropB").classList.add("over");});
 document.addEventListener("dragover",e=>e.preventDefault());
-document.addEventListener("dragleave",e=>{e.preventDefault();if(--dragDepth<=0){dragDepth=0;drop.classList.remove("over");}});
-document.addEventListener("drop",e=>{e.preventDefault();dragDepth=0;drop.classList.remove("over");const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f);});
+document.addEventListener("dragleave",e=>{e.preventDefault();if(--dragDepth<=0){dragDepth=0;drop.classList.remove("over");$("dropB").classList.remove("over");}});
+document.addEventListener("drop",async e=>{
+  e.preventDefault();dragDepth=0;drop.classList.remove("over");$("dropB").classList.remove("over");
+  const fs=e.dataTransfer?[...e.dataTransfer.files]:[],onB=e.target&&e.target.closest&&e.target.closest("#dropB");
+  if(fs.length>=2){await loadFile(fs[0]);await loadFileB(fs[1]);}
+  else if(fs[0]){if(onB)loadFileB(fs[0]);else loadFile(fs[0]);}
+});
 $("btnSave").onclick=async()=>{
   if(!current||busy)return;
   const s=snapshot(current,$("saveName").value.trim());let audioErr="";
@@ -4745,8 +4805,10 @@ $("scope").onchange=e=>{scope=e.target.value;pref.set("tabAnalyzerScope",scope);
 $("listenMode").innerHTML="<option value='orig'>原音</option><option value='match'>ラウドネス一致（BをAに合わせる）</option>"+Object.entries(PLATFORMS).filter(([,p])=>p.up!=="limiter").map(([k,p])=>"<option value='"+k+"'>"+p.name+"の音量</option>").join("");
 $("listenMode").value=[...$("listenMode").options].some(o=>o.value===pref.get("tabAnalyzerListen","orig"))?pref.get("tabAnalyzerListen","orig"):"orig";
 $("listenMode").onchange=e=>{pref.set("tabAnalyzerListen",e.target.value);applyListenGain();};
-$("btnA").onclick=()=>switchAB("A");
-$("btnB").onclick=()=>switchAB("B");
+// ボタンにフォーカスが残ると X / Space が効かなくなるので外す
+const abBtn=(id,fn)=>{$(id).onclick=e=>{e.currentTarget.blur();fn();};};
+abBtn("btnA",()=>switchAB("A"));abBtn("btnB",()=>switchAB("B"));
+abBtn("tbA",()=>switchAB("A"));abBtn("tbB",()=>switchAB("B"));abBtn("tbPlay",()=>$("btnPlay").click());
 // クリックで再生、ドラッグで範囲選択
 $("tl").addEventListener("mousedown",e=>{
   if(e.button!==0||!current)return;const t=timeAt(e);if(t==null)return;
@@ -4759,7 +4821,7 @@ document.addEventListener("mousemove",e=>{
 });
 document.addEventListener("mouseup",()=>{
   if(!dragging)return;const d=dragging;dragging=null;
-  if(!d.moved){playFrom(d.t,"A");return;}
+  if(!d.moved){playFrom(mapPos(d.t,"A",abSide),abSide);return;}
   if(sel&&sel.b-sel.a>=0.005)selChanged();else clearSel();
 });
 $("tl").addEventListener("wheel",e=>{
@@ -4775,7 +4837,7 @@ for(const id of ["sgN","sgWin","sgScale","sgH"])$(id).onchange=()=>{if(current){
 $("sgRange").onchange=()=>{if(current)drawSpecgram(current);};
 $("showPitch").onchange=()=>{if(current)drawSpecgram(current);};
 $("sgPng").onclick=exportSpecPng;
-$("selPlay").onclick=()=>{if(!sel)return;if(player&&player.loop)stopPlay();else playFrom(sel.a,"A",{a:sel.a,b:sel.b});};
+$("selPlay").onclick=()=>{if(!sel)return;if(player&&player.loop)stopPlay();else{const a=mapPos(sel.a,"A",abSide),b=mapPos(sel.b,"A",abSide);playFrom(a,abSide,{a,b});}};
 $("selZoom").onclick=()=>{if(!sel)return;const pad=(sel.b-sel.a)*0.05;setView(sel.a-pad,sel.b+pad);};
 $("selExport").onclick=exportSel;
 $("selCsv").onclick=exportSelCsv;
