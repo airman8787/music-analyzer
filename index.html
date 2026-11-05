@@ -662,6 +662,7 @@ input[type=range]{accent-color:var(--acc)}
         <span class="sub"><input type="checkbox" id="msQuality" checked> 音質優先（PSR が 8 dB を割る手前で、音量を上げるのを止める）</span></label>
       <label class="msItem"><span><b>仕上げの補助</b></span>
         <span class="sub">低域のモノラル化（120 Hz 以下）<select id="msMono"><option value="auto">自動（左右に広がりすぎのときだけ）</option><option value="on">いつも</option><option value="off">しない</option></select></span>
+        <span class="sub"><input type="checkbox" id="msDeclip" checked> 音割れ（クリップ）が見つかった曲は、先に修復する</span>
         <span class="sub"><input type="checkbox" id="msDeharsh"> 耳に痛い瞬間を抑える（試験的）</span>
         <span class="sub">4.2 kHz 付近が、中域（1 kHz）と比べてその曲のふだんより 4 dB 以上突出した瞬間だけ、最大 4 dB 下げます。曲によってはハイハットなどにも反応するので、聴き比べて使ってください。</span></label>
     </div>
@@ -756,6 +757,11 @@ input[type=range]{accent-color:var(--acc)}
     <div class="row"><label class="sub">雑音の手本<select id="dnProf"><option value="auto">自動（静かな部分から推定）</option><option value="sel">4. の選択範囲（雑音だけの部分）</option></select></label>
       <span class="sub">低減量</span><input type="number" id="dnRed" value="12" min="1" max="40"><span class="sub">dB　強さ</span><input type="number" id="dnAl" value="2" step="0.5" min="0.5" max="6">
       <button id="dnRun" class="primary">低減して解析</button></div>
+    <h3>音割れ（クリップ）</h3>
+    <div class="row"><span class="sub">最大の長さ</span><input type="number" id="dclMax" value="5" step="0.5" min="0.2" max="20"><span class="sub">ms</span>
+      <button id="dclRun" class="primary">修復して解析</button></div>
+    <div class="legend">波形の頭が平らに切れた所（最大値付近が 2 サンプル以上続く所）を、前後の音から作り直します（最小二乗 AR 補間。本当の値はクリップの高さ以上のはずなので、それを満たすように解き直します）。
+      テスト信号で、低音やドラムの山は誤差が約 13 dB、和音は約 20〜25 dB 小さくなりましたが、ノイズのような音（スネア・シンバルなど）はほとんど戻せません（予測できないため）。直した波形は元のピークを超えるので、元のピーク以下になるよう全体の音量を下げます。</div>
     <h3>クリック・プチノイズ</h3>
     <div class="row"><label class="sub">感度<select id="dcK"><option value="12">低</option><option value="8" selected>標準</option><option value="5">高</option></select></label>
       <span class="sub">最大の長さ</span><input type="number" id="dcMax" value="2" step="0.5" min="0.1" max="10"><span class="sub">ms</span>
@@ -2485,6 +2491,59 @@ function lsarFill(y,g0,g1,a,p){
   const u=new Float64Array(L);for(let i=L-1;i>=0;i--){let v=r[i];for(let q=i+1;q<L;q++)v-=R[i*L+q]*u[q];u[i]=v/R[i*L+i];}
   for(let i=0;i<L;i++)y[g0+i]=u[i];
 }
+// 最小二乗 AR 補間の一般形：y の中の未知サンプル U（昇順の添字。区間の中に既知のサンプルが混ざってもよい）を、
+// AR 係数 a による予測誤差の二乗和が最小になる値で置き換える
+function lsarSet(y,U,a,p){
+  const L=U.length;if(!L)return true;
+  const bc=new Float64Array(p+1),c=new Float64Array(p+1);bc[0]=1;for(let j=1;j<=p;j++)bc[j]=-a[j];
+  for(let d=0;d<=p;d++){let v=0;for(let j=0;j+d<=p;j++)v+=bc[j]*bc[j+d];c[d]=v;}
+  const R=new Float64Array(L*L),r=new Float64Array(L),isU=new Map();U.forEach((u,i)=>isU.set(u,i));
+  for(let i=0;i<L;i++)for(let l=0;l<L;l++){const d=Math.abs(U[i]-U[l]);R[i*L+l]=d<=p?c[d]:0;}
+  const t0=U[0],t1=U[L-1]+p;
+  for(let t=t0;t<=t1;t++){
+    let kp=0;for(let j=0;j<=p;j++){const ix=t-j;if(ix>=0&&!isU.has(ix))kp+=bc[j]*y[ix];}
+    for(let j=0;j<=p;j++){const ix=t-j,m=isU.get(ix);if(m!==undefined)r[m]-=bc[j]*kp;}
+  }
+  for(let i=0;i<L;i++){
+    let pv=i;for(let q=i+1;q<L;q++)if(Math.abs(R[q*L+i])>Math.abs(R[pv*L+i]))pv=q;
+    if(pv!==i){for(let q=0;q<L;q++){const t=R[i*L+q];R[i*L+q]=R[pv*L+q];R[pv*L+q]=t;}const t=r[i];r[i]=r[pv];r[pv]=t;}
+    const d=R[i*L+i];if(Math.abs(d)<1e-30)return false;
+    for(let q=i+1;q<L;q++){const f=R[q*L+i]/d;if(!f)continue;for(let w=i;w<L;w++)R[q*L+w]-=f*R[i*L+w];r[q]-=f*r[i];}
+  }
+  const u=new Float64Array(L);for(let i=L-1;i>=0;i--){let v=r[i];for(let q=i+1;q<L;q++)v-=R[i*L+q]*u[q];u[i]=v/R[i*L+i];}
+  for(let i=0;i<L;i++)y[U[i]]=u[i];
+  return true;
+}
+// 音割れ（クリップ）の修復：最大値付近（sp の o.th 倍以上）が 2 サンプル以上続く区間を、前後の音から最小二乗 AR 補間で作り直す。
+// 本当の値はクリップの高さ以上・同じ符号のはずなので、補間がそれを満たさないサンプルはクリップの高さに固定して既知に移し、
+// 残りを解き直す（最大 o.iter 回）。間が AR の次数以内の区間はまとめて扱う。長すぎる区間（o.maxMs 超）は直さない
+function declipCh(x,fs,o){
+  o=o||{};const n=x.length,p=o.p||32;let sp=0;for(let i=0;i<n;i++){const a=Math.abs(x[i]);if(a>sp)sp=a;}
+  const th=sp*(o.th||0.999),maxL=Math.max(8,Math.round(fs*(o.maxMs||5)/1000));
+  if(sp===0)return {y:x,count:0,samples:0,skipped:0};
+  const runs=[];
+  for(let i=0;i<n;i++){if(Math.abs(x[i])<th)continue;let j=i;const sg=Math.sign(x[i]);while(j+1<n&&Math.abs(x[j+1])>=th&&Math.sign(x[j+1])===sg)j++;if(j>i)runs.push([i,j]);i=j;}
+  if(!runs.length)return {y:x,count:0,samples:0,skipped:0};
+  const grp=[];for(const r of runs){const g=grp[grp.length-1];if(g&&r[0]-g[1]<=p)g[1]=r[1];else grp.push([r[0],r[1]]);}
+  const y=Float32Array.from(x),clip=new Uint8Array(n);for(const [a,b] of runs)for(let i=a;i<=b;i++)clip[i]=1;
+  const W=o.win||1024;let count=0,samples=0,skipped=0;
+  for(const [g0,g1] of grp){
+    if(g1-g0+1>maxL||g0-p-64<0||g1+p+64>=n){skipped++;continue;}
+    // 係数は前後 W サンプルから。クリップしたサンプルは直線で仮に埋めてから求める（頭打ちのまま使うと予測が狂う）
+    const c0=Math.max(0,g0-W),c1=Math.min(n,g1+W+1),z=Float32Array.from(y.subarray(c0,c1));
+    for(let i=0;i<z.length;i++)if(clip[c0+i]){let a=i;while(a>0&&clip[c0+a-1])a--;let b=i;while(b<z.length-1&&clip[c0+b+1])b++;const u0=a>0?z[a-1]:0,u1=b<z.length-1?z[b+1]:0;for(let q=a;q<=b;q++)z[q]=u0+(u1-u0)*(q-a+1)/(b-a+2);i=b;}
+    const a=lpcCoef(z,0,z.length,p);
+    let U=[];for(let i=g0;i<=g1;i++)if(clip[i])U.push(i);
+    for(let it=0;it<(o.iter||6)&&U.length;it++){
+      if(!lsarSet(y,U,a,p)){for(const i of U)y[i]=x[i];break;}
+      const keep=[];let fixed=false;
+      for(const i of U){if(!Number.isFinite(y[i])||Math.sign(y[i])!==Math.sign(x[i])||Math.abs(y[i])<Math.abs(x[i])){y[i]=x[i];fixed=true;}else keep.push(i);}
+      if(!fixed)break;U=keep;
+    }
+    count++;samples+=g1-g0+1;
+  }
+  return {y,count,samples,skipped,th};
+}
 // クリック・プチノイズの除去：予測誤差が大きく飛び出た短い区間を、前後からの線形予測でつなぎ直す
 function declickCh(x,fs,o){
   const y=Float32Array.from(x),p=32,B=4096,maxLen=Math.max(4,Math.round(fs*(o.maxMs||2)/1000)),k=o.k||8,ab=new Float64Array(B),bb=new Float64Array(B);let count=0;
@@ -2689,6 +2748,11 @@ function editProcess(d,prog){
   }
   else if(op==="tone"){prog("定常音の除去");out=notchRemove(chs,fs,o.freqs||[],o.bw||4);}
   else if(op==="denoise"){const N=sepN(fs,2048),h=N/4;prog("雑音のプロファイル");const prof=chs.map(x=>noiseProfile(x,N,h,o.s0||0,o.s1||0));out=chunked(chs,N*2+h*40,h,seg=>denoiseSeg(seg,fs,o,prof),prog,"雑音の低減");}
+  else if(op==="declip"){let c=0,sm=0,sk=0;out=chs.map((x,i)=>{prog("音割れの修復 "+(i+1)+"/"+chs.length);const r=declipCh(x,fs,o);c+=r.count;sm+=r.samples;sk+=r.skipped;return r.y;});
+    // 直した波形はクリップの高さを超えるので、元のピーク以下になるよう全体を下げる（書き出しで再び割れないように）
+    let pk0=0,pk1=0;for(const c of chs)for(let i=0;i<c.length;i++){const a=Math.abs(c[i]);if(a>pk0)pk0=a;}for(const c of out)for(let i=0;i<c.length;i++){const a=Math.abs(c[i]);if(a>pk1)pk1=a;}
+    let gain=0;if(o.keepPeak!==false&&pk1>pk0&&pk0>0){const k=pk0/pk1;gain=20*Math.log10(k);for(const c of out)for(let i=0;i<c.length;i++)c[i]*=k;}
+    extra.declip={count:c,samples:sm,skipped:sk,gain};}
   else if(op==="declick"){let n=0;out=chs.map((x,i)=>{prog("クリックの除去 "+(i+1)+"/"+chs.length);const r=declickCh(x,fs,o);n+=r.count;return r.y;});extra.clicks=n;}
   else if(op==="shift"){out=chs.map((x,i)=>{prog("ピッチシフト "+(i+1)+"/"+chs.length);return pitchShift(x,o.semi,fs);});}
   else if(op==="stretch"){out=chs.map((x,i)=>{prog("タイムストレッチ "+(i+1)+"/"+chs.length);return pvStretch(x,o.ratio,sepN(fs,4096));});}
@@ -2826,6 +2890,8 @@ function msEqApply(chs,groups,zero){
 function masterProcess(chs,fs,o,prog){
   prog=prog||(()=>{});const info={};let x=chs;
   const lufs=y=>analyzeLoudness(y,fs,o.weights).integrated;
+  // 音割れの修復は最初に：フィルタを通すと平らに切れた頭の形が崩れ、見つけられなくなる
+  if(o.declip){prog("音割れの修復");let c=0,sm=0;x=x.map(ch=>{const r=declipCh(ch,fs,o.declip);c+=r.count;sm+=r.samples;return r.y;});info.declip={count:c,samples:sm};}
   if(o.sos&&o.sos.length){prog("EQ");x=x.map(c=>sosRun(c,o.sos));}
   if(o.eq&&o.eq.length){prog("EQ");x=msEqApply(x,o.eq,!!o.eqZero);}
   if(o.side&&x.length===2&&o.side.db){prog("ステレオの広さ");const g=Math.pow(10,o.side.db/20),[L,R]=x,n=L.length,oL=new Float32Array(n),oR=new Float32Array(n);
@@ -5438,6 +5504,8 @@ $("dnRun").onclick=()=>{const o={red:Math.max(1,Math.min(40,+$("dnRed").value||1
     else{if(!sel){edMsg("雑音だけの部分を 4. のグラフで選んでください",true);return;}const fs=lastRaw.fs;o.s0=Math.floor(sel.a*fs);o.s1=Math.ceil(sel.b*fs);}
   }
   edApply("denoise",o,"雑音低減 "+o.red+" dB"+diffLbl());};
+$("dclRun").onclick=async()=>{const out=await edApply("declip",{maxMs:Math.max(0.2,Math.min(20,+$("dclMax").value||5)),diff:diffOn()},"音割れの修復"+diffLbl());
+  if(out&&out.declip){const d=out.declip;edMsg(d.count?"音割れを "+d.count+" か所（"+d.samples+" サンプル）直しました"+(d.gain<0?"。ピークを保つため全体を "+f1(d.gain,2)+" dB 下げました":"")+(d.skipped?"（長すぎて直せなかった所が "+d.skipped+" か所）":""):"直す必要のある音割れは見つかりませんでした");}};
 $("dcRun").onclick=async()=>{const out=await edApply("declick",{k:+$("dcK").value,maxMs:Math.max(0.1,Math.min(10,+$("dcMax").value||2)),diff:diffOn()},"クリック除去"+diffLbl());if(out)edMsg("クリックを "+out.clicks+" か所つなぎ直しました");};
 // ピッチ・時間
 for(let i=0;i<12;i++)$("tnRoot").add(new Option(NOTE[i],i));
@@ -5720,6 +5788,7 @@ function buildMasterOpts(m,fs,key,ov){
   // リファレンスに寄せる：ステレオの広さ（サイド / ミッドのエネルギー比）の差を、サイドの音量で ±3 dB まで合わせる
   if(ref&&m.stereo&&m.layout.length===2&&Number.isFinite(ref.width)&&Number.isFinite(m.width)){const d=Math.max(-3,Math.min(3,ref.width-m.width));if(Math.abs(d)>=0.5)o.side={db:Math.round(d*10)/10};}
   if($("msDeharsh").checked)o.deharsh={maxDb:4,thrDb:4,win:30};
+  if($("msDeclip").checked&&m.clipRuns>0)o.declip={};
   const lin=$("msEqPhase").value==="lin",eqG=b=>lin&&!/pass$/.test(b.type)?b.g/2:b.g,groups={st:[],m:[],s:[]};let usedT=null;
   if($("msManEq").checked){
     eqBands=msEqBands.filter(b=>b.on&&b.f>0);
@@ -5748,7 +5817,7 @@ function buildMasterOpts(m,fs,key,ov){
     const nv=(id,lo,hi,d)=>{const v=+$(id).value;return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d;},rmin=nv("msRelMin",5,500,30);
     o.lim={lufs:L,ceil:C,minPsr:$("msQuality").checked?8:0,opt:{la:nv("msLA",1,10,4),hold:nv("msHold",0,50,20),relMin:rmin,relMax:Math.max(rmin,nv("msRelMax",10,2000,150))}};
   }
-  if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh&&!o.side)return {err:"かける処理がありません"};
+  if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh&&!o.side&&!o.declip)return {err:"かける処理がありません"};
   return {o,eqBands,notes,usedT,lin,P,ref};
 }
 async function masterRun(){
@@ -5783,6 +5852,7 @@ function renderMaster(r,eqBands,notes,before){
   const TN={st:"",m:"［ミッド］",s:"［サイド］"},lin=msLast&&msLast.lin;
   rows.push([$("msManEq").checked?"手動 EQ":"オート EQ",eqBands.length?eqBands.map(b=>(TN[b.t]||"")+(EQN[b.type]||b.type)+" "+fmtF(b.f)+"Hz"+(/pass$/.test(b.type)?"":" "+(b.g>0?"+":"")+f1(b.g)+" dB")).join("、")+(lin?"（リニアフェーズ）":""):"なし"]);
   if(msLast&&msLast.ref)rows.unshift(["リファレンス",msLast.ref.name+"（"+f1(msLast.ref.lufs)+" LUFS）に寄せました：音色・音量"+(r.side?"・ステレオの広さ":"")]);
+  if(r.declip)rows.push(["音割れの修復",r.declip.count?r.declip.count+" か所（"+r.declip.samples+" サンプル）を作り直しました":"作り直せる所はありませんでした"]);
   if(r.side)rows.push(["ステレオの広さ","サイドを "+(r.side.db>0?"+":"")+f1(r.side.db)+" dB（リファレンスとの差を ±3 dB まで合わせる）"]);
   if(r.bassMono)rows.push(["低域のモノラル化",fmtF(r.bassMono.f)+" Hz 以下の左右の差をなくしました"]);
   if(r.deharsh)rows.push(["耳に痛い瞬間",r.deharsh.share>0.001?"曲の "+f1(r.deharsh.share*100)+"% の時間で、最大 "+f1(r.deharsh.grMax)+" dB 抑えました":"突出した瞬間はありませんでした（何もしていません）"]);
@@ -6018,7 +6088,7 @@ function easyDiag(m,key){
   if(L>-8)add("warn","音量：とても大きい（"+f1(L)+" LUFS）","配信サービスでは −14 前後まで自動で下げられます。大きくしすぎた分、音が潰れて損をしやすい状態です。","「"+P.name+"」の目安 "+P.lufs+" LUFS に合わせます");
   else if(L<P.lufs-4)add("info","音量：小さめ（"+f1(L)+" LUFS）","市販曲と並べると小さく聞こえます。","音割れしないように "+P.lufs+" LUFS まで上げます");
   else add("ok","音量：ちょうどよい（"+f1(L)+" LUFS）","","目安の "+P.lufs+" LUFS に細かく合わせます");
-  if(m.clipRuns>0||m.tp>0)add("bad","音割れ：あり（または、その可能性）","波形が頭打ちになっている、またはピークが 0 dB を超えています。再生機器や配信の変換で歪みます。",m.clipRuns>0?"これ以上の音割れは防げますが、すでに割れている音は元に戻せません（書き出し前のミックスで直すのが確実です）":"ピークを "+P.ceil+" dBTP 以下に抑えます");
+  if(m.clipRuns>0||m.tp>0)add("bad","音割れ：あり（または、その可能性）","波形が頭打ちになっている、またはピークが 0 dB を超えています。再生機器や配信の変換で歪みます。",m.clipRuns>0?"割れた所を前後の音から作り直してから仕上げます（低音の山などはよく戻りますが、ノイズのような音は戻せません。書き出し前のミックスで直すのが確実です）":"ピークを "+P.ceil+" dBTP 以下に抑えます");
   else if(m.tp>-1||L>-14&&m.tp>-2)add("warn","音割れ：余裕が少ない（"+f1(m.tp)+" dBTP）","配信の変換（AAC・Ogg など）でピークが増え、歪むことがあります。Spotify は、−14 LUFS より大きい曲では −2 dBTP 以下を推奨しています。","ピークを "+P.ceil+" dBTP 以下に抑えます");
   else add("ok","音割れ：なし（"+f1(m.tp)+" dBTP）","","");
   const ps=m.psr&&Number.isFinite(m.psr.loud)?m.psr.loud:NaN;
