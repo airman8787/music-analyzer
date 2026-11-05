@@ -53,6 +53,8 @@ button.easyBig{font-size:17px;font-weight:600;padding:12px 28px;background:linea
 .msItem{display:flex;flex-direction:column;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px}
 .msItem select,.msItem input[type=number]{margin:0 4px}
 #msOut table{margin-top:6px}
+#msAdv{margin-top:10px}#msAdv>summary{font-size:13.5px;color:var(--text)}
+.msEqT td,.msEqT th{text-align:left;white-space:nowrap}.msEqT input[type=number]{width:72px}.msEqT select{max-width:130px}
 #songTable a{color:var(--text);text-decoration:none}#songTable a:hover{color:var(--acc);text-decoration:underline}
 #songTable button.on{border-color:var(--acc);color:var(--acc)}
 .songWrap{overflow-x:auto}
@@ -643,7 +645,35 @@ input[type=range]{accent-color:var(--acc)}
     </div>
     <div class="row" style="margin-top:8px"><button id="msRun" class="primary">おまかせで仕上げる</button>
       <label class="sub"><input type="checkbox" id="msAB" checked> 処理前の音を B に入れて、音量をそろえて聴き比べる</label></div>
+    <details id="msAdv"><summary>上級者向けの調整（手動 EQ・M/S・リニアフェーズ・コンプ / リミッターの数値）</summary>
+      <h3>EQ</h3>
+      <div class="row"><label class="sub"><input type="checkbox" id="msManEq"> 手動 EQ（下の表）を使う（オート EQ の代わりにかけます）</label>
+        <label class="sub">位相<select id="msEqPhase"><option value="min">最小位相（ふつう）</option><option value="lin">リニアフェーズ（ゼロ位相）</option></select></label></div>
+      <div class="row" style="margin-top:6px"><button id="msEqSuggest">オート EQ の提案を表に入れる</button><button id="msEqAdd">＋ バンドを追加</button><button id="msEqClear">表を空にする</button></div>
+      <div class="songWrap"><table id="msEqTable" class="msEqT" style="margin-top:6px"></table></div>
+      <canvas id="cvMsEq" style="margin-top:6px"></canvas>
+      <div class="legend">対象：左右＝両チャンネルに同じ EQ／ミッド＝中央の成分（ボーカル・ベース・キックなど）だけ／サイド＝左右に広がった成分だけ。
+        リニアフェーズは、各段を前向きと後ろ向きに通して位相のずれをなくします（打楽器の前に小さな「プリリンギング」が出ることがあります）。ハイパス・ローパスはリニアフェーズにすると傾きが 2 倍になります。20 Hz 以下のカットは常に最小位相です。</div>
+      <h3>コンプ</h3>
+      <div class="row"><label class="sub"><input type="checkbox" id="msCompMan"> 数値で指定（「強さ」の選択より優先）</label>
+        <label class="sub">比率<input type="number" id="msCR" value="2" min="1.1" max="10" step="0.1" style="width:60px">:1</label>
+        <label class="sub">圧縮量<input type="number" id="msCGr" value="2.5" min="0.5" max="12" step="0.5" style="width:60px">dB</label>
+        <label class="sub">アタック<input type="number" id="msCA" value="30" min="1" max="200" step="1" style="width:60px">ms</label>
+        <label class="sub">リリース<input type="number" id="msCRel" value="150" min="20" max="2000" step="10" style="width:70px">ms</label></div>
+      <div class="legend">圧縮量：曲の大きい部分（上位 10%）でのゲインリダクションの目標。しきい値はこれに合わせて自動で決めます。検出は 20 ms の移動平均を 2 回通した RMS です。</div>
+      <h3>リミッター</h3>
+      <div class="row"><label class="sub">先読み<input type="number" id="msLA" value="4" min="1" max="10" step="0.5" style="width:60px">ms</label>
+        <label class="sub">保持<input type="number" id="msHold" value="20" min="0" max="50" step="1" style="width:60px">ms</label>
+        <label class="sub">リリース 最短<input type="number" id="msRelMin" value="30" min="5" max="500" step="5" style="width:60px">〜 最長<input type="number" id="msRelMax" value="150" min="10" max="2000" step="10" style="width:70px">ms</label></div>
+      <div class="legend">保持：ゲインを下げたまま保つ時間。低音の周期より短いと 1 周期の中でゲインが揺れて歪みます（20 ms で 25 Hz まで）。リリースは、抑えている状態が続くほど最長に近づきます。</div>
+    </details>
     <div id="msOut" class="note" hidden></div>
+    <div id="msGraphs" hidden>
+      <h3>どこで、どれだけ抑えたか</h3><canvas id="cvMsGr"></canvas>
+      <div class="legend"><span style="color:#8ab4ff">■</span> コンプ　<span style="color:#ff6b6b">■</span> リミッター（50 ms ごとの最大のゲインリダクション）。リミッターが長く深くかかっている所は、音が潰れやすい場所です。</div>
+      <h3>音色の変化（処理前・処理後・目安）</h3><canvas id="cvMsSpec"></canvas>
+      <div class="legend"><span style="color:#9aa0b4">―</span> 処理前　<span style="color:#5ad19a">―</span> 処理後　<span style="color:#c58aff">▒</span> 目安の範囲（1/6 オクターブ・音量をそろえて表示）</div>
+    </div>
     <div class="legend">曲全体（前後の無音トリム後）に、EQ → コンプ → リミッターの順でかけます（上の「対象」の設定は使いません）。処理後の音は 2.〜8. で解析し直され、「元の音に戻す」で戻せます。書き出しは「書き出し・結合・分割」タブから。
       <br>ジャンルの値は、市販曲でよく見られる音量・音色の<b>大まかな目安</b>です（一般的な制作上の傾向をもとにした値で、特定の調査の実測値ではありません）。好きな曲に近づけたいときは、その曲を 8. に保存して 5. でターゲットにし、EQ の基準を「5. で選んだターゲット」にしてください。
       <br>マスタリングでミックスの問題（楽器同士のかぶり、ボーカルの埋もれなど）は直せません。最後は必ず耳で確かめてください。配信では大きい曲ほど音量を下げられるので、音圧を上げすぎても大きく聞こえるとは限りません（2. の表を参照）。</div>
@@ -816,41 +846,53 @@ const FINE_TAB=(()=>{
   }
   return tab;
 })();
+// 範囲チェックなしの版（j−FINE_K+1 ≥ 0 かつ j+FINE_K < x.length が保証されている位置用）
+function fineAtIn(x,j,st){const row=FINE_TAB[st],o=j-FINE_K+1;let y=0;for(let m=0;m<2*FINE_K;m++)y+=row[m]*x[o+m];return y;}
 function fineAt(x,j,st){const row=FINE_TAB[st],n=x.length;let y=0;for(let m=0;m<2*FINE_K;m++){const k=j+m-FINE_K+1;if(k>=0&&k<n)y+=row[m]*x[k];}return y;}
-// トゥルーピーク。BS.1770 の4倍FIRでピークのありそうな位置を探し、その近くだけ精密補間（1/16サンプル刻み＋放物線補間）で求め直す。
-// BS.1770 の例示フィルタは fs/4 付近で最大 +0.2 dB 読み過ぎ、4倍の格子では高域で読み落とすため、その両方を補正する
+// トゥルーピーク。BS.1770 の 4 倍 FIR でピークのありそうな位置を探し、その近くだけ精密補間（1/16 サンプル刻み＋放物線補間）で求め直す。
+// BS.1770 の例示フィルタは fs/4 付近で最大 +0.2 dB 読み過ぎ、4 倍の格子では高域で読み落とすため、その両方を補正する。
+// 速さと確かさのための工夫：
+// ・候補は 4 倍 FIR の値が sp の 0.6 倍以上の位置。値の大きい順に調べ、4 倍 FIR の値の 1.6 倍でも今の最大に届かなくなったら打ち切る
+//   （強くクリップした広帯域ノイズでは 4 倍 FIR が 2.3 dB 以上低く読むことがあり、以前の 0.75 倍・1.3 倍では最大 0.47 dB 読み落とした）
+// ・各位置ではまず精密補間を 1/4 サンプル刻み（3 点）だけ計算し、その最大に 1/cos(π/8)（4 倍の格子で読み落とせる最大の比）を掛けても
+//   今の最大に届かない位置は、1/16 刻みの計算を省く
+// ・候補数に上限を設けない（以前は 200000 で打ち切っていたため、強く潰した長い曲で読み落としうる）
+// 検証：合成信号 400 通り（ナイキスト付近の正弦波・ホワイトノイズ・クリップしたノイズ・矩形波・インパルス・チャープ、半数はリミッター通過）で、
+// 打ち切りなしの全数計算に対して読み落としなし
+const TP_BOUND=1/Math.cos(Math.PI/8);
 function truePeak(x){
   let sp=0;const n=x.length;
   for(let i=0;i<n;i++){const a=Math.abs(x[i]);if(a>sp)sp=a;}
   if(sp===0)return {sp:0,tp:0};
-  // 窓内の全サンプルが sp/TP_GAIN 未満なら補間値は sp を超えないので計算を省略（近似ではない）
-  const thr=sp/TP_GAIN,H=TP_H,cthr=0.75*sp;let tp4=sp,last=-100,cn=0,cI=new Int32Array(4096),cV=new Float32Array(4096);
+  // 窓内の全サンプルが sp/TP_GAIN 未満なら 4 倍 FIR の値は sp を超えないので計算を省略
+  const thr=sp/TP_GAIN,H=TP_H,cthr=0.6*sp;let last=-100,cn=0,cI=new Int32Array(4096),cV=new Float32Array(4096);
   for(let i=0;i<11&&i<n;i++)if(Math.abs(x[i])>=thr)last=i;
   for(let i=11;i<n;i++){
     if(Math.abs(x[i])>=thr)last=i;
     if(i-last>11)continue;
     let m4=0;
     for(let p=0;p<48;p+=12){let y=0;for(let k=0;k<12;k++)y+=H[p+k]*x[i-k];const a=y<0?-y:y;if(a>m4)m4=a;}
-    if(m4>tp4)tp4=m4;
     if(m4>=cthr){
       if(cn===cI.length){const a=new Int32Array(cn*2),b=new Float32Array(cn*2);a.set(cI);b.set(cV);cI=a;cV=b;}
       cI[cn]=i;cV[cn]=m4;cn++;
     }
   }
-  // 候補（4倍FIRの値が最大から約2.3dB以内）を値の大きい順に精密補間。4倍FIRはナイキスト付近で最大約2dB読み落とすため、
-  // それを見込んでも超えられない候補に来たら打ち切る
-  const keep=[];for(let c=0;c<cn;c++)if(cV[c]>=0.77*tp4)keep.push(c);
-  keep.sort((a,b)=>cV[b]-cV[a]);
-  let best=sp;const seen=new Set(),vals=new Float64Array(FINE_STEPS+1);
-  for(let q=0;q<keep.length&&q<200000;q++){
-    const c=keep[q];if(cV[c]*1.3<best)break;
-    // 4倍FIRの出力 i は、おおよそ元の i-6 〜 i-5 の区間に当たる
-    // 補間の窓が信号の端にかかる区間（先頭・末尾の約128サンプル）は切れ目のオーバーシュートを拾うため対象外（サンプルピークで扱う）
+  const ord=new Uint32Array(cn);for(let c=0;c<cn;c++)ord[c]=c;
+  ord.sort((a,b)=>cV[b]-cV[a]);
+  let best=sp;const seen=new Uint8Array(n),vals=new Float64Array(FINE_STEPS+1),q4=FINE_STEPS/4;
+  for(let q=0;q<cn;q++){
+    const c=ord[q];if(cV[c]*1.6<best)break;
+    // 4 倍 FIR の出力 i は、おおよそ元の i-6 〜 i-5 の区間に当たる
+    // 補間の窓が信号の端にかかる区間（先頭・末尾の約 128 サンプル）は切れ目のオーバーシュートを拾うため対象外（サンプルピークで扱う）
     if(cI[c]-7<FINE_K||cI[c]-4>=n-FINE_K)continue;
     for(let j=cI[c]-7;j<=cI[c]-4;j++){
-      if(seen.has(j))continue;seen.add(j);
+      if(seen[j])continue;seen[j]=1;
+      let a=Math.max(Math.abs(x[j]),Math.abs(x[j+1]));
+      for(let st=q4;st<FINE_STEPS;st+=q4){const v=Math.abs(fineAtIn(x,j,st));if(v>a)a=v;}
+      if(a>best)best=a;
+      if(a*TP_BOUND<best)continue;
       let bv=0,bs=0;
-      for(let st=0;st<=FINE_STEPS;st++){const v=Math.abs(st===0?x[j]:st===FINE_STEPS?x[j+1]:fineAt(x,j,st));vals[st]=v;if(v>bv){bv=v;bs=st;}}
+      for(let st=0;st<=FINE_STEPS;st++){const v=Math.abs(st===0?x[j]:st===FINE_STEPS?x[j+1]:fineAtIn(x,j,st));vals[st]=v;if(v>bv){bv=v;bs=st;}}
       if(bs>0&&bs<FINE_STEPS){const a=vals[bs-1],b=vals[bs],cc=vals[bs+1],den=a-2*b+cc;if(den<0)bv=b-0.125*(a-cc)*(a-cc)/den;}
       if(bv>best)best=bv;
     }
@@ -2651,13 +2693,15 @@ function msCompress(chs,fs,o){
   const gc=l=>{const ov=l-T;return 2*ov>Wk?(1/R-1)*ov:2*ov>-Wk?(1/R-1)*(ov+Wk/2)*(ov+Wk/2)/(2*Wk):0;};
   const aA=Math.exp(-D/(fs*o.attack/1000)),aR=Math.exp(-D/(fs*o.release/1000));
   const out=chs.map(()=>new Float32Array(n));let gs=0,kPrev=1,grSum=0,grCnt=0,grMax=0;
+  const GB=Math.round(fs*0.05),grT=new Float32Array(Math.ceil(n/GB));
   for(let s0=0;s0<n;s0+=D){
     const s1=Math.min(n,s0+D),lv=levAt(s1-1),gt=gc(lv);gs=gt<gs?aA*gs+(1-aA)*gt:aR*gs+(1-aR)*gt;
+    {const b=Math.floor(s0/GB);if(-gs>grT[b])grT[b]=-gs;}
     const kNext=Math.pow(10,gs/20),len=s1-s0;
     for(let i=s0;i<s1;i++){const k=kPrev+(kNext-kPrev)*(i-s0+1)/len;for(let c=0;c<nc;c++)out[c][i]=chs[c][i]*k;}
     kPrev=kNext;if(lv>=L90-3){grSum-=gs;grCnt++;}if(-gs>grMax)grMax=-gs;
   }
-  return {chs:out,info:{thr:T,ratio:R,attack:o.attack,release:o.release,grLoud:grCnt?grSum/grCnt:0,grMax}};
+  return {chs:out,info:{thr:T,ratio:R,attack:o.attack,release:o.release,grLoud:grCnt?grSum/grCnt:0,grMax,grT}};
 }
 // リミッター用のピーク検出：各サンプル位置の、左右の |x| と BS.1770 の 4 倍オーバーサンプリング値の最大（ゲインに依存しないので 1 回だけ計算する）。
 // 例示フィルタは少し読み過ぎる（最大 +0.2 dB 程度）ので、上限を守る側にずれる
@@ -2697,13 +2741,13 @@ function msLimit(chs,pk,fs,gainDb,ceilDb,o){
     if((i&15)===0){const gr=r<1?-20*Math.log10(r):0;slow=Math.pow(aS,16)*slow+(1-Math.pow(aS,16))*gr;ar=Math.exp(-1/(fs*(relMin+(relMax-relMin)*Math.min(1,slow/relDb))/1000));}
     r=1-(1-r)*ar;if(mn[i]<r)r=mn[i];mn[i]=r;
   }
-  const out=chs.map(()=>new Float32Array(n));let acc=0,kMin=1;
+  const out=chs.map(()=>new Float32Array(n)),GB=Math.round(fs*0.05),kT=new Float32Array(Math.ceil(n/GB)).fill(1);let acc=0,kMin=1;
   for(let i=0;i<n;i++){
     acc+=mn[i];if(i>=la)acc-=mn[i-la];const k=acc/(i+1<la?i+1:la);
-    if(k<kMin)kMin=k;
+    if(k<kMin)kMin=k;{const b=(i/GB)|0;if(k<kT[b])kT[b]=k;}
     const kk=g*k;for(let c=0;c<nc;c++)out[c][i]=chs[c][i]*kk;
   }
-  return {chs:out,grMax:-20*Math.log10(kMin)};
+  return {chs:out,grMax:-20*Math.log10(kMin),grT:kT.map(k=>-20*Math.log10(k))};
 }
 // 低域のモノラル化：サイド（L−R）から f 以下を取り除く。S' = S − LP(S)（LP はゼロ位相の 4 次バターワースを前後に通したもの）。
 // f より上ではサイドがそのまま残るので、ステレオ感と位相は変わらない
@@ -2742,11 +2786,25 @@ function msDeharsh(chs,fs,o){
   }
   return {chs:out,info:{share:cnt/nb,grMax,thr}};
 }
+// EQ を左右 / ミッド / サイドに分けてかける。groups: [{target:"st"|"m"|"s", sos:[...]}]。
+// zero のとき、各段を前向きと後ろ向きに 1 回ずつ通す（ゼロ位相＝リニアフェーズ。振幅は 2 乗になるので、呼ぶ側でゲインを半分にしておく）
+function msEqApply(chs,groups,zero){
+  const run=(y,sos)=>zero?sosRun(sosRun(y,sos).reverse(),sos).reverse():sosRun(y,sos);
+  let x=chs;const st=groups.filter(g=>g.target==="st"&&g.sos.length),ms=groups.filter(g=>g.target!=="st"&&g.sos.length);
+  for(const g of st)x=x.map(c=>run(c,g.sos));
+  if(ms.length&&x.length===2){
+    const n=x[0].length;let M=new Float32Array(n),S=new Float32Array(n);for(let i=0;i<n;i++){M[i]=(x[0][i]+x[1][i])*0.5;S[i]=(x[0][i]-x[1][i])*0.5;}
+    for(const g of ms){if(g.target==="m")M=run(M,g.sos);else S=run(S,g.sos);}
+    const L=new Float32Array(n),R=new Float32Array(n);for(let i=0;i<n;i++){L[i]=M[i]+S[i];R[i]=M[i]-S[i];}x=[L,R];
+  }
+  return x;
+}
 // o: {sos:[[b0,b1,b2,a1,a2]...], comp:{ratio,gr,attack,release}|null, lim:{lufs,ceil,release}|null, weights}
 function masterProcess(chs,fs,o,prog){
   prog=prog||(()=>{});const info={};let x=chs;
   const lufs=y=>analyzeLoudness(y,fs,o.weights).integrated;
   if(o.sos&&o.sos.length){prog("EQ");x=x.map(c=>sosRun(c,o.sos));}
+  if(o.eq&&o.eq.length){prog("EQ");x=msEqApply(x,o.eq,!!o.eqZero);}
   if(o.bassMono){prog("低域のモノラル化");const r=msBassMono(x,fs,o.bassMono.f);x=r.chs;info.bassMono=r.info;}
   if(o.deharsh){prog("耳に痛い瞬間の抑制");const r=msDeharsh(x,fs,o.deharsh);x=r.chs;info.deharsh=r.info;}
   if(o.comp){prog("コンプレッサー");const r=msCompress(x,fs,o.comp);x=r.chs;info.comp=r.info;}
@@ -2764,7 +2822,7 @@ function masterProcess(chs,fs,o,prog){
       for(let it=0;it<10;it++){
         prog("リミッター（調整 "+(++it0)+"）");
         const r=msLimit(x,pk,fs,gain,ceil,o.lim.opt),ld=analyzeLoudness(r.chs,fs,o.weights),L=ld.integrated;
-        best={chs:r.chs,gain,ceil,grMax:r.grMax,lufs:L,loud:ld};
+        best={chs:r.chs,gain,ceil,grMax:r.grMax,grT:r.grT,lufs:L,loud:ld};
         const dL=target-L;if(Math.abs(dL)<=0.1||gain>=30&&dL>0)break;
         let slope=1;if(prev&&Math.abs(gain-prev.g)>1e-3)slope=Math.max(0.05,Math.min(1,(L-prev.L)/(gain-prev.g)));
         prev={g:gain,L};gain=Math.min(30,gain+dL/slope);
@@ -2779,7 +2837,7 @@ function masterProcess(chs,fs,o,prog){
       const k=Math.pow(10,-(over+0.02)/20);for(const c of best.chs)for(let i=0;i<c.length;i++)c[i]*=k;
       best.gain-=over+0.02;best.lufs-=over+0.02;break;
     }
-    x=best.chs;info.lim={gain:best.gain,ceil:best.ceil,grMax:best.grMax,target:o.lim.lufs,ceilTarget:o.lim.ceil,lufs:best.lufs,psrGuard:!!info.psrGuard,minPsr:o.lim.minPsr||0};
+    x=best.chs;info.lim={gain:best.gain,ceil:best.ceil,grMax:best.grMax,target:o.lim.lufs,ceilTarget:o.lim.ceil,lufs:best.lufs,psrGuard:!!info.psrGuard,minPsr:o.lim.minPsr||0,grT:best.grT};
   }
   return {chs:x,info};
 }
@@ -4303,7 +4361,7 @@ function refresh(){
   renderTargetSel();renderTarget(m);renderLow(m,ref);drawDynMap(m,ref,list);renderCodec();
   $("report").textContent=reportText(m);
   syncRefAudio();applyListenGain();
-  renderEasy();
+  renderEasy();drawMsGraphs();
 }
 
 /* ---------- 保存・比較 ---------- */
@@ -5597,24 +5655,35 @@ async function masterRun(){
   if($("msHp").checked)o.sos.push(rbjBiquad("highpass",20,0.707,0,fs));
   const mono=$("msMono").value;if(m.stereo&&m.layout.length===2&&(mono==="on"||mono==="auto"&&m.corrLow<0.5))o.bassMono={f:120};
   if($("msDeharsh").checked)o.deharsh={maxDb:4,thrDb:4,win:30};
-  if($("msEqOn").checked){
-    const T=$("msEqBase").value==="target"?getTarget():genreTarget(key);
+  const lin=$("msEqPhase").value==="lin",eqG=b=>lin&&!/pass$/.test(b.type)?b.g/2:b.g,groups={st:[],m:[],s:[]};let usedT=null;
+  if($("msManEq").checked){
+    eqBands=msEqBands.filter(b=>b.on&&b.f>0);
+    for(const b of eqBands)groups[b.t||"st"].push(rbjBiquad(b.type,b.f,b.Q,eqG(b),fs));
+    if(!eqBands.length)notes.push("EQ：手動 EQ の表に有効なバンドがありません");
+  }
+  else if($("msEqOn").checked){
+    const T=$("msEqBase").value==="target"?getTarget():genreTarget(key);usedT=T;
     if(!T)notes.push("EQ：5. でターゲットが選ばれていないため、かけませんでした");
     else{
       const cmp=compareTonal(m,T),a=Math.max(0,Math.min(100,+$("msEqAmt").value||0))/100;
       if(cmp){
-        eqBands=msAutoEq(cmp,fs,a);
-        for(const b of eqBands)o.sos.push(rbjBiquad(b.type,b.f,b.Q,b.g,fs));
+        eqBands=msAutoEq(cmp,fs,a).map(b=>Object.assign(b,{t:"st"}));
+        for(const b of eqBands)groups.st.push(rbjBiquad(b.type,b.f,b.Q,eqG(b),fs));
         if(!eqBands.length)notes.push("EQ：「"+T.name+"」に十分近いので、補正しませんでした");}
     }
   }
-  if($("msCompOn").checked){const c=COMP_STR[$("msComp").value]||COMP_STR.mid;o.comp={ratio:c.ratio,gr:c.gr,attack:P.att,release:P.rel};}
+  o.eq=["st","m","s"].map(t=>({target:t,sos:groups[t]})).filter(g=>g.sos.length);o.eqZero=lin;
+  if($("msCompOn").checked){
+    const c=COMP_STR[$("msComp").value]||COMP_STR.mid,num=(id,lo,hi,d)=>{const v=+$(id).value;return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d;};
+    o.comp=$("msCompMan").checked?{ratio:num("msCR",1.1,10,2),gr:num("msCGr",0.5,12,2.5),attack:num("msCA",1,200,30),release:num("msCRel",20,2000,150)}:{ratio:c.ratio,gr:c.gr,attack:P.att,release:P.rel};
+  }
   if($("msLimOn").checked){
     const L=+$("msLufs").value,C=+$("msCeil").value;
     if(!Number.isFinite(L)||!Number.isFinite(C)||C>0){edMsg("目標ラウドネスと上限（0 dBTP 以下）を数値で入れてください",true);return;}
-    o.lim={lufs:L,ceil:C,minPsr:$("msQuality").checked?8:0};
+    const nv=(id,lo,hi,d)=>{const v=+$(id).value;return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d;},rmin=nv("msRelMin",5,500,30);
+    o.lim={lufs:L,ceil:C,minPsr:$("msQuality").checked?8:0,opt:{la:nv("msLA",1,10,4),hold:nv("msHold",0,50,20),relMin:rmin,relMax:Math.max(rmin,nv("msRelMax",10,2000,150))}};
   }
-  if(!o.sos.length&&!o.comp&&!o.lim){edMsg("かける処理がありません",true);return;}
+  if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh){edMsg("かける処理がありません",true);return;}
   const s0=m.trimStart,s1=m.trimEnd,chs=lastRaw.chs.map(c=>c.slice(s0,s1)),info={source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout};
   const orig=editOrig||{chs:lastRaw.chs.map(c=>c.slice()),fs,info:Object.assign({label:m.label},info)};
   const before=m,beforeChs=lastRaw.chs.map(c=>c.subarray(s0,s1)),base=m.label||"音声";
@@ -5631,15 +5700,16 @@ async function masterRun(){
     $("listenMode").value="match";pref.set("tabAnalyzerListen","match");
     showBInfo();renderSongs();refresh();
   }
-  msLast={before,after:current,info:out.master,eqBands,notes};
+  msLast={before,after:current,info:out.master,eqBands,notes,T:usedT||genreTarget(key),lin};
   renderMaster(out.master,eqBands,notes,before);renderEasy();
   maybeAutoCodec();
 }
 function renderMaster(r,eqBands,notes,before){
   const box=$("msOut");if(!r){box.hidden=true;return;}box.hidden=false;
-  const EQN={peaking:"ピーク",lowshelf:"ローシェルフ",highshelf:"ハイシェルフ"};
+  const EQN={peaking:"ピーク",lowshelf:"ローシェルフ",highshelf:"ハイシェルフ",highpass:"ハイパス",lowpass:"ローパス"};
   const rows=[];
-  rows.push(["オート EQ",eqBands.length?eqBands.map(b=>(EQN[b.type]||b.type)+" "+fmtF(b.f)+"Hz "+(b.g>0?"+":"")+f1(b.g)+" dB").join("、"):"なし"]);
+  const TN={st:"",m:"［ミッド］",s:"［サイド］"},lin=msLast&&msLast.lin;
+  rows.push([$("msManEq").checked?"手動 EQ":"オート EQ",eqBands.length?eqBands.map(b=>(TN[b.t]||"")+(EQN[b.type]||b.type)+" "+fmtF(b.f)+"Hz"+(/pass$/.test(b.type)?"":" "+(b.g>0?"+":"")+f1(b.g)+" dB")).join("、")+(lin?"（リニアフェーズ）":""):"なし"]);
   if(r.bassMono)rows.push(["低域のモノラル化",fmtF(r.bassMono.f)+" Hz 以下の左右の差をなくしました"]);
   if(r.deharsh)rows.push(["耳に痛い瞬間",r.deharsh.share>0.001?"曲の "+f1(r.deharsh.share*100)+"% の時間で、最大 "+f1(r.deharsh.grMax)+" dB 抑えました":"突出した瞬間はありませんでした（何もしていません）"]);
   rows.push(["オートコンプ",r.comp?"しきい値 "+f1(r.comp.thr)+" dB・比率 "+r.comp.ratio+":1・大きい部分で平均 "+f1(r.comp.grLoud)+" dB 圧縮（最大 "+f1(r.comp.grMax)+" dB）":"なし"]);
@@ -5659,8 +5729,92 @@ function renderMaster(r,eqBands,notes,before){
   h+=notes.concat(warn).map(t=>"<div style='color:var(--warn);margin-top:4px'>"+esc(t)+"</div>").join("");
   h+="<div class='sub' style='margin-top:6px'>"+($("msAB").checked?"処理前の音を B に入れ、試聴音量を「ラウドネス一致」にしました。上のバーの A / B か X キーで聴き比べてください（音量差に惑わされずに、音色と潰れ具合を比べられます）。":"")+"気に入らなければ「元の音に戻す」で戻せます。</div>";
   box.innerHTML=h;
+  drawMsGraphs();
 }
 $("msRun").onclick=masterRun;
+/* ---------- 上級者向け：手動 EQ（左右 / ミッド / サイド）・グラフ ---------- */
+const MS_EQ_TYPES=[["peaking","ピーク"],["lowshelf","ローシェルフ"],["highshelf","ハイシェルフ"],["highpass","ハイパス"],["lowpass","ローパス"]];
+let msEqBands=[];try{msEqBands=JSON.parse(pref.get("tabAnalyzerMsEq","[]"))||[];}catch(e){msEqBands=[];}
+const msEqSave=()=>pref.set("tabAnalyzerMsEq",JSON.stringify(msEqBands));
+function renderMsEqTable(){
+  const opt=(list,v)=>list.map(([k,l])=>"<option value='"+k+"'"+(k===v?" selected":"")+">"+l+"</option>").join("");
+  $("msEqTable").innerHTML=msEqBands.length?"<tr><th>使う</th><th>種類</th><th>周波数 Hz</th><th>Q</th><th>ゲイン dB</th><th>対象</th><th></th></tr>"+msEqBands.map((b,i)=>"<tr data-i='"+i+"'><td><input type='checkbox' data-k='on'"+(b.on?" checked":"")+"></td><td><select data-k='type'>"+opt(MS_EQ_TYPES,b.type)+"</select></td>"
+    +"<td><input type='number' data-k='f' value='"+b.f+"' min='10' max='22000' step='1'></td><td><input type='number' data-k='Q' value='"+(+b.Q).toFixed(2)+"' min='0.1' max='20' step='0.05'></td>"
+    +"<td><input type='number' data-k='g' value='"+(+b.g).toFixed(1)+"' min='-18' max='18' step='0.1'"+(/pass$/.test(b.type)?" disabled":"")+"></td><td><select data-k='t'>"+opt([["st","左右"],["m","ミッド"],["s","サイド"]],b.t||"st")+"</select></td><td><button data-del='"+i+"'>×</button></td></tr>").join("")
+    :"<tr><td class='sub' style='text-align:left'>バンドがありません。「オート EQ の提案を表に入れる」か「＋ バンドを追加」で作れます。</td></tr>";
+  drawMsEq();
+}
+function drawMsEq(){
+  const cv=$("cvMsEq");if(!$("msAdv").open){return;}
+  const {g,w,h}=prep(cv,170),pl=40,pr=10,pt=8,pb=18,pw=w-pl-pr,ph=h-pt-pb,fs=current?current.fs:48000,R=12;
+  const X=f=>pl+Math.log(f/20)/Math.log(1000)*pw,Y=d=>pt+(R-Math.max(-R,Math.min(R,d)))/(2*R)*ph;
+  g.font="10px sans-serif";g.fillStyle="#9aa0b4";g.strokeStyle="#343846";g.lineWidth=1;
+  for(const d of [-12,-6,0,6,12]){g.beginPath();g.moveTo(pl,Y(d));g.lineTo(w-pr,Y(d));g.stroke();g.fillText((d>0?"+":"")+d,8,Y(d)+3);}
+  for(const f of [50,100,200,500,1000,2000,5000,10000]){g.beginPath();g.moveTo(X(f),pt);g.lineTo(X(f),pt+ph);g.stroke();g.fillText(fmtF(f),X(f)-8,h-4);}
+  const lin=$("msEqPhase").value==="lin";
+  for(const [t,col] of [["st","#5ad19a"],["m","#8ab4ff"],["s","#c58aff"]]){
+    const bs=msEqBands.filter(b=>b.on&&(b.t||"st")===t&&b.f>0);if(!bs.length)continue;
+    const sos=bs.map(b=>rbjBiquad(b.type,b.f,b.Q,lin&&!/pass$/.test(b.type)?b.g/2:b.g,fs));
+    g.strokeStyle=col;g.lineWidth=2;g.beginPath();
+    for(let x=0;x<=pw;x++){const f=20*Math.pow(1000,x/pw);let d=20*Math.log10(sosResp(sos,f,fs));if(lin)d*=2;x?g.lineTo(pl+x,Y(d)):g.moveTo(pl+x,Y(d));}
+    g.stroke();g.fillStyle=col;g.fillText({st:"左右",m:"ミッド",s:"サイド"}[t],w-pr-40,pt+12+["st","m","s"].indexOf(t)*12);
+  }
+}
+$("msEqTable").addEventListener("input",e=>{
+  const tr=e.target.closest("tr[data-i]");if(!tr)return;const b=msEqBands[+tr.dataset.i],k=e.target.dataset.k;if(!b||!k)return;
+  if(k==="on")b.on=e.target.checked;else if(k==="type"||k==="t"){b[k]=e.target.value;if(k==="type")renderMsEqTable();}else{const v=+e.target.value;if(Number.isFinite(v))b[k]=v;}
+  msEqSave();drawMsEq();
+});
+$("msEqTable").addEventListener("change",e=>{if(e.target.dataset.k==="type"||e.target.dataset.k==="t"){const tr=e.target.closest("tr[data-i]");msEqBands[+tr.dataset.i][e.target.dataset.k]=e.target.value;msEqSave();renderMsEqTable();}});
+$("msEqTable").addEventListener("click",e=>{const d=e.target.getAttribute("data-del");if(d!=null){msEqBands.splice(+d,1);msEqSave();renderMsEqTable();}});
+$("msEqAdd").onclick=()=>{msEqBands.push({on:true,type:"peaking",f:1000,Q:1,g:0,t:"st"});msEqSave();renderMsEqTable();};
+$("msEqClear").onclick=()=>{msEqBands=[];msEqSave();renderMsEqTable();};
+$("msEqSuggest").onclick=()=>{
+  if(!current){edMsg("先に 1. でファイルを読み込んでください",true);return;}
+  const T=$("msEqBase").value==="target"?getTarget():genreTarget($("msPreset").value);if(!T){edMsg("5. でターゲットが選ばれていません",true);return;}
+  const cmp=compareTonal(current,T),a=Math.max(0,Math.min(100,+$("msEqAmt").value||0))/100;if(!cmp)return;
+  msEqBands=msAutoEq(cmp,current.fs,a).map(b=>({on:true,type:b.type,f:b.f,Q:b.Q,g:Math.round(b.g*10)/10,t:"st"}));
+  $("msManEq").checked=true;msEqSave();renderMsEqTable();edMsg(msEqBands.length?"「"+T.name+"」に合わせた提案を入れました。表で細かく直せます":"補正の必要がありませんでした");
+};
+$("msAdv").addEventListener("toggle",()=>{if($("msAdv").open)renderMsEqTable();});
+$("msEqPhase").onchange=drawMsEq;
+// コンプの数値欄は、数値指定がオフのあいだ「強さ」とジャンルの値を映す
+function msCompFields(){
+  if($("msCompMan").checked)return;
+  const P=MASTER_PRESETS[$("msPreset").value]||MASTER_PRESETS.stream,c=COMP_STR[$("msComp").value]||COMP_STR.mid;
+  $("msCR").value=c.ratio;$("msCGr").value=c.gr;$("msCA").value=P.att;$("msCRel").value=P.rel;
+}
+$("msComp").addEventListener("change",msCompFields);$("msPreset").addEventListener("change",msCompFields);msCompFields();
+for(const id of ["msCR","msCGr","msCA","msCRel"])$(id).addEventListener("input",()=>{$("msCompMan").checked=true;});
+// 処理後のグラフ（ゲインリダクションの時間変化・音色の重ね表示）
+function drawMsGraphs(){
+  const box=$("msGraphs"),ok=msLast&&msLast.after===current&&msLast.info;box.hidden=!ok;if(!ok)return;
+  const info=msLast.info,dur=current.dur;
+  {const {g,w,h}=prep($("cvMsGr"),130),pl=40,pr=10,pt=8,pb=18,pw=w-pl-pr,ph=h-pt-pb;
+    const sers=[[info.comp&&info.comp.grT,"#8ab4ff"],[info.lim&&info.lim.grT,"#ff6b6b"]].filter(x=>x[0]&&x[0].length);
+    let mx=6;for(const [a] of sers)for(const v of a)if(v>mx)mx=v;mx=Math.ceil(mx/3)*3;
+    const Y=d=>pt+Math.min(1,d/mx)*ph;g.font="10px sans-serif";g.fillStyle="#9aa0b4";g.strokeStyle="#343846";
+    for(let d=0;d<=mx;d+=mx>12?6:3){g.beginPath();g.moveTo(pl,Y(d));g.lineTo(w-pr,Y(d));g.stroke();g.fillText("−"+d,10,Y(d)+3);}
+    for(let t=0;t<=dur;t+=dur>240?60:30){const x=pl+t/dur*pw;g.fillText(fmtT(t),x-10,h-4);}
+    g.fillText("dB",12,h-4);
+    for(const [a,col] of sers){g.strokeStyle=col;g.fillStyle=col+"55";g.beginPath();g.moveTo(pl,pt);
+      for(let x=0;x<pw;x++){const i0=Math.floor(x/pw*a.length),i1=Math.max(i0+1,Math.floor((x+1)/pw*a.length));let m=0;for(let i=i0;i<i1&&i<a.length;i++)if(a[i]>m)m=a[i];g.lineTo(pl+x,Y(m));}
+      g.lineTo(w-pr,pt);g.closePath();g.fill();g.stroke();}
+  }
+  {const {g,w,h}=prep($("cvMsSpec"),200),pl=40,pr=10,pt=8,pb=18,pw=w-pl-pr,ph=h-pt-pb;
+    const A=tonalOf(msLast.before),B=tonalOf(current),T=msLast.T;if(!A||!B)return;
+    // 曲線は 100 Hz〜4 kHz の平均を 0 dB にそろえてある（目安も同じ）。範囲は曲線が収まるように ±12〜30 dB で決める
+    const vals=[...A,...B].filter(Number.isFinite),mid=0,R=Math.min(30,Math.max(12,Math.ceil(Math.max(...vals.map(Math.abs))/6)*6));
+    const X=f=>pl+Math.log(f/20)/Math.log(1000)*pw,Y=d=>pt+(R-Math.max(-R,Math.min(R,d-mid)))/(2*R)*ph;
+    g.font="10px sans-serif";g.fillStyle="#9aa0b4";g.strokeStyle="#343846";g.lineWidth=1;
+    for(let d=-R;d<=R;d+=R>18?12:6){g.beginPath();g.moveTo(pl,Y(d+mid));g.lineTo(w-pr,Y(d+mid));g.stroke();g.fillText((d>0?"+":"")+d,10,Y(d+mid)+3);}
+    for(const f of [50,100,200,500,1000,2000,5000,10000]){g.beginPath();g.moveTo(X(f),pt);g.lineTo(X(f),pt+ph);g.stroke();g.fillText(fmtF(f),X(f)-8,h-4);}
+    if(T){g.fillStyle="rgba(197,138,255,.18)";g.beginPath();let st=false;for(let j=0;j<TB_N;j++){if(!Number.isFinite(T.hi[j]))continue;const x=X(TB_F[j]),y=Y(T.hi[j]);st?g.lineTo(x,y):g.moveTo(x,y);st=true;}
+      for(let j=TB_N-1;j>=0;j--){if(!Number.isFinite(T.lo[j]))continue;g.lineTo(X(TB_F[j]),Y(T.lo[j]));}g.closePath();g.fill();}
+    for(const [c,col,lw] of [[A,"#9aa0b4",1.5],[B,"#5ad19a",2]]){g.strokeStyle=col;g.lineWidth=lw;g.beginPath();let st=false;for(let j=0;j<TB_N;j++){if(!Number.isFinite(c[j])){st=false;continue;}const x=X(TB_F[j]),y=Y(c[j]);st?g.lineTo(x,y):g.moveTo(x,y);st=true;}g.stroke();}
+  }
+}
+
 /* ---------- かんたん表示・おまかせ ---------- */
 let msLast=null;
 function setMode(m){
