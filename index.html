@@ -198,7 +198,7 @@ input[type=range]{accent-color:var(--acc)}
   <div class="tb-in">
     <h1 class="tb-title">楽曲アナライザ</h1>
     <nav id="tbNav" aria-label="セクション"></nav>
-    <span class="tb-right"><span id="tbAB" hidden><button id="tbPlay" title="再生 / 停止（Space）">▶</button><button id="tbA" class="ab" title="A を聴く（X で切り替え）">A</button><button id="tbB" class="ab" title="B を聴く（X で切り替え）">B</button></span><label class="sub"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
+    <span class="tb-right"><span id="tbAB" hidden><button id="tbPlay" title="再生 / 停止（Space）">▶</button><button id="tbA" class="ab" title="A を聴く（X で切り替え）">A</button><button id="tbB" class="ab" title="B を聴く（X で切り替え）">B</button></span><label class="sub"><span class="lbl">再生機器 </span><select id="devSim" title="再生機器のシミュレーション（大まかな近似）"></select></label><label class="sub"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
   </div>
   <div class="tb-in tb-status"><span id="tbStatus" class="sub" aria-live="polite"></span></div>
 </div>
@@ -308,7 +308,7 @@ input[type=range]{accent-color:var(--acc)}
     </div>
     <div id="easyAfter" hidden>
       <div class="easyAB"><button id="easyA" class="easyAbBtn">▶ 仕上げた音</button><button id="easyB" class="easyAbBtn">▶ 元の音</button><button id="easyStop" class="easyAbBtn" title="停止（Space）">■</button></div>
-      <div class="sub" style="text-align:center;margin-top:4px">2 つは音量をそろえて再生しています（大きいほうが良く聞こえる錯覚を防ぐため）。<kbd>X</kbd> キーでも切り替えられます。</div>
+      <div class="sub" style="text-align:center;margin-top:4px">2 つは音量をそろえて再生しています（大きいほうが良く聞こえる錯覚を防ぐため）。<kbd>X</kbd> キーでも切り替えられます。上のバーの「再生機器」で、スマホ・イヤホン・車などで聴いたときの大まかな近似も試せます。</div>
       <div class="easyRow" style="margin-top:10px">
         <label class="easyLbl">保存の形式<select id="easyFmt"><option value="wav24">WAV 24bit（おすすめ）</option><option value="wav16">WAV 16bit（CD 用・ディザあり）</option><option value="flac24">FLAC 24bit（小さいファイル）</option></select></label>
         <button id="easySave" class="primary">💾 仕上げた音を保存</button><button id="easyUndo">元の音に戻す</button>
@@ -4690,6 +4690,8 @@ function rebuildPlaybackFilter(side){
   side=side||(player?player.side:abSide);
   if($("meqLive").checked&&meqFit&&side==="A"){const a=+$("meqAmt").value/100;for(const b of meqFit.bands){const c=rbjBiquad(b.type,b.f,b.Q,b.g*a,playCtx.sampleRate),f=playCtx.createIIRFilter([c[0],c[1],c[2]],[1,c[3],c[4]]);node.connect(f);node=f;fltNodes.push(f);}}
   for(const s of st){const c=rbjBiquad(s.type,s.f,s.Q,s.g,playCtx.sampleRate),f=playCtx.createIIRFilter([c[0],c[1],c[2]],[1,c[3],c[4]]);node.connect(f);node=f;fltNodes.push(f);}
+  // 再生機器のシミュレーション（A / B どちらにもかける）
+  node=devSimChain(playCtx,node,$("devSim").value,fltNodes);
   node.connect(outGain);
 }
 async function applyProcessing(kind){
@@ -5987,6 +5989,29 @@ function renderDelivery(m){
   $("delivTable").innerHTML="<tr><th>配信先</th><th>項目</th><th>条件</th><th>この曲</th><th>判定</th><th>対処</th></tr>"+rows.map(r=>"<tr><td>"+esc(r.svc)+"</td><td>"+esc(r.item)+"</td><td>"+esc(r.cond)+"</td><td>"+esc(r.val)+"</td><td class='j "+r.lv+"'>"+J[r.lv]+"</td><td>"+esc(r.fix||"")+"</td></tr>").join("");
 }
 
+
+/* ---------- 再生機器のシミュレーション ---------- */
+// 大まかな近似（実機を測ったデータではない）：小さいスピーカーは低音が出ない、中高域が目立つ、などの一般的な傾向を EQ で真似る。
+// mono：左右を混ぜて 1 つのスピーカーで鳴らす（スマホの多くは片側のスピーカーが主に鳴る）
+const DEV_SIM={
+  off:{name:"そのまま"},
+  phone:{name:"スマホのスピーカー",mono:true,st:[["highpass",350,0.7,0],["highpass",350,0.7,0],["peaking",2500,1,4],["lowpass",9000,0.7,0]]},
+  laptop:{name:"ノートPC",st:[["highpass",200,0.7,0],["highpass",200,0.7,0],["peaking",900,1.2,2],["peaking",4000,1,3],["lowpass",15000,0.7,0]]},
+  earbuds:{name:"安いイヤホン",st:[["highpass",50,0.7,0],["lowshelf",120,0.7,-4],["peaking",3000,1,5],["highshelf",8000,0.7,-6]]},
+  car:{name:"車のスピーカー",st:[["highpass",35,0.7,0],["lowshelf",90,0.7,5],["peaking",250,1,3],["peaking",1200,1,-3],["lowpass",12000,0.7,0]]},
+  tv:{name:"テレビのスピーカー",st:[["highpass",150,0.7,0],["highpass",150,0.7,0],["peaking",2000,1,3],["lowpass",12000,0.7,0]]},
+  mono:{name:"モノラル（左右を混ぜる）",mono:true,st:[]}
+};
+// 再生機器の近似を、音声ノードの鎖として input の後ろにつなぎ、最後のノードを返す（作ったノードは list に入れる）
+function devSimChain(ctx,input,key,list){
+  const D=DEV_SIM[key];let node=input;if(!D||!D.st)return node;
+  if(D.mono){const mo=ctx.createGain();mo.channelCount=1;mo.channelCountMode="explicit";mo.channelInterpretation="speakers";node.connect(mo);node=mo;list.push(mo);}
+  for(const [type,f0,Q,g] of D.st){const c=rbjBiquad(type,f0,Q,g,ctx.sampleRate),f=ctx.createIIRFilter([c[0],c[1],c[2]],[1,c[3],c[4]]);node.connect(f);node=f;list.push(f);}
+  return node;
+}
+$("devSim").innerHTML=Object.entries(DEV_SIM).map(([k,d])=>"<option value='"+k+"'>"+d.name+"</option>").join("");
+$("devSim").value="off"; // 起動時は毎回「そのまま」（気づかずに近似の音で判断しないように）
+$("devSim").onchange=e=>{e.target.blur();rebuildPlaybackFilter();const on=e.target.value!=="off";e.target.style.borderColor=on?"var(--warn)":"";setStatus(on?"再生機器：「"+DEV_SIM[e.target.value].name+"」の大まかな近似で再生しています（実機を測ったデータではありません）":"再生機器：そのまま");};
 /* ---------- リファレンス曲に寄せる ---------- */
 // 1. で B に入れた曲は、仕上げで B が「処理前の音」に置き換わっても選べるよう、ここに覚えておく
 const refPool=new Map();
