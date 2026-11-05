@@ -303,6 +303,7 @@ input[type=range]{accent-color:var(--acc)}
     <div id="easyDiag"></div>
     <div class="easyRow">
       <label class="easyLbl">ジャンル<select id="easyGenre"></select></label>
+      <label class="easyLbl">寄せる先<select id="easyRef"></select></label>
       <button id="easyRun" class="easyBig">✨ 音を良くする</button>
     </div>
     <div id="easyAfter" hidden>
@@ -645,7 +646,8 @@ input[type=range]{accent-color:var(--acc)}
   </div>
 
   <div class="pane" data-pane="master">
-    <div class="row"><label class="sub">ジャンル<select id="msPreset"></select></label><span id="msPresetNote" class="sub"></span></div>
+    <div class="row"><label class="sub">ジャンル<select id="msPreset"></select></label><label class="sub">寄せる先<select id="msRef"></select></label><span id="msPresetNote" class="sub"></span></div>
+    <div class="sub" style="margin-top:4px">「寄せる先」にリファレンス曲（1. の「B で比べる」で入れた曲か、8. に保存した曲）を選ぶと、その曲の音量・音色・ステレオの広さに近づけます（コンプの強さはジャンルの設定を使います）。</div>
     <div class="msGrid">
       <label class="msItem"><span><input type="checkbox" id="msEqOn" checked> <b>オート EQ</b></span>
         <span class="sub">基準<select id="msEqBase"><option value="genre">ジャンルの目安</option><option value="target">5. で選んだターゲット（好きな曲など）</option></select></span>
@@ -2826,6 +2828,8 @@ function masterProcess(chs,fs,o,prog){
   const lufs=y=>analyzeLoudness(y,fs,o.weights).integrated;
   if(o.sos&&o.sos.length){prog("EQ");x=x.map(c=>sosRun(c,o.sos));}
   if(o.eq&&o.eq.length){prog("EQ");x=msEqApply(x,o.eq,!!o.eqZero);}
+  if(o.side&&x.length===2&&o.side.db){prog("ステレオの広さ");const g=Math.pow(10,o.side.db/20),[L,R]=x,n=L.length,oL=new Float32Array(n),oR=new Float32Array(n);
+    for(let i=0;i<n;i++){const m=(L[i]+R[i])*0.5,sd=(L[i]-R[i])*0.5*g;oL[i]=m+sd;oR[i]=m-sd;}x=[oL,oR];info.side={db:o.side.db};}
   if(o.bassMono){prog("低域のモノラル化");const r=msBassMono(x,fs,o.bassMono.f);x=r.chs;info.bassMono=r.info;}
   if(o.deharsh){prog("耳に痛い瞬間の抑制");const r=msDeharsh(x,fs,o.deharsh);x=r.chs;info.deharsh=r.info;}
   if(o.comp){prog("コンプレッサー");const r=msCompress(x,fs,o.comp);x=r.chs;info.comp=r.info;}
@@ -3407,7 +3411,7 @@ async function loadFileB(file,song){
     const {res,chs}=await analyze(d.chs,d.fs,{trim:$("optTrim").checked,layout:d.layout});
     Object.assign(res,{label:file.name,source:d.source,resampled:d.resampled,gaps:0});
     const s=snapshot(res,file.name.replace(/\.[^.]+$/,""));s.hasAudio=true;
-    tempRef=s;tempAudio={id:s.id,chs:chs.map(c=>c.subarray(res.trimStart,res.trimEnd)),fs:d.fs};
+    tempRef=s;tempAudio={id:s.id,chs:chs.map(c=>c.subarray(res.trimStart,res.trimEnd)),fs:d.fs};refPool.set(s.id,s);
     refId=s.id;bSongId=song?song.id:null;ok=true;
     if(song&&!song.res)songSetResult(song,res);
     setStatus("B を読み込みました（"+file.name+" / "+fmtT(res.dur)+"）"+(current?"。X キーか上のバーの A / B で切り替えられます":"。続けて A の曲を読み込んでください"));
@@ -4415,7 +4419,7 @@ function refresh(){
   renderTargetSel();renderTarget(m);renderLow(m,ref);drawDynMap(m,ref,list);renderCodec();
   $("report").textContent=reportText(m);
   syncRefAudio();applyListenGain();
-  renderEasy();drawMsGraphs();renderDelivery(m);
+  renderRefOptions();renderEasy();drawMsGraphs();renderDelivery(m);
 }
 
 /* ---------- 保存・比較 ---------- */
@@ -5669,6 +5673,8 @@ function genreTarget(k){
 }
 function msPresetNote(){
   const P=MASTER_PRESETS[$("msPreset").value];if(!P)return;
+  const R=typeof msRefObj==="function"&&$("msRef")?msRefObj():null;
+  if(R){$("msPresetNote").textContent="リファレンス「"+R.name+"」に寄せます：目標 "+f1(Math.max(-24,Math.min(-5,R.lufs)))+" LUFS・上限 "+(R.lufs>-14?-2:-1)+" dBTP（上の欄より低いほう）・音色とステレオの広さもその曲に合わせます";return;}
   const t=P.tone,tn=[["低域",t.low],["張り",t.mid],["高域",t.high]].filter(x=>x[1]).map(x=>x[0]+(x[1]>0?"+":"")+x[1]+" dB").join("・");
   $("msPresetNote").textContent="目安："+P.lufs+" LUFS・上限 "+P.ceil+" dBTP・コンプ "+(P.comp==="off"?"なし":{light:"弱め",mid:"ふつう",strong:"強め"}[P.comp])+"・音色 "+(tn||"汎用の目安どおり");
 }
@@ -5704,10 +5710,15 @@ function msAutoEq(cmp,fs,amt,maxDb){
 }
 // 10. の設定から、おまかせマスタリングの処理内容を組み立てる（m：対象の曲の解析結果。1 曲の仕上げとアルバム仕上げで共通）
 function buildMasterOpts(m,fs,key,ov){
-  ov=ov||{};const P=MASTER_PRESETS[key]||MASTER_PRESETS.stream;
+  ov=ov||{};const P=MASTER_PRESETS[key]||MASTER_PRESETS.stream,ref=ov.ref!==undefined?ov.ref:msRefObj();
+  // リファレンスに寄せる：目標の音量はその曲の統合ラウドネス（−24〜−5 LUFS の範囲）、上限は Spotify の推奨（−14 LUFS より大きければ −2 dBTP）
+  if(ref)ov=Object.assign({},ov,{lufs:ov.lufs!=null?ov.lufs:Math.max(-24,Math.min(-5,ref.lufs)),ceil:ov.ceil!=null?ov.ceil:ref.lufs>-14?-2:-1});
+  if(ref&&!ov.target)ov.target=singleTarget(ref,"リファレンス："+ref.name);
   const o={weights:m.layout.map(chWeight),sos:[],comp:null,lim:null},notes=[];let eqBands=[];
   if($("msHp").checked)o.sos.push(rbjBiquad("highpass",20,0.707,0,fs));
   const mono=$("msMono").value;if(m.stereo&&m.layout.length===2&&(mono==="on"||mono==="auto"&&m.corrLow<0.5))o.bassMono={f:120};
+  // リファレンスに寄せる：ステレオの広さ（サイド / ミッドのエネルギー比）の差を、サイドの音量で ±3 dB まで合わせる
+  if(ref&&m.stereo&&m.layout.length===2&&Number.isFinite(ref.width)&&Number.isFinite(m.width)){const d=Math.max(-3,Math.min(3,ref.width-m.width));if(Math.abs(d)>=0.5)o.side={db:Math.round(d*10)/10};}
   if($("msDeharsh").checked)o.deharsh={maxDb:4,thrDb:4,win:30};
   const lin=$("msEqPhase").value==="lin",eqG=b=>lin&&!/pass$/.test(b.type)?b.g/2:b.g,groups={st:[],m:[],s:[]};let usedT=null;
   if($("msManEq").checked){
@@ -5732,19 +5743,19 @@ function buildMasterOpts(m,fs,key,ov){
     o.comp=$("msCompMan").checked?{ratio:num("msCR",1.1,10,2),gr:num("msCGr",0.5,12,2.5),attack:num("msCA",1,200,30),release:num("msCRel",20,2000,150)}:{ratio:c.ratio,gr:c.gr,attack:P.att,release:P.rel};
   }
   if($("msLimOn").checked){
-    const L=ov.lufs!=null?ov.lufs:+$("msLufs").value,C=+$("msCeil").value;
+    const L=ov.lufs!=null?ov.lufs:+$("msLufs").value,C=ov.ceil!=null?Math.min(ov.ceil,+$("msCeil").value||0):+$("msCeil").value;
     if(!Number.isFinite(L)||!Number.isFinite(C)||C>0)return {err:"目標ラウドネスと上限（0 dBTP 以下）を数値で入れてください"};
     const nv=(id,lo,hi,d)=>{const v=+$(id).value;return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d;},rmin=nv("msRelMin",5,500,30);
     o.lim={lufs:L,ceil:C,minPsr:$("msQuality").checked?8:0,opt:{la:nv("msLA",1,10,4),hold:nv("msHold",0,50,20),relMin:rmin,relMax:Math.max(rmin,nv("msRelMax",10,2000,150))}};
   }
-  if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh)return {err:"かける処理がありません"};
-  return {o,eqBands,notes,usedT,lin,P};
+  if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh&&!o.side)return {err:"かける処理がありません"};
+  return {o,eqBands,notes,usedT,lin,P,ref};
 }
 async function masterRun(){
   if(!current||!rawOK()){edMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return;}
   const key=$("msPreset").value,m=current,fs=lastRaw.fs;
   const B=buildMasterOpts(m,fs,key);if(B.err){edMsg(B.err,true);return;}
-  const {o,eqBands,notes,usedT,lin,P}=B;
+  const {o,eqBands,notes,usedT,lin,P,ref}=B;
   const s0=m.trimStart,s1=m.trimEnd,chs=lastRaw.chs.map(c=>c.slice(s0,s1)),info={source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout};
   const orig=editOrig||{chs:lastRaw.chs.map(c=>c.slice()),fs,info:Object.assign({label:m.label},info)};
   const before=m,beforeChs=lastRaw.chs.map(c=>c.subarray(s0,s1)),base=m.label||"音声";
@@ -5761,7 +5772,7 @@ async function masterRun(){
     $("listenMode").value="match";pref.set("tabAnalyzerListen","match");
     showBInfo();renderSongs();refresh();
   }
-  msLast={before,after:current,info:out.master,eqBands,notes,T:usedT||genreTarget(key),lin};
+  msLast={before,after:current,info:out.master,eqBands,notes,T:usedT||genreTarget(key),lin,ref};
   renderMaster(out.master,eqBands,notes,before);renderEasy();
   maybeAutoCodec();
 }
@@ -5771,6 +5782,8 @@ function renderMaster(r,eqBands,notes,before){
   const rows=[];
   const TN={st:"",m:"［ミッド］",s:"［サイド］"},lin=msLast&&msLast.lin;
   rows.push([$("msManEq").checked?"手動 EQ":"オート EQ",eqBands.length?eqBands.map(b=>(TN[b.t]||"")+(EQN[b.type]||b.type)+" "+fmtF(b.f)+"Hz"+(/pass$/.test(b.type)?"":" "+(b.g>0?"+":"")+f1(b.g)+" dB")).join("、")+(lin?"（リニアフェーズ）":""):"なし"]);
+  if(msLast&&msLast.ref)rows.unshift(["リファレンス",msLast.ref.name+"（"+f1(msLast.ref.lufs)+" LUFS）に寄せました：音色・音量"+(r.side?"・ステレオの広さ":"")]);
+  if(r.side)rows.push(["ステレオの広さ","サイドを "+(r.side.db>0?"+":"")+f1(r.side.db)+" dB（リファレンスとの差を ±3 dB まで合わせる）"]);
   if(r.bassMono)rows.push(["低域のモノラル化",fmtF(r.bassMono.f)+" Hz 以下の左右の差をなくしました"]);
   if(r.deharsh)rows.push(["耳に痛い瞬間",r.deharsh.share>0.001?"曲の "+f1(r.deharsh.share*100)+"% の時間で、最大 "+f1(r.deharsh.grMax)+" dB 抑えました":"突出した瞬間はありませんでした（何もしていません）"]);
   rows.push(["オートコンプ",r.comp?"しきい値 "+f1(r.comp.thr)+" dB・比率 "+r.comp.ratio+":1・大きい部分で平均 "+f1(r.comp.grLoud)+" dB 圧縮（最大 "+f1(r.comp.grMax)+" dB）":"なし"]);
@@ -5903,6 +5916,29 @@ function renderDelivery(m){
   $("delivNote").textContent=fmt?"ファイル："+fmt.name+"（"+fmt.container+(fmt.bits?"・"+(fmt.float?"32bit 浮動小数点":fmt.bits+"bit"):"")+(fmt.fs?"・"+fmt.fs/1000+" kHz":"")+"）":"編集・仕上げ後の音です（ファイル形式の条件は、書き出すときの形式で決まります）";
   $("delivTable").innerHTML="<tr><th>配信先</th><th>項目</th><th>条件</th><th>この曲</th><th>判定</th><th>対処</th></tr>"+rows.map(r=>"<tr><td>"+esc(r.svc)+"</td><td>"+esc(r.item)+"</td><td>"+esc(r.cond)+"</td><td>"+esc(r.val)+"</td><td class='j "+r.lv+"'>"+J[r.lv]+"</td><td>"+esc(r.fix||"")+"</td></tr>").join("");
 }
+
+/* ---------- リファレンス曲に寄せる ---------- */
+// 1. で B に入れた曲は、仕上げで B が「処理前の音」に置き換わっても選べるよう、ここに覚えておく
+const refPool=new Map();
+function refOptionsHtml(){
+  let h="<option value=''>ジャンルの目安</option>";
+  for(const [id,x] of refPool)h+="<option value='t:"+id+"'>リファレンス："+esc(x.name)+"（"+f1(x.lufs)+" LUFS）</option>";
+  for(const x of loadSaved())if(x.tonal)h+="<option value='s:"+x.id+"'>保存した曲："+esc(x.name)+"（"+f1(x.lufs)+" LUFS）</option>";
+  return h;
+}
+function renderRefOptions(){
+  const h=refOptionsHtml();
+  for(const id of ["easyRef","msRef"]){const el=$(id),v=el.value;if(el.dataset.h!==h){el.innerHTML=h;el.dataset.h=h;}el.value=[...el.options].some(o=>o.value===v)?v:"";}
+}
+function msRefObj(){
+  const v=$("msRef").value;if(!v)return null;
+  if(v.startsWith("t:"))return refPool.get(+v.slice(2))||null;
+  if(v.startsWith("s:"))return loadSaved().find(x=>x.id===+v.slice(2))||null;
+  return null;
+}
+$("msRef").onchange=e=>{$("easyRef").value=e.target.value;msPresetNote();if(current)renderEasy();};
+$("easyRef").onchange=e=>{$("msRef").value=e.target.value;msPresetNote();if(current)renderEasy();};
+renderRefOptions();
 /* ---------- 1. アルバムとしてまとめて仕上げる ---------- */
 let albumZip=null,albumStopReq=false;
 $("albumGenre").innerHTML=$("msPreset").innerHTML;$("albumGenre").value=$("msPreset").value;
@@ -5930,7 +5966,7 @@ $("albumRun").onclick=async()=>{
   const list=songs.filter(x=>x.st!=="err");
   if(list.length<2){$("albumMsg").textContent="2 曲以上を曲リストに入れてください";return;}
   if(busy||songRunning){$("albumMsg").textContent="他の処理が終わるまでお待ちください";return;}
-  const key=$("albumGenre").value,mode=$("albumMode").value,fmt=$("albumFmt").value,fm=SAVE_FORMATS[fmt],genreL=+$("msLufs").value;
+  const R=msRefObj(),key=$("albumGenre").value,mode=$("albumMode").value,fmt=$("albumFmt").value,fm=SAVE_FORMATS[fmt],genreL=R?Math.max(-24,Math.min(-5,R.lufs)):+$("msLufs").value;
   stopPlay();busy=true;updateButtons();albumZip=null;albumStopReq=false;$("albumDl").hidden=true;$("albumStop").hidden=false;$("albumRun").disabled=true;
   const rows=list.map(x=>({name:x.name,st:"待機中"})),bufs=new Array(list.length).fill(null);renderAlbum(rows,null);
   const enc=async(r,i)=>{const t=Object.assign({},tagsNow(),{title:list[i].name.replace(/\\.[^.]+$/,""),track:String(i+1)});
@@ -5975,7 +6011,8 @@ function setMode(m){
 $("modeSw").onclick=e=>{const b=e.target.closest("button");if(b)setMode(b.dataset.m);};
 // 専門用語を使わない診断（各項目：lv=ok/warn/bad/info、t=見出し、x=説明、a=おまかせで何をするか）
 function easyDiag(m,key){
-  const out=[],P=MASTER_PRESETS[key],add=(lv,t,x,a)=>out.push({lv,t,x,a});
+  const out=[],P0=MASTER_PRESETS[key],R=msRefObj(),add=(lv,t,x,a)=>out.push({lv,t,x,a});
+  const P=R?Object.assign({},P0,{name:"リファレンス："+R.name,lufs:Math.round(Math.max(-24,Math.min(-5,R.lufs))*10)/10,ceil:R.lufs>-14?-2:-1}):P0;
   if(!Number.isFinite(m.lufs)){add("bad","音がほとんど入っていません","無音か、とても小さい音です。","");return out;}
   const L=m.lufs;
   if(L>-8)add("warn","音量：とても大きい（"+f1(L)+" LUFS）","配信サービスでは −14 前後まで自動で下げられます。大きくしすぎた分、音が潰れて損をしやすい状態です。","「"+P.name+"」の目安 "+P.lufs+" LUFS に合わせます");
@@ -5988,13 +6025,13 @@ function easyDiag(m,key){
   if(ps<8)add("warn","迫力：潰れ気味（PSR "+f1(ps)+" dB）","音を大きくしすぎて、ドラムのアタックや抑揚が失われています。","これ以上潰さないよう、必要以上に音量を上げません（目標を下げると改善します）");
   else if(ps>15&&L<-16)add("info","迫力：抑揚が大きい（PSR "+f1(ps)+" dB）","静かな部分と大きい部分の差が大きく、全体が小さく聞こえがちです。","コンプで音量の粒を軽くそろえます");
   else if(Number.isFinite(ps))add("ok","迫力：ちょうどよい（PSR "+f1(ps)+" dB）","","");
-  const cmp=compareTonal(m,genreTarget(key));
+  const cmp=compareTonal(m,R?singleTarget(R,"リファレンス："+R.name):genreTarget(key));
   if(cmp){
     const B=Object.fromEntries(cmp.broad.map(b=>[b.name,b])),txt=[];let lv="ok";
     const chk=(nm,hi,lo)=>{const b=B[nm];if(!b||b.na||!b.ex)return;txt.push(b.ex>0?hi:lo);lv=Math.abs(b.ex)>=1.5?"warn":lv==="ok"?"info":lv;};
     chk("低域","低音が多め（もこもこ・ぼわつき）","低音が少なめ（迫力不足）");chk("中低域","中低音が多め（こもり）","中低音が少なめ（痩せた感じ）");
     chk("中高域","中高音が多め（耳に刺さりやすい）","中高音が少なめ（ボーカルが遠い）");chk("高域","高音が多め（シャリシャリ）","高音が少なめ（こもった感じ）");
-    add(lv,"音色："+(txt.length?txt.join("・"):"バランスがよい"),"「"+P.name+"」の大まかな目安との比較です。",txt.length?"なだらかな EQ（最大 ±3 dB）で目安に近づけます":"");
+    add(lv,"音色："+(txt.length?txt.join("・"):"バランスがよい"),R?"「"+R.name+"」の音色との比較です。":"「"+P.name+"」の大まかな目安との比較です。",txt.length?"なだらかな EQ（最大 ±3 dB）で目安に近づけます":"");
   }
   if(m.stereo){
     if(m.corr<0)add("bad","左右：打ち消し合っている（相関 "+f1(m.corr,2)+"）","スマホのスピーカーなどモノラルで聴くと、音が大きく欠けます。ミックスで左右の位相を確認してください。","");
@@ -6014,7 +6051,7 @@ function renderEasy(){
     const bb=Object.fromEntries(bi.map(x=>[x.t.split("：")[0],x]));
     items.forEach(x=>{const k=x.t.split("：")[0],b=bb[k];if(b&&b.t!==x.t)x.a="処理前："+b.t.split("：")[1];});
     // 音色：目安からのずれ（許容範囲を超えた分）が、処理前後でどれだけ変わったか
-    const T=genreTarget(key),cb=compareTonal(msLast.before,T),ca=compareTonal(current,T);
+    const T=msLast.T||genreTarget(key),cb=compareTonal(msLast.before,T),ca=compareTonal(current,T);
     if(cb&&ca){const it=items.find(x=>x.t.startsWith("音色"));const d=cb.broad.map((b,i)=>[b,ca.broad[i]]).filter(([b,c])=>!b.na&&!c.na&&(Math.abs(b.ex)>=0.5||Math.abs(c.ex)>=0.5));
       if(it&&d.length){it.a="目安からのずれ："+d.map(([b,c])=>b.name+" "+(b.ex>0?"+":"")+f1(b.ex)+" → "+(c.ex>0?"+":"")+f1(c.ex)+" dB").join("、");
         if(d.some(([,c])=>Math.abs(c.ex)>=1.5))it.x="仕上げの EQ は音を壊さないよう控えめ（最大 ±3 dB）にしています。まだずれが大きい帯域は、ミックスで楽器の音量や EQ を見直すと確実に良くなります。";}}
