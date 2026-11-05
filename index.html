@@ -35,6 +35,8 @@ button.rec{background:#7a2530;border-color:#a8384a}
 #songTable .role{display:inline-block;font-size:11px;font-weight:600;padding:0 6px;border-radius:4px;margin-right:6px}
 #songTable .role.a{background:#2c4a86;color:#fff}#songTable .role.b{background:#5b3a86;color:#fff}
 #songTable button{padding:3px 9px;font-size:12.5px}
+.albumBox{margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2)}.albumBox>summary{cursor:pointer;font-size:13.5px}
+#albumTable td,#albumTable th{white-space:nowrap}
 body.simple .adv{display:none!important}
 .modeSw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.modeSw button{border:0;border-radius:0;padding:6px 12px;font-size:13px;background:var(--panel2)}
 .modeSw button.on{background:#2c4a86;color:#fff}
@@ -240,6 +242,17 @@ input[type=range]{accent-color:var(--acc)}
       <label class="sub"><input type="checkbox" id="optSongSave"> 解析した曲を 8. に保存（音声つき）</label>
       <button id="songCsv" disabled>一覧を CSV 保存</button><button id="songClear">リストを空にする</button>
     </div>
+    <details id="albumBox" class="albumBox"><summary><b>アルバムとしてまとめて仕上げる</b>（リストの全曲に同じ仕上げをかけ、ZIP で保存）</summary>
+      <div class="row" style="margin-top:8px">
+        <label class="sub">ジャンル<select id="albumGenre"></select></label>
+        <label class="sub">音量<select id="albumMode"><option value="same">全曲の音量をそろえる（おすすめ）</option><option value="genre">各曲ともジャンルの目安に合わせる</option></select></label>
+        <label class="sub">形式<select id="albumFmt"><option value="flac24">FLAC 24bit</option><option value="wav24">WAV 24bit</option><option value="wav16">WAV 16bit（CD 用・ディザあり）</option></select></label>
+      </div>
+      <div class="row" style="margin-top:8px"><button id="albumRun" class="primary">まとめて仕上げる</button><button id="albumStop" hidden>中止</button><button id="albumDl" hidden>💾 ZIP で保存</button><span id="albumMsg" class="sub"></span></div>
+      <div class="songWrap"><table id="albumTable" style="margin-top:6px"></table></div>
+      <div class="legend">各曲に、10. の「おまかせマスタリング」の設定（EQ・コンプ・リミッター・音質優先など）をそのままかけます。前後の無音はトリムします。
+        「全曲の音量をそろえる」では、まず各曲を仕上げ、いちばん小さく仕上がった曲（音質優先で止まった曲を含む）の音量に、ほかの曲を合わせて仕上げ直します（後から音量を下げるより、リミッターのかかりが浅くなるため）。曲の数だけ時間がかかります（3 分の曲で 1 曲 30 秒前後）。</div>
+    </details>
     <div class="sub" style="margin-top:6px"><b>A で表示</b>：2.〜10. に詳しい結果を出し、編集もできる曲（1 曲）。<b>B で比べる</b>：A と聴き比べる曲（上のバーの A / B か <kbd>X</kbd> キーで切り替え）。曲名をクリックしても A で表示します。</div>
   </div>
   <div class="sub" style="margin-top:8px">🔒 読み込んだ自分の楽曲ファイルはこのPC内だけで処理され、外部には送信されません。</div>
@@ -5648,9 +5661,9 @@ function msAutoEq(cmp,fs,amt,maxDb){
     for(let r=0;r<B;r++)if(r!==c){const f=A[r][c]/A[c][c];for(let k=c;k<B;k++)A[r][k]-=f*A[c][k];y[r]-=f*y[c];}}
   return MS_EQ.map((b,i)=>Object.assign({},b,{g:Math.max(-maxDb,Math.min(maxDb,y[i]/A[i][i]))*amt})).filter(b=>Math.abs(b.g)>=0.3);
 }
-async function masterRun(){
-  if(!current||!rawOK()){edMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return;}
-  const key=$("msPreset").value,P=MASTER_PRESETS[key],m=current,fs=lastRaw.fs;
+// 10. の設定から、おまかせマスタリングの処理内容を組み立てる（m：対象の曲の解析結果。1 曲の仕上げとアルバム仕上げで共通）
+function buildMasterOpts(m,fs,key,ov){
+  ov=ov||{};const P=MASTER_PRESETS[key]||MASTER_PRESETS.stream;
   const o={weights:m.layout.map(chWeight),sos:[],comp:null,lim:null},notes=[];let eqBands=[];
   if($("msHp").checked)o.sos.push(rbjBiquad("highpass",20,0.707,0,fs));
   const mono=$("msMono").value;if(m.stereo&&m.layout.length===2&&(mono==="on"||mono==="auto"&&m.corrLow<0.5))o.bassMono={f:120};
@@ -5662,7 +5675,7 @@ async function masterRun(){
     if(!eqBands.length)notes.push("EQ：手動 EQ の表に有効なバンドがありません");
   }
   else if($("msEqOn").checked){
-    const T=$("msEqBase").value==="target"?getTarget():genreTarget(key);usedT=T;
+    const T=ov.target||($("msEqBase").value==="target"?getTarget():genreTarget(key));usedT=T;
     if(!T)notes.push("EQ：5. でターゲットが選ばれていないため、かけませんでした");
     else{
       const cmp=compareTonal(m,T),a=Math.max(0,Math.min(100,+$("msEqAmt").value||0))/100;
@@ -5678,12 +5691,19 @@ async function masterRun(){
     o.comp=$("msCompMan").checked?{ratio:num("msCR",1.1,10,2),gr:num("msCGr",0.5,12,2.5),attack:num("msCA",1,200,30),release:num("msCRel",20,2000,150)}:{ratio:c.ratio,gr:c.gr,attack:P.att,release:P.rel};
   }
   if($("msLimOn").checked){
-    const L=+$("msLufs").value,C=+$("msCeil").value;
-    if(!Number.isFinite(L)||!Number.isFinite(C)||C>0){edMsg("目標ラウドネスと上限（0 dBTP 以下）を数値で入れてください",true);return;}
+    const L=ov.lufs!=null?ov.lufs:+$("msLufs").value,C=+$("msCeil").value;
+    if(!Number.isFinite(L)||!Number.isFinite(C)||C>0)return {err:"目標ラウドネスと上限（0 dBTP 以下）を数値で入れてください"};
     const nv=(id,lo,hi,d)=>{const v=+$(id).value;return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d;},rmin=nv("msRelMin",5,500,30);
     o.lim={lufs:L,ceil:C,minPsr:$("msQuality").checked?8:0,opt:{la:nv("msLA",1,10,4),hold:nv("msHold",0,50,20),relMin:rmin,relMax:Math.max(rmin,nv("msRelMax",10,2000,150))}};
   }
-  if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh){edMsg("かける処理がありません",true);return;}
+  if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh)return {err:"かける処理がありません"};
+  return {o,eqBands,notes,usedT,lin,P};
+}
+async function masterRun(){
+  if(!current||!rawOK()){edMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return;}
+  const key=$("msPreset").value,m=current,fs=lastRaw.fs;
+  const B=buildMasterOpts(m,fs,key);if(B.err){edMsg(B.err,true);return;}
+  const {o,eqBands,notes,usedT,lin,P}=B;
   const s0=m.trimStart,s1=m.trimEnd,chs=lastRaw.chs.map(c=>c.slice(s0,s1)),info={source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout};
   const orig=editOrig||{chs:lastRaw.chs.map(c=>c.slice()),fs,info:Object.assign({label:m.label},info)};
   const before=m,beforeChs=lastRaw.chs.map(c=>c.subarray(s0,s1)),base=m.label||"音声";
@@ -5815,6 +5835,69 @@ function drawMsGraphs(){
   }
 }
 
+
+/* ---------- 1. アルバムとしてまとめて仕上げる ---------- */
+let albumZip=null,albumStopReq=false;
+$("albumGenre").innerHTML=$("msPreset").innerHTML;$("albumGenre").value=$("msPreset").value;
+$("albumGenre").onchange=e=>{$("msPreset").value=e.target.value;msApplyPreset();msCompFields();$("easyGenre").value=e.target.value;};
+$("msPreset").addEventListener("change",()=>{$("albumGenre").value=$("msPreset").value;});
+$("easyGenre").addEventListener("change",()=>{$("albumGenre").value=$("easyGenre").value;});
+$("albumFmt").value=pref.get("tabAnalyzerAlbumFmt","flac24");$("albumFmt").onchange=e=>pref.set("tabAnalyzerAlbumFmt",e.target.value);
+$("albumStop").onclick=()=>{albumStopReq=true;$("albumStop").hidden=true;$("albumMsg").textContent="今の曲が終わったら止めます…";};
+// 1 曲を仕上げる：読み込み → 解析 → 設定の組み立て → 仕上げ。返り値は仕上げた音（トリム後）と結果
+async function albumOne(x,key,lufs,msg){
+  msg("読み込み中");const d=await decodeFile(x.file);
+  msg("解析中");const a=await runJob({chs:d.chs,fs:d.fs,opts:{trim:$("optTrim").checked,layout:d.layout}},d.chs.map(c=>c.buffer),null,()=>({res:analyzeAll(d.chs,d.fs,{trim:$("optTrim").checked,layout:d.layout}),chs:d.chs}));
+  const m=a.res;m.source=d.source;
+  const B=buildMasterOpts(m,d.fs,key,{lufs});if(B.err)throw new Error(B.err);
+  const chs=a.chs.map(c=>c.slice(m.trimStart,m.trimEnd));
+  const out=await runJob({cmd:"edit",chs,fs:d.fs,op:"master",o:B.o},chs.map(c=>c.buffer),st=>msg("仕上げ中："+st),()=>editProcess({chs,fs:d.fs,op:"master",o:B.o}));
+  const li=out.master.lim;
+  return {chs:out.chs,fs:d.fs,before:m,lufs:li?li.lufs:analyzeLoudness(out.chs,d.fs,B.o.weights).integrated,guard:!!(li&&li.psrGuard),grMax:li?li.grMax:0,eq:B.eqBands.length};
+}
+function renderAlbum(rows,target){
+  const n=v=>Number.isFinite(v)?f1(v):"—";
+  $("albumTable").innerHTML="<tr><th>#</th><th>曲名</th><th>処理前 LUFS</th><th>仕上がり LUFS</th><th>差（そろえた音量から）</th><th>リミッター最大</th><th>状態</th></tr>"+rows.map((r,i)=>"<tr><td>"+(i+1)+"</td><td style='text-align:left'>"+esc(r.name)+"</td><td>"+(r.before?n(r.before):"")+"</td><td>"+(r.lufs!=null?n(r.lufs):"")+"</td><td>"+(r.lufs!=null&&target!=null?(r.lufs-target>=0?"+":"")+f1(r.lufs-target):"")+"</td><td>"+(r.grMax!=null?f1(r.grMax)+" dB":"")+"</td><td style='text-align:left'>"+esc(r.st||"")+"</td></tr>").join("");
+}
+$("albumRun").onclick=async()=>{
+  const list=songs.filter(x=>x.st!=="err");
+  if(list.length<2){$("albumMsg").textContent="2 曲以上を曲リストに入れてください";return;}
+  if(busy||songRunning){$("albumMsg").textContent="他の処理が終わるまでお待ちください";return;}
+  const key=$("albumGenre").value,mode=$("albumMode").value,fmt=$("albumFmt").value,fm=SAVE_FORMATS[fmt],genreL=+$("msLufs").value;
+  stopPlay();busy=true;updateButtons();albumZip=null;albumStopReq=false;$("albumDl").hidden=true;$("albumStop").hidden=false;$("albumRun").disabled=true;
+  const rows=list.map(x=>({name:x.name,st:"待機中"})),bufs=new Array(list.length).fill(null);renderAlbum(rows,null);
+  const enc=async(r,i)=>{const t=Object.assign({},tagsNow(),{title:list[i].name.replace(/\\.[^.]+$/,""),track:String(i+1)});
+    const o=await runJob({cmd:"encode",chs:r.chs,fs:r.fs,fmt,s0:0,s1:r.chs[0].length},r.chs.map(c=>c.buffer),null,()=>({buf:encodeAudio(r.chs,r.fs,fmt),chs:r.chs}));
+    return new Uint8Array(addTags(o.buf,fmt,t));};
+  try{
+    // 1 周目：各曲をジャンルの目安で仕上げる
+    for(let i=0;i<list.length&&!albumStopReq;i++){
+      const msg=t=>{rows[i].st=t;renderAlbum(rows,null);$("albumMsg").textContent=(i+1)+" / "+list.length+"："+t;};
+      try{const r=await albumOne(list[i],key,genreL,msg);Object.assign(rows[i],{before:r.before.lufs,lufs:r.lufs,grMax:r.grMax,guard:r.guard,st:r.guard?"仕上げ済み（音質優先で止めた）":"仕上げ済み"});msg(rows[i].st);bufs[i]=await enc(r,i);}
+      catch(e){console.error(e);rows[i].st="失敗："+(e.message||e);rows[i].err=true;}
+    }
+    let target=null;
+    const ok=rows.filter(r=>!r.err&&r.lufs!=null);
+    if(mode==="same"&&ok.length&&!albumStopReq){
+      // 2 周目：いちばん小さく仕上がった曲の音量に合わせて、0.5 dB 以上大きい曲を仕上げ直す
+      target=Math.min(...ok.map(r=>r.lufs));
+      for(let i=0;i<list.length&&!albumStopReq;i++){
+        const r0=rows[i];if(r0.err||r0.lufs==null||r0.lufs-target<=0.5)continue;
+        const msg=t=>{rows[i].st="そろえ直し："+t;renderAlbum(rows,target);$("albumMsg").textContent="音量をそろえています（"+f1(target)+" LUFS）："+(i+1)+" / "+list.length;};
+        try{const r=await albumOne(list[i],key,target,msg);Object.assign(rows[i],{lufs:r.lufs,grMax:r.grMax,st:"仕上げ済み（音量をそろえた）"});bufs[i]=await enc(r,i);}
+        catch(e){console.error(e);rows[i].st="そろえ直しに失敗："+(e.message||e);}
+      }
+    }
+    renderAlbum(rows,target);
+    const files=bufs.map((b,i)=>b&&{name:String(i+1).padStart(2,"0")+"_"+safeName(list[i].name).replace(/\\.[^.]+$/,"")+"_master."+fm.ext,data:b}).filter(Boolean);
+    if(files.length){
+      albumZip=zipStore(files);$("albumDl").hidden=false;
+      const L=rows.filter(r=>!r.err&&r.lufs!=null).map(r=>r.lufs),spread=L.length?Math.max(...L)-Math.min(...L):0;
+      $("albumMsg").textContent=(albumStopReq?"中止しました。":"")+files.length+" 曲を仕上げました。曲ごとの音量の差は最大 "+f1(spread)+" dB"+(target!=null?"（"+f1(target)+" LUFS にそろえました）":"")+"。";
+    }else $("albumMsg").textContent=albumStopReq?"中止しました":"仕上げられた曲がありません";
+  }finally{busy=false;updateButtons();$("albumStop").hidden=true;$("albumRun").disabled=false;}
+};
+$("albumDl").onclick=()=>{if(albumZip)download(albumZip,"album_master.zip");};
 /* ---------- かんたん表示・おまかせ ---------- */
 let msLast=null;
 function setMode(m){
