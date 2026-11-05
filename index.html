@@ -37,6 +37,7 @@ button.rec{background:#7a2530;border-color:#a8384a}
 #songTable button{padding:3px 9px;font-size:12.5px}
 .albumBox{margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2)}.albumBox>summary{cursor:pointer;font-size:13.5px}
 #albumTable td,#albumTable th{white-space:nowrap}
+.delivT td,.delivT th{text-align:left;vertical-align:top}.delivT td.j{white-space:nowrap;font-weight:600}.delivT .ok{color:var(--ok)}.delivT .warn{color:var(--warn)}.delivT .bad{color:var(--bad)}.delivT .info{color:var(--acc)}
 body.simple .adv{display:none!important}
 .modeSw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.modeSw button{border:0;border-radius:0;padding:6px 12px;font-size:13px;background:var(--panel2)}
 .modeSw button.on{background:#2c4a86;color:#fff}
@@ -316,7 +317,7 @@ input[type=range]{accent-color:var(--acc)}
     <details class="sub" style="margin-top:8px"><summary>何をしているの？</summary>
       <ul>
         <li>選んだジャンルの大まかな目安に合わせて、<b>音色の整え（EQ）→ 音量の粒をそろえる（コンプ）→ 音割れしないように音量を上げる（リミッター）</b>を自動でかけます。</li>
-        <li>音割れの基準（トゥルーピーク）は −1 dBTP。配信サービスの推奨値です。ジャンルの音量は市販曲でよく見られる傾向をもとにした目安で、実測データではありません。</li>
+        <li>音割れの基準（トゥルーピーク）は、−14 LUFS より大きく仕上げるジャンルでは −2 dBTP、それ以外は −1 dBTP（Spotify の推奨）です。ジャンルの音量は市販曲でよく見られる傾向をもとにした目安で、実測データではありません。</li>
         <li>元の曲より良くなったかは、必ず「仕上げた音」と「元の音」を聴き比べて決めてください。細かく調整したいときは「くわしい表示」の 10. で設定を変えられます。</li>
       </ul></details>
   </section>
@@ -348,6 +349,12 @@ input[type=range]{accent-color:var(--acc)}
       </div>
     </div>
     <ul class="checks" id="checks"></ul>
+    <h3>配信・納品の条件</h3>
+    <div id="delivNote" class="sub"></div>
+    <div class="songWrap"><table id="delivTable" class="delivT"></table></div>
+    <div class="legend">各社の公開資料にもとづく判定です（各社が仕様を変えることがあるので、納品前に最新の資料も確認してください）。
+      Spotify：<a href="https://support.spotify.com/us/artists/article/loudness-normalization/" target="_blank" rel="noopener">Loudness normalization</a>・<a href="https://support.spotify.com/us/artists/article/audio-file-formats/" target="_blank" rel="noopener">Audio file formats</a>／
+      Apple Digital Masters：<a href="https://help.apple.com/itc/videoaudioassetguide/en.lproj/static.html" target="_blank" rel="noopener">Apple Video and Audio Asset Guide</a>／CD：Red Book（IEC 60908）。</div>
   </section>
   <section class="panel adv">
     <h2>4. 波形とラウドネスの推移</h2>
@@ -2208,7 +2215,8 @@ function normTonal(curve){
 // 帯域の上限（高域が急に切れている周波数）。1/12 オクターブの平均レベルで、隣り合う区間の段差が大きく、
 // その上が最後まで低いままの位置を探す。ゆるやかに減衰するだけの曲では検出しない
 function detectCutoff(sp){
-  const {P,N,fs}=sp,bh=fs/N,top=Math.min(fs/2*0.995,24000),lv=[],fr=[];
+  // ハイレゾ（88.2 kHz 以上）でも 22 kHz 付近の切れ目（アップサンプルの跡）を見つけられるよう、48 kHz まで探す
+  const {P,N,fs}=sp,bh=fs/N,top=Math.min(fs/2*0.995,48000),lv=[],fr=[];
   for(let f=2000;f*Math.pow(2,1/12)<=top;f*=Math.pow(2,1/12)){
     const f1=f*Math.pow(2,1/12);let p=0,c=0;for(let k=Math.ceil(f/bh);k<P.length&&k*bh<f1;k++){p+=P[k];c++;}
     lv.push(c?10*Math.log10(p/c+1e-30):NaN);fr.push(f1);
@@ -3333,23 +3341,55 @@ function sniffRate(u,ext,mime){
   }
   return 0;
 }
+// ファイルの形式（容器・ビット深度・整数か浮動小数点か・サンプルレート・チャンネル数）をヘッダから読む。読めない形式は lossy 扱い
+function sniffFormat(u,ext,mime){
+  const n=u.length,s=(p,l)=>p+l<=n?String.fromCharCode.apply(null,u.subarray(p,p+l)):"";
+  const le16=p=>u[p]|u[p+1]<<8,le32=p=>(u[p]|u[p+1]<<8|u[p+2]<<16|u[p+3]<<24)>>>0,be16=p=>u[p]<<8|u[p+1],be32=p=>((u[p]<<24)|(u[p+1]<<16)|(u[p+2]<<8)|u[p+3])>>>0;
+  if((s(0,4)==="RIFF"||s(0,4)==="RF64")&&s(8,4)==="WAVE"){
+    for(let p=12;p+24<=n;){const id=s(p,4),sz=le32(p+4);
+      if(id==="fmt "){let tag=le16(p+8);if(tag===0xFFFE&&sz>=40)tag=le16(p+32);return {container:"WAV",bits:le16(p+22),float:tag===3,ch:le16(p+10),fs:le32(p+12)};}
+      p+=8+sz+(sz&1);}
+    return {container:"WAV"};
+  }
+  if(s(0,4)==="FORM"&&(s(8,4)==="AIFF"||s(8,4)==="AIFC")){
+    for(let p=12;p+26<=n;){const id=s(p,4),sz=be32(p+4);
+      if(id==="COMM"){const q=p+16,ex=((u[q]&0x7f)<<8|u[q+1])-16383,comp=s(8,4)==="AIFC"?s(p+26,4):"NONE";
+        return {container:s(8,4),bits:be16(p+14),float:/^fl/.test(comp),ch:be16(p+8),fs:Math.round(be32(q+2)*Math.pow(2,ex-31))};}
+      p+=8+sz+(sz&1);}
+    return {container:"AIFF"};
+  }
+  let o=0;if(s(0,3)==="ID3")o=10+((u[6]&0x7f)<<21|(u[7]&0x7f)<<14|(u[8]&0x7f)<<7|(u[9]&0x7f))+(u[5]&0x10?10:0);
+  if(s(o,4)==="fLaC"&&o+22<=n)return {container:"FLAC",bits:(((u[o+20]&1)<<4)|(u[o+21]>>4))+1,float:false,ch:((u[o+20]>>1)&7)+1,fs:(u[o+18]<<12)|(u[o+19]<<4)|(u[o+20]>>4)};
+  return {container:(ext||mime||"?").toUpperCase(),lossy:true};
+}
+// 実際に使われているビット数：整数 PCM のとき、全サンプルが 16bit の格子に乗っていれば 16（24bit の容器に 16bit の音を入れたもの）
+function effectiveBits(chs,bits){
+  if(!bits||bits<=16)return bits||null;
+  for(const k of [16,20]){if(k>=bits)break;const sc=Math.pow(2,k-1);let ok=true;
+    for(const c of chs){for(let i=0;i<c.length;i++){const v=c[i]*sc;if(v!==Math.round(v)){ok=false;break;}}if(!ok)break;}
+    if(ok)return k;}
+  return bits;
+}
 // ファイルを元のサンプルレートのまま読み込む（読めない形式は再生環境のレートに変換）
 async function decodeFile(file){
   const ab=await file.arrayBuffer();
   const m=file.name.match(/\.([^.]+)$/),ext=m?m[1].toLowerCase():"";
   const sr=sniffRate(new Uint8Array(ab),ext,file.type);
+  // decodeAudioData は ab を使えなくするので、形式はその前に読む
+  const fmt=sniffFormat(new Uint8Array(ab,0,Math.min(ab.byteLength,1<<20)),ext,file.type);fmt.name=file.name;
   let buf,resampled=false;
   if(sr>=3000&&sr<=768000&&window.OfflineAudioContext)buf=await new OfflineAudioContext(1,1,sr).decodeAudioData(ab);
   else{const ctx=new (window.AudioContext||window.webkitAudioContext)();try{buf=await ctx.decodeAudioData(ab);}finally{ctx.close();}resampled=true;}
   const chs=[];for(let c=0;c<Math.min(8,buf.numberOfChannels);c++)chs.push(new Float32Array(buf.getChannelData(c)));
-  return {chs,fs:buf.sampleRate,resampled,source:/^(wav|wave|aif|aiff|aifc|flac)$/.test(ext)?"pcm":"lossy",layout:CH_LAYOUTS[chs.length]||null};
+  if(!fmt.lossy&&!fmt.float&&!resampled)fmt.effBits=effectiveBits(chs,fmt.bits);
+  return {chs,fs:buf.sampleRate,resampled,source:/^(wav|wave|aif|aiff|aifc|flac)$/.test(ext)?"pcm":"lossy",layout:CH_LAYOUTS[chs.length]||null,fmt};
 }
 async function loadFile(file,song,noScroll){
   if(busy||rec)return false;
   try{
     setStatus("ファイルを読み込み中…");await tick();
     const d=await decodeFile(file);
-    const ok=await run(d.chs,d.fs,{label:file.name,source:d.source,resampled:d.resampled,layout:d.layout,songId:song?song.id:null,noScroll:!!noScroll});
+    const ok=await run(d.chs,d.fs,{label:file.name,source:d.source,resampled:d.resampled,layout:d.layout,songId:song?song.id:null,noScroll:!!noScroll,fmt:d.fmt});
     try{fillTags(await readTags(file),file.name);}catch(e){fillTags({},file.name);}
     if(ok&&song&&current&&!song.res)songSetResult(song,current);
     return !!ok;
@@ -3522,6 +3562,7 @@ function makeChecks(m,ref){
   }else{
     if(m.tp>0)add("bad","トゥルーピーク "+f1(m.tp)+" dBTP：0を超えています。変換時に歪みやすい状態です。",FIX_TP);
     else if(m.tp>-1)add("warn","トゥルーピーク "+f1(m.tp)+" dBTP：-1 dBTP以内。配信の変換で歪む余地が小さい状態です。",FIX_TP);
+    else if(m.lufs>-14&&m.tp>-2)add("warn","トゥルーピーク "+f1(m.tp)+" dBTP：Spotify は、−14 LUFS より大きいマスターではトゥルーピークを −2 dBTP 以下にするよう推奨しています（配信用の変換での歪みを防ぐため）。",FIX_TP);
     else add("ok","トゥルーピーク "+f1(m.tp)+" dBTP：余裕があります。");
   }
   const reliable=m.source==="pcm"&&!m.resampled;
@@ -4374,7 +4415,7 @@ function refresh(){
   renderTargetSel();renderTarget(m);renderLow(m,ref);drawDynMap(m,ref,list);renderCodec();
   $("report").textContent=reportText(m);
   syncRefAudio();applyListenGain();
-  renderEasy();drawMsGraphs();
+  renderEasy();drawMsGraphs();renderDelivery(m);
 }
 
 /* ---------- 保存・比較 ---------- */
@@ -5077,7 +5118,7 @@ function setVariant(v){
 /* ---------- イベント ---------- */
 $("file").onchange=e=>{const fs=[...e.target.files];e.target.value="";if(fs.length)addSongs(fs);};
 $("bClear").onclick=clearB;
-$("optTrim").onchange=()=>{if(lastRaw&&!busy&&!rec){const r=lastRaw;run(r.chs,r.fs,{label:r.label,source:r.source,resampled:r.resampled,gaps:r.gaps,layout:r.layout,songId:r.songId,noScroll:true});}};
+$("optTrim").onchange=()=>{if(lastRaw&&!busy&&!rec){const r=lastRaw;run(r.chs,r.fs,{label:r.label,source:r.source,resampled:r.resampled,gaps:r.gaps,layout:r.layout,songId:r.songId,noScroll:true,fmt:r.fmt});}};
 $("saveFmt").innerHTML=Object.entries(SAVE_FORMATS).map(([k,f])=>"<option value='"+k+"'>"+f.name+"</option>").join("");
 $("saveFmt").value=SAVE_FORMATS[pref.get("tabAnalyzerSaveFmt","wav24")]?pref.get("tabAnalyzerSaveFmt","wav24"):"wav24";
 $("saveFmt").onchange=e=>pref.set("tabAnalyzerSaveFmt",e.target.value);
@@ -5606,15 +5647,15 @@ function applySosEdit(label,mkSos){
 }
 /* ---------- 10. おまかせマスタリング ---------- */
 // ジャンルごとの大まかな目安（市販曲でよく見られる傾向をもとにした値。特定の調査の実測値ではない）。
-// lufs：目標の統合ラウドネス、comp：コンプの強さ、att/rel：コンプのアタック/リリース[ms]、tone：汎用の目安（ヒット曲の平均的な傾き）からの差[dB]（low=低域 / mid=2〜5 kHz の張り / high=高域）
+// lufs：目標の統合ラウドネス、ceil：トゥルーピークの上限（Spotify の推奨に合わせ、−14 LUFS より大きい目安は −2 dBTP、それ以外は −1 dBTP）、comp：コンプの強さ、att/rel：コンプのアタック/リリース[ms]、tone：汎用の目安（ヒット曲の平均的な傾き）からの差[dB]（low=低域 / mid=2〜5 kHz の張り / high=高域）
 const MASTER_PRESETS={
   stream:{name:"配信向け（−14 LUFS・ジャンル問わず）",chk:"general",lufs:-14,ceil:-1,comp:"mid",att:30,rel:200,tone:{low:0,mid:0,high:0}},
-  pop:{name:"J-POP・ポップス",chk:"pop",lufs:-9,ceil:-1,comp:"mid",att:30,rel:150,tone:{low:1,mid:0.5,high:1}},
-  rock:{name:"ロック・バンド",chk:"pop",lufs:-9,ceil:-1,comp:"mid",att:20,rel:150,tone:{low:0,mid:1,high:0.5}},
-  edm:{name:"EDM・ダンス",chk:"edm",lufs:-7.5,ceil:-1,comp:"strong",att:10,rel:100,tone:{low:3,mid:-0.5,high:1.5}},
-  hiphop:{name:"ヒップホップ・トラップ",chk:"edm",lufs:-8,ceil:-1,comp:"mid",att:20,rel:120,tone:{low:3.5,mid:0,high:0.5}},
-  rnb:{name:"R&B・バラード",chk:"pop",lufs:-11,ceil:-1,comp:"mid",att:30,rel:250,tone:{low:1.5,mid:0,high:0.5}},
-  acoustic:{name:"アコースティック・弾き語り",chk:"acoustic",lufs:-13,ceil:-1,comp:"light",att:30,rel:300,tone:{low:-1,mid:0,high:0.5}},
+  pop:{name:"J-POP・ポップス",chk:"pop",lufs:-9,ceil:-2,comp:"mid",att:30,rel:150,tone:{low:1,mid:0.5,high:1}},
+  rock:{name:"ロック・バンド",chk:"pop",lufs:-9,ceil:-2,comp:"mid",att:20,rel:150,tone:{low:0,mid:1,high:0.5}},
+  edm:{name:"EDM・ダンス",chk:"edm",lufs:-7.5,ceil:-2,comp:"strong",att:10,rel:100,tone:{low:3,mid:-0.5,high:1.5}},
+  hiphop:{name:"ヒップホップ・トラップ",chk:"edm",lufs:-8,ceil:-2,comp:"mid",att:20,rel:120,tone:{low:3.5,mid:0,high:0.5}},
+  rnb:{name:"R&B・バラード",chk:"pop",lufs:-11,ceil:-2,comp:"mid",att:30,rel:250,tone:{low:1.5,mid:0,high:0.5}},
+  acoustic:{name:"アコースティック・弾き語り",chk:"acoustic",lufs:-13,ceil:-2,comp:"light",att:30,rel:300,tone:{low:-1,mid:0,high:0.5}},
   jazz:{name:"ジャズ",chk:"acoustic",lufs:-14,ceil:-1,comp:"light",att:40,rel:300,tone:{low:0,mid:0,high:-0.5}},
   classical:{name:"クラシック・映画音楽",chk:"classical",lufs:-18,ceil:-1,comp:"off",att:50,rel:400,tone:{low:0,mid:0,high:-1}}
 };
@@ -5836,6 +5877,32 @@ function drawMsGraphs(){
 }
 
 
+
+/* ---------- 3. 配信・納品の条件 ---------- */
+function renderDelivery(m){
+  if(!$("delivTable"))return;
+  const fmt=lastRaw&&lastRaw.fmt&&lastRaw.label===m.label?lastRaw.fmt:null,rows=[];
+  const add=(svc,item,cond,val,lv,fix)=>rows.push({svc,item,cond,val,lv,fix});
+  const J={ok:"✓ 合格",warn:"△ 注意",bad:"✕ 不合格",info:"ℹ 参考"};
+  const L=m.lufs,tp=m.tp,loud=L>-14,tpLim=loud?-2:-1;
+  // Spotify
+  add("Spotify","音量","−14 LUFS にそろえて再生される",f1(L)+" LUFS","info",L>-14?"再生時に約 "+f1(L+14)+" dB 下げられます（大きくしても大きくは聞こえません）":L<-14?"再生時に、ピークの余裕の範囲で上げられます":"");
+  add("Spotify","トゥルーピーク",(loud?"−14 LUFS より大きいので ":"")+tpLim+" dBTP 以下（推奨）",f1(tp)+" dBTP",tp<=tpLim?"ok":"warn",tp<=tpLim?"":"10. のおまかせマスタリングで上限を "+tpLim+" dBTP にして仕上げる");
+  // Apple Digital Masters
+  const AR=[44100,48000,88200,96000,176400,192000];
+  if(fmt&&!fmt.lossy){
+    const eff=fmt.effBits||fmt.bits,pad=fmt.bits>=24&&eff&&eff<fmt.bits;
+    add("Apple Digital Masters","ビット深度","24bit PCM（16bit を 24bit にした水増しは不可）",(fmt.float?"32bit 浮動小数点":fmt.bits+"bit")+(pad?"（実際は "+eff+"bit の音）":""),fmt.float?"warn":pad||fmt.bits<24?"bad":"ok",fmt.float?"24bit 整数で書き出す（10. の書き出しで「WAV 24bit」か「FLAC 24bit」）":pad?"元の 24bit 以上の音源から書き出し直す（このファイルの音は 16bit 相当です）":fmt.bits<24?"24bit 以上の元音源から書き出す（16bit からの水増しは不可）":"");
+    const up=fmt.fs>48000&&m.cutoff&&m.cutoff.f<23000;
+    add("Apple Digital Masters","サンプルレート","44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz、44.1 kHz 未満やアップサンプル不可",(fmt.fs/1000)+" kHz"+(up?"（約 "+fmtF(m.cutoff.f)+"Hz より上が空：アップサンプルの可能性）":""),!AR.includes(fmt.fs)?"bad":up?"warn":"ok",!AR.includes(fmt.fs)?"対応するサンプルレートで書き出す":up?"元のサンプルレートのまま書き出す（上げても音質は上がりません）":"");
+  }else add("Apple Digital Masters","ファイル形式","24bit PCM（ALAC / FLAC も可）",fmt&&fmt.lossy?fmt.container+"（圧縮音源）":"処理後の音：書き出す形式で決まります",fmt&&fmt.lossy?"bad":"info",fmt&&fmt.lossy?"MP3・AAC などではなく、元の WAV / FLAC で納品する":"10. の書き出しで「WAV 24bit」か「FLAC 24bit」を選ぶ");
+  add("Apple Digital Masters","トゥルーピーク","−1 dBTP 以下（BS.1770-4 で測定）",f1(tp)+" dBTP",tp<=-1?"ok":"bad",tp<=-1?"":"10. のおまかせマスタリングで上限を −1 dBTP 以下にして仕上げる");
+  // CD
+  const fs=fmt&&fmt.fs||m.fs;
+  add("CD（Red Book）","形式","16bit・44.1 kHz・ステレオ",(fmt&&fmt.bits?fmt.bits+"bit・":"")+(fs/1000)+" kHz・"+(m.layout.length===2?"ステレオ":m.layout.length+"ch"),fs===44100&&m.layout.length===2?(fmt&&fmt.bits===16?"ok":"info"):"warn",fs!==44100?"44.1 kHz への変換が必要です（このツールではまだできません。DAW で書き出してください）":m.layout.length!==2?"ステレオにする":fmt&&fmt.bits===16?"":"10. の書き出しで「WAV 16bit（ディザあり）」を選ぶ");
+  $("delivNote").textContent=fmt?"ファイル："+fmt.name+"（"+fmt.container+(fmt.bits?"・"+(fmt.float?"32bit 浮動小数点":fmt.bits+"bit"):"")+(fmt.fs?"・"+fmt.fs/1000+" kHz":"")+"）":"編集・仕上げ後の音です（ファイル形式の条件は、書き出すときの形式で決まります）";
+  $("delivTable").innerHTML="<tr><th>配信先</th><th>項目</th><th>条件</th><th>この曲</th><th>判定</th><th>対処</th></tr>"+rows.map(r=>"<tr><td>"+esc(r.svc)+"</td><td>"+esc(r.item)+"</td><td>"+esc(r.cond)+"</td><td>"+esc(r.val)+"</td><td class='j "+r.lv+"'>"+J[r.lv]+"</td><td>"+esc(r.fix||"")+"</td></tr>").join("");
+}
 /* ---------- 1. アルバムとしてまとめて仕上げる ---------- */
 let albumZip=null,albumStopReq=false;
 $("albumGenre").innerHTML=$("msPreset").innerHTML;$("albumGenre").value=$("msPreset").value;
@@ -5914,8 +5981,8 @@ function easyDiag(m,key){
   if(L>-8)add("warn","音量：とても大きい（"+f1(L)+" LUFS）","配信サービスでは −14 前後まで自動で下げられます。大きくしすぎた分、音が潰れて損をしやすい状態です。","「"+P.name+"」の目安 "+P.lufs+" LUFS に合わせます");
   else if(L<P.lufs-4)add("info","音量：小さめ（"+f1(L)+" LUFS）","市販曲と並べると小さく聞こえます。","音割れしないように "+P.lufs+" LUFS まで上げます");
   else add("ok","音量：ちょうどよい（"+f1(L)+" LUFS）","","目安の "+P.lufs+" LUFS に細かく合わせます");
-  if(m.clipRuns>0||m.tp>0)add("bad","音割れ：あり（または、その可能性）","波形が頭打ちになっている、またはピークが 0 dB を超えています。再生機器や配信の変換で歪みます。",m.clipRuns>0?"これ以上の音割れは防げますが、すでに割れている音は元に戻せません（書き出し前のミックスで直すのが確実です）":"ピークを −1 dBTP 以下に抑えます");
-  else if(m.tp>-1)add("warn","音割れ：余裕が少ない（"+f1(m.tp)+" dBTP）","配信の変換（AAC・Opus）でピークが増え、歪むことがあります。","ピークを −1 dBTP 以下に抑えます");
+  if(m.clipRuns>0||m.tp>0)add("bad","音割れ：あり（または、その可能性）","波形が頭打ちになっている、またはピークが 0 dB を超えています。再生機器や配信の変換で歪みます。",m.clipRuns>0?"これ以上の音割れは防げますが、すでに割れている音は元に戻せません（書き出し前のミックスで直すのが確実です）":"ピークを "+P.ceil+" dBTP 以下に抑えます");
+  else if(m.tp>-1||L>-14&&m.tp>-2)add("warn","音割れ：余裕が少ない（"+f1(m.tp)+" dBTP）","配信の変換（AAC・Ogg など）でピークが増え、歪むことがあります。Spotify は、−14 LUFS より大きい曲では −2 dBTP 以下を推奨しています。","ピークを "+P.ceil+" dBTP 以下に抑えます");
   else add("ok","音割れ：なし（"+f1(m.tp)+" dBTP）","","");
   const ps=m.psr&&Number.isFinite(m.psr.loud)?m.psr.loud:NaN;
   if(ps<8)add("warn","迫力：潰れ気味（PSR "+f1(ps)+" dB）","音を大きくしすぎて、ドラムのアタックや抑揚が失われています。","これ以上潰さないよう、必要以上に音量を上げません（目標を下げると改善します）");
