@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-0FS9KKl+6MZk5oKlngAf4hMy/HN/fYBUInF0NBnKQ0s=' 'sha256-mJunU1k8K7tPPqBKGBiE/nTteNdqP6vQlFuUv/qvr1s=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -1053,7 +1055,8 @@ function detectKey(sp){
   return {best:b0,second:b1,margin:b0.r-b1.r,relative,cents:Math.round(tune*100),a4:440*Math.pow(2,tune/12),chroma:Array.from(ch)};
 }
 function framePass(mono,fs){
-  const N=1024,hop=512,nb=16;
+  // 窓の長さ（時間）をサンプルレートによらずほぼ一定（44.1 kHz で 1024）にする。固定だと 192 kHz で 5 ms と短くなり、テンポを半分に間違えることがあった
+  const N=Math.max(256,Math.pow(2,Math.round(Math.log2(1024*fs/44100)))),hop=N/2,nb=16;
   const nFrames=Math.floor((mono.length-N)/hop)+1;
   if(nFrames<16)return null;
   const win=new Float64Array(N);for(let i=0;i<N;i++)win[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);
@@ -1430,7 +1433,7 @@ function analyzeAll(chsIn,fs,opts={}){
   const key=detectKey(spec);
   prog("テンポ・構成");
   const fp=framePass(mono,fs);
-  const bpm=fp?estimateBpm(fp.flux,fp.fps):null;
+  const bpm=fp&&mono.length>=fs*5?estimateBpm(fp.flux,fp.fps):null;  // 5 秒未満では拍が数えるほどしかなく、テンポは当てにならない
   prog("構成・区間");
   const sec=fp?detectSections(fp,chromaPass(mono,fs),loud.secPow):{bounds:[],segs:[]};
   let focus=null;
@@ -2960,7 +2963,8 @@ function masterProcess(chs,fs,o,prog){
   if(o.comp){prog("コンプレッサー");const r=msCompress(x,fs,o.comp);x=r.chs;info.comp=r.info;}
   if(o.lim){
     const L0=lufs(x);
-    if(!Number.isFinite(L0))throw new Error("音が小さすぎて、ラウドネスを測れませんでした");
+    // −60 LUFS 未満は音楽として仕上げられない（例：直流（DC）だけのファイルは低域カットでほぼ無音になる。無理に 30 dB 上げても雑音しか残らない）
+    if(!Number.isFinite(L0)||L0<-60)throw new Error("音が小さすぎて、ラウドネスを測れませんでした（"+(Number.isFinite(L0)?L0.toFixed(1)+" LUFS。":"")+"無音か、直流（DC）成分だけの音の可能性があります）");
     prog("リミッター（ピーク検出）");const pk=msPeak4(x);
     let gain=Math.min(30,o.lim.lufs-L0),ceil=o.lim.ceil,best=null,target=o.lim.lufs,psrRounds=0,tpRounds=0,it0=0;
     // 1) 目標の統合ラウドネスになるまでゲインを調整（リミッターが深くかかるほど上がりにくいので、直前 2 回の傾きで決める＝セカント法）。
@@ -3573,9 +3577,18 @@ async function decodeFile(file){
   let buf,resampled=false;
   if(sr>=3000&&sr<=768000&&window.OfflineAudioContext)buf=await new OfflineAudioContext(1,1,sr).decodeAudioData(ab);
   else{const ctx=new (window.AudioContext||window.webkitAudioContext)();try{buf=await ctx.decodeAudioData(ab);}finally{ctx.close();}resampled=true;}
+  // ラウドネス（BS.1770）は 0.4 秒の区間で測るので、それより短い音は解析できない（壊れたファイルが数ミリ秒の音として読めることもある）
+  if(buf.length<0.4*buf.sampleRate)throw new Error("音声が短すぎます（"+(buf.length/buf.sampleRate).toFixed(2)+" 秒）。0.4 秒以上の音声を読み込んでください（ファイルが途中で切れている可能性もあります）");
   const chs=[];for(let c=0;c<Math.min(8,buf.numberOfChannels);c++)chs.push(new Float32Array(buf.getChannelData(c)));
   if(!fmt.lossy&&!fmt.float&&!resampled)fmt.effBits=effectiveBits(chs,fmt.bits);
   return {chs,fs:buf.sampleRate,resampled,source:/^(wav|wave|aif|aiff|aifc|flac)$/.test(ext)?"pcm":"lossy",layout:CH_LAYOUTS[chs.length]||null,fmt};
+}
+// 読み込みエラーを分かりやすい言葉にする（ブラウザの英語のメッセージはそのまま出さない）
+function loadErrMsg(e){
+  const n=e&&e.name||"",t=String(e&&e.message||e);
+  if(n==="EncodingError"||/decode/i.test(t))return "音声として読み取れませんでした（ファイルが壊れているか、このブラウザが対応していない形式です）";
+  if(n==="NotReadableError")return "ファイルを開けませんでした（移動・削除されたか、読み取りが許可されていません）";
+  return t;
 }
 async function loadFile(file,song,noScroll){
   if(busy||rec)return false;
@@ -3586,7 +3599,7 @@ async function loadFile(file,song,noScroll){
     try{fillTags(await readTags(file),file.name);}catch(e){fillTags({},file.name);}
     if(ok&&song&&current&&!song.res)songSetResult(song,current);
     return !!ok;
-  }catch(e){setStatus("ファイルを読み込めませんでした: "+e.message,true);if(song){song.st="err";song.err=e.message;renderSongs();}return false;}
+  }catch(e){setStatus("ファイルを読み込めませんでした: "+loadErrMsg(e),true);if(song){song.st="err";song.err=loadErrMsg(e);renderSongs();}return false;}
 }
 
 // A/B 比較用の B：ファイルから読み込み、このページを開いている間だけ保持する（保存一覧には入れない）
@@ -3604,7 +3617,7 @@ async function loadFileB(file,song){
     refId=s.id;bSongId=song?song.id:null;ok=true;
     if(song&&!song.res)songSetResult(song,res);
     setStatus("B を読み込みました（"+file.name+" / "+fmtT(res.dur)+"）"+(current?"。X キーか上のバーの A / B で切り替えられます":"。続けて A の曲を読み込んでください"));
-  }catch(e){console.error(e);setStatus("B のファイルを読み込めませんでした: "+e.message,true);if(song){song.st="err";song.err=e.message;}}
+  }catch(e){console.error(e);setStatus("B のファイルを読み込めませんでした: "+loadErrMsg(e),true);if(song){song.st="err";song.err=loadErrMsg(e);}}
   finally{busy=false;updateButtons();}
   showBInfo();renderSongs();if(current)refresh();
   return ok;
@@ -4503,7 +4516,7 @@ function renderPlatforms(m){
 function drawSpec(m,ref){
   const {g,w,h}=prep($("cvSpec"),240);const pl=44,pr=10,pt=10,pb=22,pw=w-pl-pr,ph=h-pt-pb;
   const all=m.curve.map(c=>c.db).concat(ref?ref.curve.map(c=>c.db):[]).filter(Number.isFinite);
-  const ymax=Math.ceil((Math.max(...all)+2)/5)*5,ymin=ymax-60;
+  const ymax=all.length?Math.ceil((Math.max(...all)+2)/5)*5:0,ymin=ymax-60;  // 無音などで値が無いときも目盛りが無限に続かないように
   const X=f=>pl+Math.log(f/20)/Math.log(1000)*pw,Y=v=>pt+(1-(Math.max(ymin,Math.min(ymax,v))-ymin)/(ymax-ymin))*ph;
   g.font="11px sans-serif";g.fillStyle="#9aa0b4";g.strokeStyle="#343846";g.lineWidth=1;
   for(let v=ymin;v<=ymax;v+=10){g.beginPath();g.moveTo(pl,Y(v));g.lineTo(w-pr,Y(v));g.stroke();g.fillText(v,6,Y(v)+4);}
@@ -4755,7 +4768,7 @@ function renderOct(){
   if(!slmRes)return;
   const bands=$("octB").value==="1"?slmRes.oct1:slmRes.oct3,W=$("octW").value,val=b=>b.Leq+(W==="A"?b.A:W==="C"?b.C:0);
   const {g,w,h}=prep($("cvOct"),220),pl=48,pr=12,pt=10,pb=30,pw=w-pl-pr,ph=h-pt-pb;
-  const vals=bands.map(val).filter(Number.isFinite),top=Math.ceil((Math.max(...vals)+3)/10)*10,bot=top-70,Y=v=>pt+(1-(Math.max(bot,Math.min(top,v))-bot)/(top-bot))*ph;
+  const vals=bands.map(val).filter(Number.isFinite),top=vals.length?Math.ceil((Math.max(...vals)+3)/10)*10:0,bot=top-70,Y=v=>pt+(1-(Math.max(bot,Math.min(top,v))-bot)/(top-bot))*ph;
   g.font="10px sans-serif";g.fillStyle="#9aa0b4";g.strokeStyle="#343846";
   for(let v=bot;v<=top;v+=10){g.beginPath();g.moveTo(pl,Y(v));g.lineTo(w-pr,Y(v));g.stroke();g.fillText(v,6,Y(v)+4);}
   const bw=pw/bands.length;
@@ -5151,7 +5164,7 @@ function drawTarget(m,T,cmp){
   const {g,w,h}=prep($("cvTarget"),250),pl=44,pr=10,pt=10,pb=22,pw=w-pl-pr,ph=h-pt-pb,lev=tgtView==="level";
   const mine=tonalOf(m);
   let ymin,ymax;
-  if(lev){ymin=-12;ymax=12;}else{const all=[];for(let j=0;j<TB_N;j++){for(const v of [T.lo[j],T.hi[j],mine&&mine[j]])if(Number.isFinite(v)&&TB_F[j]>=25)all.push(v);}ymax=Math.ceil((Math.max(...all)+2)/5)*5;ymin=Math.max(ymax-50,Math.floor((Math.min(...all)-2)/5)*5);}
+  if(lev){ymin=-12;ymax=12;}else{const all=[];for(let j=0;j<TB_N;j++){for(const v of [T.lo[j],T.hi[j],mine&&mine[j]])if(Number.isFinite(v)&&TB_F[j]>=25)all.push(v);}if(all.length){ymax=Math.ceil((Math.max(...all)+2)/5)*5;ymin=Math.max(ymax-50,Math.floor((Math.min(...all)-2)/5)*5);}else{ymax=0;ymin=-50;}}
   const X=f=>pl+Math.log(f/20)/Math.log(1000)*pw,Y=v=>pt+(1-(Math.max(ymin,Math.min(ymax,v))-ymin)/(ymax-ymin))*ph;
   g.font="11px sans-serif";g.fillStyle="#9aa0b4";g.strokeStyle="#343846";g.lineWidth=1;
   const st=lev?3:10;for(let v=Math.ceil(ymin/st)*st;v<=ymax;v+=st){g.beginPath();g.moveTo(pl,Y(v));g.lineTo(w-pr,Y(v));g.stroke();g.fillText((v>0&&lev?"+":"")+v,6,Y(v)+4);}
@@ -5377,8 +5390,9 @@ async function addSongs(files){
   if(ng)setStatus(ng+" 個の音声以外のファイルを除きました");
   // まだ何も表示していなければ、1 曲目を A に。2 曲だけ入れたときは 2 曲目を B に（A/B 比較の近道）
   if(!current&&!busy&&!rec){
-    await openSongA(add[0],add.length>1,true);
-    if(add.length===2&&!tempRef&&current)await loadFileB(add[1].file,add[1]);
+    // 1 曲目が読めなかった（壊れている等）ときは、読める曲が見つかるまで次の曲を試す
+    let first=null;for(const x of add){await openSongA(x,add.length>1,true);if(current){first=x;break;}if(busy||rec)break;}
+    if(first===add[0]&&add.length===2&&!tempRef&&current)await loadFileB(add[1].file,add[1]);
     maybeAutoCodec();
   }else if(current){
     // すでに別の曲を表示中：新しく入れた最初の曲に切り替える（仕上げなどの処理中なら、終わるのを待ってから）
@@ -5535,15 +5549,43 @@ $("btnExport").onclick=()=>{
   const l=loadSaved();if(!l.length){setStatus("書き出す保存データがありません");return;}
   download(new Blob([JSON.stringify(l,null,1)],{type:"application/json"}),"tab-analyzer-saved.json");
 };
+// 読み込んだ保存データは、決まった項目だけを型を確かめながら作り直す（余計なキーや __proto__ などは持ち込まない）
+function sanitizeSaved(x){
+  if(!x||typeof x!=="object"||Array.isArray(x))return null;
+  const num=v=>typeof v==="number"&&Number.isFinite(v)?v:null,str=(v,n)=>typeof v==="string"?v.slice(0,n):null;
+  const bands=a=>Array.isArray(a)&&a.length===BANDS.length&&a.every(b=>b&&typeof b==="object")?a.map((b,i)=>({name:str(b.name,40)||BANDS[i][0],pct:num(b.pct),db:num(b.db)??-99})):null;
+  const curve=a=>Array.isArray(a)&&a.length>0&&a.length<=4096&&a.every(c=>c&&typeof c==="object"&&num(c.f)!=null)?a.map(c=>({f:c.f,db:num(c.db)??-99})):null;
+  const id=num(x.id),name=str(x.name,200),b=bands(x.bands),c=curve(x.curve);
+  if(id==null||id<=0||!name||!b||!c)return null;
+  const s={id,name,date:str(x.date,64)||"",source:Object.prototype.hasOwnProperty.call(SRC,x.source)?x.source:null};
+  for(const k of ["lufs","lra","tp","plr","crest","corr","corrLow","width","monoLoss","centroid","dur","bpm","stMax","psrLoud","psrMed","dr","lowCrest","cutoff"])s[k]=num(x[k]);
+  if(s.bpm==null&&x.bpm&&typeof x.bpm==="object")s.bpm=num(x.bpm.bpm);  // 古い形式（{bpm:…}）
+  s.key=str(x.key,16);
+  s.tonal=Array.isArray(x.tonal)&&x.tonal.length===TB_N&&x.tonal.every(v=>v===null||num(v)!=null)?x.tonal.slice():null;
+  s.bands=b;s.curve=c;
+  s.stereoBands=Array.isArray(x.stereoBands)?x.stereoBands.slice(0,64).filter(v=>v&&typeof v==="object").map(v=>({name:str(v.name,40)||"",corr:num(v.corr),width:num(v.width)})):[];
+  const fc=x.focus;
+  if(fc&&typeof fc==="object"&&!Array.isArray(fc)){
+    const fb=bands(fc.bands),fcv=curve(fc.curve);
+    if(fb&&fcv){
+      s.focus={start:num(fc.start),end:num(fc.end),label:str(fc.label,100)||""};
+      for(const k of ["lufs","tp","plr","crest","corr","corrLow","width","centroid"])s.focus[k]=num(fc[k]);
+      s.focus.bands=fb;s.focus.curve=fcv;
+    }
+  }
+  s.hasAudio=false;
+  return s;
+}
 $("importFile").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   try{
     const data=JSON.parse(await f.text());
     if(!Array.isArray(data))throw new Error("形式が違います");
-    const ok=data.filter(x=>x&&typeof x.id==="number"&&typeof x.name==="string"&&Array.isArray(x.curve)&&Array.isArray(x.bands)&&x.bands.length===BANDS.length);
+    if(data.length>10000)throw new Error("項目が多すぎます");
+    const ok=data.map(sanitizeSaved).filter(Boolean);
     const l=loadSaved(),ids=new Set(l.map(x=>x.id));
-    // 音声はJSONに含まれないので、読み込んだ項目は音声なしとして扱う
-    const add=ok.filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{hasAudio:false}));
+    // 音声はJSONに含まれないので、読み込んだ項目は音声なしとして扱う（sanitizeSaved が hasAudio:false にする）
+    const add=ok.filter(x=>!ids.has(x.id));
     const merged=l.concat(add).sort((a,b)=>b.id-a.id).slice(0,SAVE_MAX);
     if(storeSaved(merged)){setStatus(add.length+" 件を読み込みました"+(ok.length-add.length?"（重複 "+(ok.length-add.length)+" 件は省略）":""));if(current)refresh();else renderSaved(merged);}
   }catch(err){setStatus("保存データを読み込めませんでした: "+err.message,true);}
@@ -6003,6 +6045,9 @@ async function masterRun(){
   const s0=m.trimStart,s1=m.trimEnd,chs=lastRaw.chs.map(c=>c.slice(s0,s1)),info={source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout};
   const orig=editOrig||{chs:lastRaw.chs.map(c=>c.slice()),fs,info:Object.assign({label:m.label},info)};
   const before=m,beforeChs=lastRaw.chs.map(c=>c.subarray(s0,s1)),base=m.label||"音声";
+  // 直流（DC）を除いた音の大きさ（RMS）が −70 dBFS 未満なら、仕上げられる音が無い（無音・直流だけのファイルなど。ラウドネスは低域フィルタの立ち上がりで値が出てしまうことがある）
+  {let e=0,n=0;for(const c of beforeChs){let mu=0;for(let i=0;i<c.length;i++)mu+=c[i];mu/=Math.max(1,c.length);for(let i=0;i<c.length;i++){const v=c[i]-mu;e+=v*v;}n+=c.length;}
+   if(!(e/Math.max(1,n)>1e-7)){edMsg("処理できませんでした: 音がほとんどありません（無音か、直流（DC）成分だけの音です）",true);return;}}
   stopPlay();busy=true;updateButtons();$("msOut").hidden=true;edMsg("おまかせマスタリング…");let out;
   try{out=await runJob({cmd:"edit",chs,fs,op:"master",o},chs.map(c=>c.buffer),st=>edMsg("おまかせマスタリング："+st),()=>editProcess({chs,fs,op:"master",o}));}
   catch(e){console.error(e);edMsg("処理できませんでした: "+e.message,true);return;}
@@ -6167,6 +6212,11 @@ function renderDelivery(m){
 /* ---------- 10. パート別の音量（HTDemucs） ---------- */
 const DMX_MODEL={url:"https://huggingface.co/ptasior/pizu-audio-models/resolve/74331d1e9344e876513b474325fb8fb316fbb392/htdemucs_embedded.onnx",size:180534758,sha256:"e5e425c17683f163a472462eb5f5a4ffcd11c31858d57fbd0833b012d8b88077"};
 const ORT_BASE="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+// ONNX Runtime Web 1.20.1（npm 公開版と同一であることを確認済み）の各ファイルの大きさと SHA-256。読み込む前に必ず照合する
+const ORT_FILES=[
+  {name:"ort.webgpu.min.js",size:333594,sha256:"8443389bf14b34582ea40c590b5007bb652d6ac07dd76829a5bd82d2372e6895"},
+  {name:"ort-wasm-simd-threaded.jsep.mjs",size:46839,sha256:"2fb14505d39926e4c544de8c57fe59a2f2bc74caba6f71890be9afecc5046758"},
+  {name:"ort-wasm-simd-threaded.jsep.wasm",size:21663894,sha256:"185b0861a6cd6cbdfb057289338090436483cc59e10a7bc83bd167b15531a51b"}];
 const DMX_NAMES={drums:"ドラム",bass:"ベース",other:"その他（ギター・鍵盤など）",vocals:"ボーカル"};
 let dmxWorker=null,dmxReady=null,dmxEp="",dmxThreads=1,stState=null,stStopReq=false,dmxReject=null;
 const dmxEpName=()=>dmxEp==="webgpu"?"WebGPU":"CPU（WASM・"+dmxThreads+" スレッド）";
@@ -6190,7 +6240,16 @@ const DMX_WORKER=`
 let sess=null;
 self.onmessage=async e=>{const d=e.data;try{
   if(d.cmd==="init"){
-    importScripts(d.ort+"ort.webgpu.min.js");ort.env.wasm.wasmPaths=d.ort;ort.env.wasm.numThreads=d.threads||1;
+    // 外部（jsDelivr）から取る 3 ファイルは、中身の SHA-256 を確かめてから、確かめたバイト列そのものを読み込む
+    const get=async f=>{const r=await fetch(d.ort+f.name,{credentials:"omit",cache:"no-cache"});if(!r.ok)throw new Error("AI の部品を取得できませんでした（"+f.name+"：HTTP "+r.status+"）");
+      const b=await r.arrayBuffer(),h=[...new Uint8Array(await crypto.subtle.digest("SHA-256",b))].map(x=>x.toString(16).padStart(2,"0")).join("");
+      if(b.byteLength!==f.size||h!==f.sha256)throw new Error("AI の部品（"+f.name+"）が本来のものと一致しません。改ざんや配信の不具合の可能性があるため使用を中止しました");return b;};
+    const [js,mjs,wasm]=await Promise.all(d.files.map(get));
+    const blobUrl=(b,t)=>URL.createObjectURL(new Blob([b],{type:t||"text/javascript"}));
+    importScripts(blobUrl(js));
+    // .mjs と .wasm も確かめたバイト列の blob から読み込む（スレッド用の Worker もこの .mjs の blob から起動される）。
+    // ※ wasmBinary で渡すと ORT 1.20.1 は blob を基準に .wasm の URL を組み立てようとして失敗するため、wasm も URL で渡す
+    ort.env.wasm.wasmPaths={mjs:blobUrl(mjs),wasm:blobUrl(wasm,"application/wasm")};ort.env.wasm.numThreads=d.threads||1;
     let last=null;const tries=self.navigator&&self.navigator.gpu?[["webgpu"],["wasm"]]:[["wasm"]];
     for(const eps of tries){try{sess=await ort.InferenceSession.create(d.model,{executionProviders:eps,graphOptimizationLevel:"basic"});self.postMessage({type:"ready",ep:eps[0]});return;}catch(err){last=err;}}
     throw last||new Error("ONNX Runtime を初期化できませんでした");
@@ -6213,7 +6272,7 @@ async function dmxInit(){
     const url=URL.createObjectURL(new Blob([$("dsp").textContent,DMX_WORKER],{type:"text/javascript"}));dmxWorker=new Worker(url);
     // クロスオリジン分離されていれば、WASM を CPU のコア数（最大 8）のスレッドで動かす
     dmxThreads=window.crossOriginIsolated?Math.max(1,Math.min(8,navigator.hardwareConcurrency||4)):1;
-    const r=await dmxCall({cmd:"init",ort:pref.get("tabAnalyzerOrtBase","")||ORT_BASE,model,threads:dmxThreads},[model]);dmxEp=r.ep;return true;
+    const r=await dmxCall({cmd:"init",ort:pref.get("tabAnalyzerOrtBase","")||ORT_BASE,files:ORT_FILES,model,threads:dmxThreads},[model]);dmxEp=r.ep;return true;
   })();
   try{return await dmxReady;}catch(e){dmxReady=null;if(dmxWorker){dmxWorker.terminate();dmxWorker=null;}throw e;}
 }
