@@ -647,7 +647,7 @@ input[type=range]{accent-color:var(--acc)}
 
   <div class="pane" data-pane="master">
     <div class="row"><label class="sub">ジャンル<select id="msPreset"></select></label><label class="sub">寄せる先<select id="msRef"></select></label><span id="msPresetNote" class="sub"></span></div>
-    <div class="sub" style="margin-top:4px">「寄せる先」にリファレンス曲（1. の「B で比べる」で入れた曲か、8. に保存した曲）を選ぶと、その曲の音量・音色・ステレオの広さに近づけます（コンプの強さはジャンルの設定を使います）。</div>
+    <div class="sub" style="margin-top:4px">「寄せる先」にリファレンス曲（1. の曲リストの曲、「B で比べる」で入れた曲、8. に保存した曲）を選ぶと、その曲の音量・音色・ステレオの広さに近づけます（コンプの強さはジャンルの設定を使います）。</div>
     <div class="msGrid">
       <label class="msItem"><span><input type="checkbox" id="msEqOn" checked> <b>オート EQ</b></span>
         <span class="sub">基準<select id="msEqBase"><option value="genre">ジャンルの目安</option><option value="target">5. で選んだターゲット（好きな曲など）</option></select></span>
@@ -5393,6 +5393,8 @@ function songSetResult(x,m){
   let cnt={bad:0,warn:0};
   try{for(const c of makeChecks(m,null))if(cnt[c.lv]!=null)cnt[c.lv]++;}catch(e){cnt=null;}
   x.res={dur:m.dur,lufs:m.lufs,tp:m.tp,plr:m.plr,lra:m.lra,psr:m.psr?m.psr.loud:NaN,dr:m.dr?m.dr.dr:null,bpm:m.bpm?m.bpm.bpm:null,key:m.key&&m.key.best?m.key.best.name:"",cnt};
+  // リファレンス（おまかせマスタリングの「寄せる先」）に使えるよう、音量・音色の曲線・ステレオの広さなどを残しておく
+  try{x.snap=snapshot(m,x.name.replace(/\.[^.]+$/,""));}catch(e){x.snap=null;}
   x.st="done";x.err="";
 }
 // まだ解析していない曲を順番に解析する（ワーカーで 1 曲ずつ。A の表示や再生はそのまま使える）
@@ -5443,7 +5445,7 @@ function songStatusHtml(x){
 }
 function renderSongProg(x){const el=document.querySelector("#songTable tr[data-id='"+x.id+"'] .st");if(el)el.innerHTML=songStatusHtml(x);}
 function renderSongs(){
-  const box=$("songBox");box.hidden=!songs.length;if(!songs.length)return;
+  const box=$("songBox");box.hidden=!songs.length;if(!songs.length){if(typeof renderRefOptions==="function")try{renderRefOptions();}catch(e){}return;}
   const num=(v,d)=>Number.isFinite(v)?f1(v,d):"—";
   let h="<tr><th>曲名</th><th>長さ</th><th>LUFS</th><th>dBTP</th><th>PLR</th><th>PSR</th><th>LRA</th><th>BPM</th><th>キー</th><th>チェック</th><th></th></tr>";
   for(const x of songs){
@@ -5459,6 +5461,7 @@ function renderSongs(){
   $("songInfo").textContent=songs.length+" 曲（解析済み "+done+"）"+(songRunning?"・解析中…":"");
   $("songRunAll").disabled=songRunning||!wait;$("songRunAll").textContent=wait?"まだの "+wait+" 曲をまとめて解析":"すべて解析済み";
   $("songStop").hidden=!songRunning;$("songCsv").disabled=!done;
+  if(typeof renderRefOptions==="function")try{renderRefOptions();}catch(e){}
 }
 $("songTable").onclick=e=>{
   const t=e.target.closest("[data-open],[data-a],[data-b],[data-rm]");if(!t)return;
@@ -5960,7 +5963,12 @@ function buildMasterOpts(m,fs,key,ov){
     const L=ov.lufs!=null?ov.lufs:+$("msLufs").value,C=ov.ceil!=null?Math.min(ov.ceil,+$("msCeil").value||0):+$("msCeil").value;
     if(!Number.isFinite(L)||!Number.isFinite(C)||C>0)return {err:"目標ラウドネスと上限（0 dBTP 以下）を数値で入れてください"};
     const nv=(id,lo,hi,d)=>{const v=+$(id).value;return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d;},rmin=nv("msRelMin",5,500,30);
-    o.lim={lufs:L,ceil:C,minPsr:$("msQuality").checked?8:0,maxSt:$("msQuality").checked?-10:null,opt:{la:nv("msLA",1,10,4),hold:nv("msHold",0,50,20),relMin:rmin,relMax:Math.max(rmin,nv("msRelMax",10,2000,150))}};
+    // 音質優先の PSR の基準：8 dB。ただし元の曲がすでに 8 dB 未満なら「元の PSR − 0.5 dB」（それ以上は潰さない）。
+    // PSR はリミッターがかからない限り音量で変わらないので、元から低い曲に 8 dB を求めると、無意味に音量を下げ続けてしまう
+    const psrIn=m.psr&&Number.isFinite(m.psr.loud)?m.psr.loud:Infinity,minPsr=$("msQuality").checked?Math.max(0.5,Math.min(8,psrIn-0.5)):0;
+    // 最大ショートタームの基準も同じ考え方：−10 LUFS。元の曲がすでにそれより大きければ「元の曲より大きくしない」（下げても潰れは戻らない）
+    const stIn=Number.isFinite(m.stMax)?m.stMax:-Infinity,maxSt=$("msQuality").checked?Math.max(-10,stIn):null;
+    o.lim={lufs:L,ceil:C,minPsr,maxSt,opt:{la:nv("msLA",1,10,4),hold:nv("msHold",0,50,20),relMin:rmin,relMax:Math.max(rmin,nv("msRelMax",10,2000,150))}};
   }
   if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh&&!o.side&&!o.declip)return {err:"かける処理がありません"};
   return {o,eqBands,notes,usedT,lin,P,ref};
@@ -6011,7 +6019,7 @@ function renderMaster(r,eqBands,notes,before){
   if(r.lim&&r.lim.grMax>6)warn.push("リミッターで最大 "+f1(r.lim.grMax)+" dB 抑えています。歪みや音の潰れが気になるときは、目標ラウドネスを 1〜2 dB 下げてください。");
   if(a&&a.psr&&a.psr.loud<8)warn.push("PSR が "+f1(a.psr.loud)+" dB で、8 dB を下回っています"+(before.psr&&before.psr.loud<8?"（処理前から "+f1(before.psr.loud)+" dB）":"")+"。潰れて聞こえやすい状態です。気になるときは、目標ラウドネスを下げるかコンプを弱めてください（3. の公開前チェックも確認してください）。");
   const info2=[];
-  if(r.lim&&r.lim.psrGuard)info2.push("音質優先：これ以上大きくすると"+(r.lim.guardBy==="st"?"、一番大きい区間が −10 LUFS を超える（大きくしすぎ）":"潰れる（PSR が "+r.lim.minPsr+" dB を割る）")+"ため、目標 "+f1(r.lim.target)+" LUFS の手前の "+f1(a.lufs)+" LUFS で止めました。配信サービスは −14 LUFS 前後にそろえて再生するので、それ以上大きくしても大きくは聞こえません。もっと大きくしたいときは「音質優先」を外してください。");
+  if(r.lim&&r.lim.psrGuard)info2.push("音質優先：これ以上大きくすると"+(r.lim.guardBy==="st"?"、一番大きい区間が −10 LUFS を超える（大きくしすぎ）":"潰れる（PSR が "+f1(r.lim.minPsr)+" dB を割る"+(r.lim.minPsr<8?"。元の曲が "+f1(r.lim.minPsr+0.5)+" dB なので、それより潰さない基準にしています":"")+"）")+"ため、目標 "+f1(r.lim.target)+" LUFS の手前の "+f1(a.lufs)+" LUFS で止めました。配信サービスは −14 LUFS 前後にそろえて再生するので、それ以上大きくしても大きくは聞こえません。もっと大きくしたいときは「音質優先」を外してください。");
   else if(r.lim&&Math.abs(a.lufs-r.lim.target)>0.3)warn.push("目標ラウドネスとの差が "+f1(a.lufs-r.lim.target)+" dB あります。");
   if(r.lim&&a.tp>r.lim.ceilTarget+0.05)warn.push("トゥルーピークが上限を "+f1(a.tp-r.lim.ceilTarget,2)+" dB 超えました。上限を少し下げてやり直してください。");
   h+=info2.map(t=>"<div style='color:var(--acc);margin-top:4px'>"+esc(t)+"</div>").join("");
@@ -6252,8 +6260,10 @@ $("devSim").onchange=e=>{e.target.blur();rebuildPlaybackFilter();const on=e.targ
 // 1. で B に入れた曲は、仕上げで B が「処理前の音」に置き換わっても選べるよう、ここに覚えておく
 const refPool=new Map();
 function refOptionsHtml(){
-  let h="<option value=''>ジャンルの目安</option>";
-  for(const [id,x] of refPool)h+="<option value='t:"+id+"'>リファレンス："+esc(x.name)+"（"+f1(x.lufs)+" LUFS）</option>";
+  let h="<option value=''>ジャンルの目安</option>";const names=new Set();
+  // 1. の曲リストで解析が終わった曲（いま A で表示している曲は除く）
+  for(const x of songs)if(x.snap&&x.snap.tonal&&x.id!==aSongId){names.add(x.snap.name);h+="<option value='l:"+x.id+"'>曲リスト："+esc(x.snap.name)+"（"+f1(x.snap.lufs)+" LUFS）</option>";}
+  for(const [id,x] of refPool)if(!names.has(x.name))h+="<option value='t:"+id+"'>リファレンス："+esc(x.name)+"（"+f1(x.lufs)+" LUFS）</option>";
   for(const x of loadSaved())if(x.tonal)h+="<option value='s:"+x.id+"'>保存した曲："+esc(x.name)+"（"+f1(x.lufs)+" LUFS）</option>";
   return h;
 }
@@ -6263,6 +6273,7 @@ function renderRefOptions(){
 }
 function msRefObj(){
   const v=$("msRef").value;if(!v)return null;
+  if(v.startsWith("l:")){const x=songs.find(y=>y.id===+v.slice(2));return x&&x.snap||null;}
   if(v.startsWith("t:"))return refPool.get(+v.slice(2))||null;
   if(v.startsWith("s:"))return loadSaved().find(x=>x.id===+v.slice(2))||null;
   return null;
@@ -6389,7 +6400,7 @@ function renderEasy(){
       if(it&&d.length){it.a="目安からのずれ："+d.map(([b,c])=>b.name+" "+(b.ex>0?"+":"")+f1(b.ex)+" → "+(c.ex>0?"+":"")+f1(c.ex)+" dB").join("、");
         if(d.some(([,c])=>Math.abs(c.ex)>=1.5))it.x="仕上げの EQ は音を壊さないよう控えめ（最大 ±3 dB）にしています。まだずれが大きい帯域は、ミックスで楽器の音量や EQ を見直すと確実に良くなります。";}}
     const li=msLast.info&&msLast.info.lim;
-    if(li&&li.psrGuard)h+="<div class='ed info' style='grid-column:1/-1'><div class='et'>音質を守るため、"+f1(current.lufs)+" LUFS で止めました</div><div class='ex'>目安の "+f1(li.target)+" LUFS まで上げると"+(li.guardBy==="st"?"大きくしすぎ（一番大きい区間が −10 LUFS 超え）":"音が潰れる（PSR が 8 dB を割る）")+"ためです。配信サービスは −14 LUFS 前後にそろえて再生するので、聴こえる大きさはほぼ変わりません。くわしい表示の 10. で「音質優先」を外すと、目安まで上げられます。</div></div>";
+    if(li&&li.psrGuard)h+="<div class='ed info' style='grid-column:1/-1'><div class='et'>音質を守るため、"+f1(current.lufs)+" LUFS で止めました</div><div class='ex'>目安の "+f1(li.target)+" LUFS まで上げると"+(li.guardBy==="st"?"大きくしすぎ（一番大きい区間が −10 LUFS 超え）":"音が潰れる（PSR が "+f1(li.minPsr)+" dB を割る）")+"ためです。配信サービスは −14 LUFS 前後にそろえて再生するので、聴こえる大きさはほぼ変わりません。くわしい表示の 10. で「音質優先」を外すと、目安まで上げられます。</div></div>";
   }
   h+=items.map(x=>"<div class='ed "+x.lv+"'><div class='et'>"+esc(x.t)+"</div>"+(x.x?"<div class='ex'>"+esc(x.x)+"</div>":"")+(x.a?"<div class='ea'>→ "+esc(x.a)+"</div>":"")+"</div>").join("");
   $("easyDiag").innerHTML=h;
