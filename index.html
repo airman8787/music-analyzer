@@ -130,7 +130,7 @@ input[type=number]{background:var(--panel2);border:1px solid var(--line);color:v
 .tb-status:has(#tbStatus:empty){display:none}
 #tbStatus.err{color:var(--bad)}
 section.panel{scroll-margin-top:100px}
-@media (max-width:640px){.tb-title{display:none}.tb-in{gap:6px;padding:6px 10px}.tb-right .lbl{display:none}.tb-right select{max-width:112px}#tbNav{min-width:0}section.panel{scroll-margin-top:80px}}
+@media (max-width:640px){.tb-title{display:none}.tb-in{gap:6px;padding:6px 10px}.tb-right .lbl{display:none}.tb-right select{max-width:92px}#tbNav{min-width:0}section.panel{scroll-margin-top:80px}}
 /* 折りたためる見出し */
 .panel>h2{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
 .panel>h2::before{content:"▾";font-size:12px;color:var(--sub);transition:transform .15s}
@@ -592,7 +592,7 @@ input[type=range]{accent-color:var(--acc)}
     <span id="edStatus" class="sub"></span>
   </div>
   <div class="note">処理した音は新しい解析結果として 1.〜8. に表示され、そのまま再生・比較できます（「元の音に戻す」で処理前に戻せます）。編集した音は「書き出し・結合・分割」タブから WAV / FLAC で書き出せます。</div>
-  <div class="tabs" id="edTabs"><button data-tab="master" class="on">おまかせマスタリング</button><button data-tab="basic">基本編集</button><button data-tab="out">書き出し・結合・分割</button><button data-tab="sep">分離</button><button data-tab="notes">音符・MIDI</button><button data-tab="score">コード・TAB譜</button><button data-tab="fix">修復</button><button data-tab="pitch">ピッチ・時間</button></div>
+  <div class="tabs" id="edTabs"><button data-tab="master" class="on">おまかせマスタリング</button><button data-tab="basic">基本編集</button><button data-tab="out">書き出し・結合・分割</button><button data-tab="sep">分離</button><button data-tab="notes">音符・MIDI</button><button data-tab="score">コード・TAB譜</button><button data-tab="fix">修復</button><button data-tab="pitch">ピッチ・時間</button><button data-tab="stems">パート別の音量（AI）</button></div>
 
   <div class="pane" data-pane="sep" hidden>
     <h3 style="margin-top:0">調波・打楽器</h3>
@@ -768,6 +768,21 @@ input[type=range]{accent-color:var(--acc)}
       <button id="dcRun" class="primary">除去して解析</button></div>
     <div class="row" style="margin-top:8px"><label class="sub"><input type="checkbox" id="fixDiff"> 取り除いた音を聴く（元の音 − 処理後）</label></div>
     <div class="legend">ハム・定常音：狭いノッチフィルタを前後 2 回かけます（位相はずれません）。自動判定は長時間平均スペクトルで 50 / 60 Hz とその倍音の尖り具合を比べます。背景雑音：帯域ごとの雑音のパワーを手本にしたウィーナー型の低減です。強くしすぎると「シュワシュワ」した音（ミュージカルノイズ）が出ます。雑音だけの部分を 4. で選んで手本にすると精度が上がります。クリック：線形予測の誤差が前向き・後ろ向きの両方で飛び出た短い区間を探し、最小二乗 AR 補間でつなぎ直します。ドラムなどのアタックは誤差が大きいまま続くので除外しますが、アタックと重なったクリックは見逃すことがあります。</div>
+  </div>
+
+  <div class="pane" data-pane="stems" hidden>
+    <div class="note">AI（Meta の HTDemucs）で、曲を<b>ボーカル・ドラム・ベース・その他</b>の 4 つに分け、それぞれの音量を変えます（例：ボーカルだけ +2 dB）。
+      初回だけ、AI のモデル（約 180 MB）を Hugging Face からダウンロードし、このブラウザに保存します（次回からはダウンロードしません）。<b>音声はどこにも送信しません。</b>
+      PC 版の Chrome / Edge 推奨。WebGPU が使えない環境では、曲の長さの数倍以上の時間がかかります。</div>
+    <div class="row" style="margin-top:8px"><button id="stRun" class="primary">パートに分ける</button><button id="stStop" hidden>中止</button><span id="stMsg" class="sub"></span></div>
+    <div id="stCtl" hidden>
+      <div class="songWrap"><table id="stTable" style="margin-top:8px"></table></div>
+      <div class="row" style="margin-top:8px"><button id="stApply" class="primary">音量を反映して解析</button><button id="stReset">すべて 0 dB に戻す</button>
+        <label class="sub"><input type="checkbox" id="stAB" checked> 反映前の音を B に入れて聴き比べる</label></div>
+    </div>
+    <div class="legend">仕上がりは「元の音 ＋ Σ（ゲイン − 1）× 各パート」です。すべて 0 dB なら元の音とまったく同じで、AI が分けきれなかった成分も失われません。
+      分離は完全ではないので、大きく動かすほど、ほかのパートの音が少し混じって聞こえます（目安：±3 dB 程度まで）。「書き出す」で、そのパートだけを WAV で保存できます。
+      モデル：<a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noopener">HTDemucs</a>（Meta・MIT）を <a href="https://www.npmjs.com/package/demucs-web" target="_blank" rel="noopener">demucs-web</a>（MIT）が ONNX にしたもの（<a href="https://huggingface.co/ptasior/pizu-audio-models" target="_blank" rel="noopener">配布元</a>・SHA-256 で照合）。実行は <a href="https://onnxruntime.ai/" target="_blank" rel="noopener">ONNX Runtime Web</a>。</div>
   </div>
 
   <div class="pane" data-pane="pitch" hidden>
@@ -2932,6 +2947,64 @@ function masterProcess(chs,fs,o,prog){
   }
   return {chs:x,info};
 }
+/* ---- 楽器パートの分離（HTDemucs・ONNX）の前後処理 ----
+   モデル：Meta の HTDemucs（MIT）を demucs-web（timcsy・MIT）が ONNX にしたもの。STFT と逆 STFT はモデルの外（ここ）で行う。
+   約束事（demucs-web と同じ）：44.1 kHz ステレオ・1 区間 343980 サンプル、STFT は n=4096・hop=1024・ハン窓・1/√n で正規化、
+   区間の前後を 1536 サンプル反射して延ばし、さらに中央合わせで 2048 サンプル反射して延ばし、フレーム 2〜337 の 2048 本を使う */
+const DMX={FS:44100,N:4096,H:1024,T:343980,BINS:2048,FR:336,TRACKS:["drums","bass","other","vocals"]};
+function dmxReflect(x,a,b){const L=x.length,o=new Float32Array(a+L+b);for(let i=0;i<a;i++)o[i]=x[Math.min(a-i,L-1)];o.set(x,a);for(let i=0;i<b;i++)o[a+L+i]=x[Math.max(0,L-2-i)];return o;}
+// 1 区間（長さ T・足りない分は 0）から、モデルの入力（波形 [2,T] と STFT [4,BINS,FR]）を作る
+function dmxPrep(segL,segR){
+  const {N,H,T,BINS,FR}=DMX,le=Math.ceil(T/H),pad=(H>>1)*3,w=hannP(N),sc=1/Math.sqrt(N),spec=new Float32Array(4*BINS*FR),re=new Float64Array(N),im=new Float64Array(N);
+  [segL,segR].forEach((x,c)=>{
+    const y=dmxReflect(dmxReflect(x,pad,pad+le*H-T),N/2,N/2);
+    for(let f=0;f<FR;f++){const s=(f+2)*H;for(let i=0;i<N;i++){re[i]=y[s+i]*w[i];im[i]=0;}fft(re,im);
+      for(let b=0;b<BINS;b++){spec[(2*c)*BINS*FR+b*FR+f]=re[b]*sc;spec[(2*c+1)*BINS*FR+b*FR+f]=im[b]*sc;}}
+  });
+  const wave=new Float32Array(2*T);wave.set(segL,0);wave.set(segR,T);
+  return {wave,spec};
+}
+// モデルの周波数側の出力 [4 パート,4,BINS,FR] のうち、パート t の左右を逆 STFT して長さ T の波形にする
+function dmxIspec(freq,t){
+  const {N,H,T,BINS,FR}=DMX,P=FR+4,pad=(H>>1)*3,L=(P-1)*H+N,w=hannP(N),sc=Math.sqrt(N),out=[];
+  const re=new Float64Array(N),im=new Float64Array(N);
+  for(let c=0;c<2;c++){
+    const y=new Float64Array(L),ws=new Float64Array(L),base=t*4*BINS*FR,oR=base+(2*c)*BINS*FR,oI=base+(2*c+1)*BINS*FR;
+    for(let p=0;p<P;p++){
+      const f=p-2;re.fill(0);im.fill(0);
+      if(f>=0&&f<FR){
+        // 逆変換は共役を順変換して実部を取る（1/N も掛ける）
+        for(let b=0;b<BINS;b++){re[b]=freq[oR+b*FR+f];im[b]=-freq[oI+b*FR+f];}
+        for(let b=1;b<BINS;b++){re[N-b]=re[b];im[N-b]=-im[b];}
+        fft(re,im);
+      }
+      const s=p*H;for(let i=0;i<N;i++){const v=f>=0&&f<FR?re[i]/N:0;y[s+i]+=v*w[i]*sc;ws[s+i]+=w[i]*w[i];}
+    }
+    const o=new Float32Array(T),off=N/2+pad;for(let i=0;i<T;i++){const k=off+i;o[i]=ws[k]>1e-8?y[k]/ws[k]:0;}
+    out.push(o);
+  }
+  return out;
+}
+// 曲全体の分離：7.8 秒の区間を 25% ずつ重ねて推論し、台形の重みでつなぐ（demucs-web と同じ）。
+// run(wave,spec) は {freq,time} を返す非同期関数（ONNX の推論）。返り値は 4 パート × [L,R]
+async function dmxSeparate(L,R,run,prog){
+  const {T}=DMX,n=L.length,stride=Math.floor(T*0.75),nSeg=Math.max(1,Math.ceil((n-T)/stride)+1);
+  const out=DMX.TRACKS.map(()=>[new Float32Array(n),new Float32Array(n)]),wsum=new Float32Array(n);let k=0;
+  for(let st=0;st<n;st+=stride){
+    const len=Math.min(T,n-st),sL=new Float32Array(T),sR=new Float32Array(T);sL.set(L.subarray(st,st+len));sR.set(R.subarray(st,st+len));
+    const {wave,spec}=dmxPrep(sL,sR),r=await run(wave,spec);
+    const win=new Float32Array(len);for(let i=0;i<len;i++)win[i]=Math.min(1,i/(stride*0.5),(len-i)/(stride*0.5));
+    for(let t=0;t<4;t++){
+      const fw=dmxIspec(r.freq,t);
+      for(let c=0;c<2;c++){const o=out[t][c],tb=t*2*T+c*T;for(let i=0;i<len;i++)o[st+i]+=(r.time[tb+i]+fw[c][i])*win[i];}
+    }
+    for(let i=0;i<len;i++)wsum[st+i]+=win[i];
+    k++;if(prog)prog(Math.min(1,k/nSeg));
+    if(st+T>=n)break;
+  }
+  for(const tr of out)for(const o of tr)for(let i=0;i<n;i++)if(wsum[i]>0)o[i]/=wsum[i];
+  return out;
+}
 /* ---- 譜面：拍・コード・TAB 譜 ---- */
 // 立ち上がりの強さ（全帯域と 200 Hz 以下）。音量に左右されないよう、全体の RMS で正規化してから対数フラックスをとる
 function onsetEnv(mono,fs,fmax){
@@ -3584,6 +3657,7 @@ async function run(chs,fs,info){
     const {res,chs:back}=await analyze(chs,fs,{trim:$("optTrim").checked,layout:info.layout||null});
     lastRaw=Object.assign({chs:back,fs},info);
     Object.assign(res,{label:info.label,source:info.source,resampled:info.resampled,gaps:info.gaps||0});
+    if(!info.keepOrig&&typeof stState!=="undefined"&&stState){stState=null;$("stCtl").hidden=true;$("stMsg").textContent="";} // 別の音になったら、前の分離結果は使えない
     current=res;aSongId=info.songId!=null?info.songId:null;render(res,info.noScroll);renderSongs();
     setStatus("解析が完了しました（"+info.label+" / "+fmtT(res.dur)+"）");
     return true;
@@ -5990,6 +6064,96 @@ function renderDelivery(m){
 }
 
 
+
+/* ---------- 10. パート別の音量（HTDemucs） ---------- */
+const DMX_MODEL={url:"https://huggingface.co/ptasior/pizu-audio-models/resolve/74331d1e9344e876513b474325fb8fb316fbb392/htdemucs_embedded.onnx",size:180534758,sha256:"e5e425c17683f163a472462eb5f5a4ffcd11c31858d57fbd0833b012d8b88077"};
+const ORT_BASE="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+const DMX_NAMES={drums:"ドラム",bass:"ベース",other:"その他（ギター・鍵盤など）",vocals:"ボーカル"};
+let dmxWorker=null,dmxReady=null,dmxEp="",stState=null,stStopReq=false,dmxReject=null;
+const stMsg=(t,err)=>{$("stMsg").textContent=t;$("stMsg").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="10. "+t;b.className="sub"+(err?" err":"");}};
+const sha256hex=async buf=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",buf))].map(b=>b.toString(16).padStart(2,"0")).join("");
+// モデルを用意する：ブラウザに保存済みならそれを使い、なければダウンロードする。どちらも SHA-256 で本物か確かめる
+async function dmxModel(){
+  const url=pref.get("tabAnalyzerDmxModelUrl","")||DMX_MODEL.url;let buf=null;
+  try{const v=await idb.get("dmx-model");if(v&&v.blob){stMsg("保存したモデルを読み込み中…");buf=await v.blob.arrayBuffer();if(await sha256hex(buf)!==DMX_MODEL.sha256)buf=null;}}catch(e){buf=null;}
+  if(buf)return buf;
+  const r=await fetch(url);if(!r.ok)throw new Error("モデルをダウンロードできませんでした（HTTP "+r.status+"）");
+  const total=+r.headers.get("Content-Length")||DMX_MODEL.size,rd=r.body.getReader(),parts=[];let got=0,lastP=-1;
+  for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;const p=Math.floor(100*got/total);if(p!==lastP){lastP=p;stMsg("モデルをダウンロード中 "+p+"%（"+(got/1048576).toFixed(0)+" / "+(total/1048576).toFixed(0)+" MB）");}if(stStopReq)throw new Error("中止しました");}
+  const u=new Uint8Array(got);let o=0;for(const p of parts){u.set(p,o);o+=p.length;}buf=u.buffer;
+  stMsg("モデルを確認中…");if(await sha256hex(buf)!==DMX_MODEL.sha256)throw new Error("ダウンロードしたモデルが正しくありません（SHA-256 が一致しません）");
+  try{await idb.put("dmx-model",{blob:new Blob([buf])});}catch(e){console.warn(e);}
+  return buf;
+}
+// 推論用の Worker（ONNX Runtime Web を読み込み、区間ごとに推論して前後処理まで行う）
+const DMX_WORKER=`
+let sess=null;
+self.onmessage=async e=>{const d=e.data;try{
+  if(d.cmd==="init"){
+    importScripts(d.ort+"ort.webgpu.min.js");ort.env.wasm.wasmPaths=d.ort;
+    let last=null;const tries=self.navigator&&self.navigator.gpu?[["webgpu"],["wasm"]]:[["wasm"]];
+    for(const eps of tries){try{sess=await ort.InferenceSession.create(d.model,{executionProviders:eps,graphOptimizationLevel:"basic"});self.postMessage({type:"ready",ep:eps[0]});return;}catch(err){last=err;}}
+    throw last||new Error("ONNX Runtime を初期化できませんでした");
+  }
+  if(d.cmd==="sep"){
+    const run=async(wave,spec)=>{const r=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",wave,[1,2,DMX.T]),[sess.inputNames[1]]:new ort.Tensor("float32",spec,[1,4,DMX.BINS,DMX.FR])});
+      let freq,time;for(const k of sess.outputNames){const t=r[k];if(t.dims.length===5)freq=t.data;else time=t.data;}return {freq,time};};
+    const out=await dmxSeparate(d.L,d.R,run,p=>self.postMessage({type:"progress",p}));
+    self.postMessage({type:"done",out},[].concat(...out.map(t=>t.map(c=>c.buffer))));
+  }
+}catch(err){self.postMessage({type:"error",message:String(err&&err.message||err)});}};`;
+function dmxCall(msg,tr,onProg){
+  return new Promise((res,rej)=>{dmxReject=rej;dmxWorker.onmessage=e=>{const d=e.data;if(d.type==="progress"){if(onProg)onProg(d.p);}else if(d.type==="error"){rej(new Error(d.message));}else res(d);};
+    dmxWorker.onerror=e=>{if(e.preventDefault)e.preventDefault();rej(new Error("AI の処理が異常終了しました（メモリ不足の可能性があります）"));};dmxWorker.postMessage(msg,tr||[]);});
+}
+async function dmxInit(){
+  if(dmxReady)return dmxReady;
+  dmxReady=(async()=>{
+    const model=await dmxModel();stMsg("AI を準備中…");
+    const url=URL.createObjectURL(new Blob([$("dsp").textContent,DMX_WORKER],{type:"text/javascript"}));dmxWorker=new Worker(url);
+    const r=await dmxCall({cmd:"init",ort:pref.get("tabAnalyzerOrtBase","")||ORT_BASE,model},[model]);dmxEp=r.ep;return true;
+  })();
+  try{return await dmxReady;}catch(e){dmxReady=null;if(dmxWorker){dmxWorker.terminate();dmxWorker=null;}throw e;}
+}
+function renderStems(){
+  if(!stState){$("stCtl").hidden=true;return;}$("stCtl").hidden=false;
+  $("stTable").innerHTML="<tr><th>パート</th><th>音量</th><th></th><th></th></tr>"+DMX.TRACKS.map((k,i)=>"<tr><td style='text-align:left'>"+DMX_NAMES[k]+"</td><td><input type='range' min='-12' max='6' step='0.5' value='"+stState.g[i]+"' data-i='"+i+"' style='width:220px'></td><td style='min-width:64px'>"+(stState.g[i]>0?"+":"")+f1(stState.g[i])+" dB</td><td><button data-ex='"+i+"'>書き出す</button></td></tr>").join("");
+}
+$("stTable").addEventListener("input",e=>{const i=e.target.dataset.i;if(i==null)return;stState.g[+i]=+e.target.value;e.target.closest("tr").children[2].textContent=(stState.g[+i]>0?"+":"")+f1(stState.g[+i])+" dB";});
+$("stTable").addEventListener("click",async e=>{const i=e.target.getAttribute("data-ex");if(i==null||!stState)return;
+  const k=DMX.TRACKS[+i],st=stState.stems[+i],buf=encodeAudio(st,stState.fs,"wav24");download(new Blob([buf],{type:"audio/wav"}),outBase()+"_"+k+".wav");});
+$("stReset").onclick=()=>{if(stState){stState.g=[0,0,0,0];renderStems();}};
+// 中止：Worker の計算は途中で止められないので、Worker ごと終わらせる（次に分けるときはモデルの読み込みからやり直す）
+$("stStop").onclick=()=>{stStopReq=true;$("stStop").hidden=true;stMsg("止めています…");
+  if(dmxWorker){dmxWorker.terminate();dmxWorker=null;dmxReady=null;if(dmxReject){dmxReject(new Error("中止しました"));dmxReject=null;}}};
+$("stRun").onclick=async()=>{
+  if(!current||!rawOK()){stMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return;}
+  if(lastRaw.chs.length>2){stMsg("ステレオかモノラルの曲だけ分けられます",true);return;}
+  const m=current,fs=lastRaw.fs,s0=m.trimStart,s1=m.trimEnd,mix=lastRaw.chs.map(c=>c.slice(s0,s1));if(mix.length===1)mix.push(Float32Array.from(mix[0]));
+  stStopReq=false;stopPlay();busy=true;updateButtons();$("stRun").disabled=true;$("stStop").hidden=false;
+  const t0=performance.now();
+  try{
+    await dmxInit();if(stStopReq)throw new Error("中止しました");
+    let L=mix[0],R=mix[1];if(fs!==DMX.FS){stMsg("44.1 kHz に変換中…");[L,R]=await resampleChs([L,R],fs,DMX.FS);}
+    stMsg("パートに分けています（"+(dmxEp==="webgpu"?"WebGPU":"CPU（WASM）")+"）…");
+    const r=await dmxCall({cmd:"sep",L:Float32Array.from(L),R:Float32Array.from(R)},null,p=>{const el=(performance.now()-t0)/1000;stMsg("パートに分けています（"+(dmxEp==="webgpu"?"WebGPU":"CPU（WASM）")+"） "+Math.round(p*100)+"%"+(p>0.05?"・残り約 "+fmtT(el/p*(1-p)):""));});
+    let stems=r.out;if(fs!==DMX.FS){stMsg("元のサンプルレートに戻しています…");stems=await Promise.all(stems.map(t=>resampleChs(t,DMX.FS,fs)));stems=stems.map(t=>t.map(c=>{const o=new Float32Array(s1-s0);o.set(c.subarray(0,o.length));return o;}));}
+    stState={label:m.label,fs,s0,s1,mix,stems,g:[0,0,0,0],before:m,info:{source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout},mono:lastRaw.chs.length===1};
+    renderStems();stMsg("分けました（"+fmtT((performance.now()-t0)/1000)+"・"+(dmxEp==="webgpu"?"WebGPU":"CPU（WASM）")+"）。音量を動かして「音量を反映して解析」を押してください");
+  }catch(e){console.error(e);stMsg(stStopReq?"中止しました":"分けられませんでした："+(e.message||e),!stStopReq);}
+  finally{busy=false;updateButtons();$("stRun").disabled=false;$("stStop").hidden=true;}
+};
+$("stApply").onclick=async()=>{
+  if(!stState||busy)return;const S=stState,n=S.s1-S.s0,k=S.g.map(g=>Math.pow(10,g/20)-1);
+  const out=S.mix.map((c,ci)=>{const o=Float32Array.from(c);for(let t=0;t<4;t++){if(!k[t])continue;const st=S.stems[t][ci];for(let i=0;i<n;i++)o[i]+=k[t]*st[i];}return o;});
+  const chs=S.mono?[out[0]]:out,beforeChs=S.mono?[S.mix[0]]:S.mix;
+  const orig=editOrig||{chs:lastRaw.chs.map(c=>c.slice()),fs:S.fs,info:Object.assign({label:current.label},S.info)};
+  editOrig=orig;
+  const lbl=DMX.TRACKS.map((t,i)=>S.g[i]?DMX_NAMES[t].replace(/（.*$/,"")+(S.g[i]>0?"+":"")+S.g[i]:"").filter(Boolean).join("・")||"変更なし";
+  await run(chs,S.fs,Object.assign({label:S.label.replace(/（パート：[^）]*）$/,"")+"（パート："+lbl+"）",keepOrig:true,noScroll:true},S.info));
+  if($("stAB").checked&&current){const r=snapshot(S.before,"反映前の音");r.hasAudio=true;tempRef=r;tempAudio={id:r.id,chs:beforeChs,fs:S.fs};refId=r.id;bSongId=null;$("listenMode").value="match";showBInfo();renderSongs();refresh();}
+  stMsg("反映しました（"+lbl+"）。上のバーの A / B で聴き比べられます");
+};
 /* ---------- 再生機器のシミュレーション ---------- */
 // 大まかな近似（実機を測ったデータではない）：小さいスピーカーは低音が出ない、中高域が目立つ、などの一般的な傾向を EQ で真似る。
 // mono：左右を混ぜて 1 つのスピーカーで鳴らす（スマホの多くは片側のスピーカーが主に鳴る）
