@@ -247,7 +247,7 @@ input[type=range]{accent-color:var(--acc)}
       <div class="row" style="margin-top:8px">
         <label class="sub">ジャンル<select id="albumGenre"></select></label>
         <label class="sub">音量<select id="albumMode"><option value="same">全曲の音量をそろえる（おすすめ）</option><option value="genre">各曲ともジャンルの目安に合わせる</option></select></label>
-        <label class="sub">形式<select id="albumFmt"><option value="flac24">FLAC 24bit</option><option value="wav24">WAV 24bit</option><option value="wav16">WAV 16bit（CD 用・ディザあり）</option></select></label>
+        <label class="sub">形式<select id="albumFmt"><option value="flac24">FLAC 24bit</option><option value="wav24">WAV 24bit</option><option value="wav16">CD 用（WAV 16bit・44.1 kHz・ディザあり）</option></select></label>
       </div>
       <div class="row" style="margin-top:8px"><button id="albumRun" class="primary">まとめて仕上げる</button><button id="albumStop" hidden>中止</button><button id="albumDl" hidden>💾 ZIP で保存</button><span id="albumMsg" class="sub"></span></div>
       <div class="songWrap"><table id="albumTable" style="margin-top:6px"></table></div>
@@ -310,7 +310,7 @@ input[type=range]{accent-color:var(--acc)}
       <div class="easyAB"><button id="easyA" class="easyAbBtn">▶ 仕上げた音</button><button id="easyB" class="easyAbBtn">▶ 元の音</button><button id="easyStop" class="easyAbBtn" title="停止（Space）">■</button></div>
       <div class="sub" style="text-align:center;margin-top:4px">2 つは音量をそろえて再生しています（大きいほうが良く聞こえる錯覚を防ぐため）。<kbd>X</kbd> キーでも切り替えられます。上のバーの「再生機器」で、スマホ・イヤホン・車などで聴いたときの大まかな近似も試せます。</div>
       <div class="easyRow" style="margin-top:10px">
-        <label class="easyLbl">保存の形式<select id="easyFmt"><option value="wav24">WAV 24bit（おすすめ）</option><option value="wav16">WAV 16bit（CD 用・ディザあり）</option><option value="flac24">FLAC 24bit（小さいファイル）</option></select></label>
+        <label class="easyLbl">保存の形式<select id="easyFmt"><option value="wav24">WAV 24bit（おすすめ）</option><option value="wav16">CD 用（WAV 16bit・44.1 kHz・ディザあり）</option><option value="flac24">FLAC 24bit（小さいファイル）</option></select></label>
         <button id="easySave" class="primary">💾 仕上げた音を保存</button><button id="easyUndo">元の音に戻す</button>
       </div>
     </div>
@@ -727,7 +727,8 @@ input[type=range]{accent-color:var(--acc)}
       <span class="sub">「対象」が選択範囲のときは、範囲の両端を短くなじませて適用します。適用後の音はそのまま下の書き出しで保存できます。</span></div>
     <h3>書き出し</h3>
     <div class="row"><label class="sub">範囲<select id="exRange"><option value="all">曲全体（前後の無音トリム後）</option><option value="whole">ファイル全体（トリムなし）</option><option value="sel">4. の選択範囲</option></select></label>
-      <label class="sub">形式<select id="exFmt"></select></label><button id="exRun" class="primary">書き出す</button><span id="exInfo" class="sub"></span></div>
+      <label class="sub">形式<select id="exFmt"></select></label>
+      <label class="sub">サンプルレート<select id="exRate"><option value="">元のまま</option><option value="44100">44.1 kHz（CD・多くの配信）</option><option value="48000">48 kHz（動画）</option><option value="88200">88.2 kHz</option><option value="96000">96 kHz</option></select></label><button id="exRun" class="primary">書き出す</button><span id="exInfo" class="sub"></span></div>
     <h3>メタデータ（タグ）</h3>
     <div class="row" style="gap:6px"><input id="tgTitle" placeholder="タイトル" style="width:170px"><input id="tgArtist" placeholder="アーティスト" style="width:150px"><input id="tgAlbum" placeholder="アルバム" style="width:150px"></div>
     <div class="row" style="gap:6px;margin-top:4px"><input id="tgYear" placeholder="年" style="width:60px"><input id="tgTrack" placeholder="トラック" style="width:70px"><input id="tgGenre" placeholder="ジャンル" style="width:110px"><input id="tgComment" placeholder="コメント" style="width:230px"><button id="tgClear">空にする</button></div>
@@ -2128,6 +2129,40 @@ function encodeFlac(chs,fs,f,progress){
 function encodeAudio(chs,fs,key,progress){
   const f=SAVE_FORMATS[key];
   return f.flac?encodeFlac(chs,fs,f,progress):encodeWav(chs,fs,f);
+}
+/* ---- サンプルレート変換（窓付き sinc・有理比の多相フィルタ） ----
+   出力サンプル m の位置は入力の m·M/L（L/M = 出力レート/入力レートを約分した比）。小数部は L 通りしかないので、
+   位相ごとの係数を前もって計算する（近似のない正確な位相）。
+   フィルタ：通過帯域 fpass（20 kHz か、低いほうのレートの 0.4535 倍）、阻止帯域は低いほうのナイキスト周波数、
+   カイザー窓（減衰 o.att dB、既定 140）。位相ごとに係数の和を 1 にそろえる（直流の利得をぴったり 1 に） */
+function srcPlan(from,to,o){
+  o=o||{};const g=(a,b)=>b?g(b,a%b):a,d=g(from,to),L=to/d,M=from/d,fl=Math.min(from,to);
+  const fpass=Math.min(o.fpass||20000,0.4535*fl),fstop=fl/2,att=o.att||140;
+  const fc=(fpass+fstop)/2/from,tw=(fstop-fpass)/from;               // 入力 1 サンプルあたりの周波数
+  const beta=att>50?0.1102*(att-8.7):0.5842*Math.pow(att-21,0.4)+0.07886*(att-21);
+  const K=Math.ceil((att-7.95)/(2.285*2*Math.PI*tw)/2)+1;              // 片側のタップ数
+  const I0=v=>{let s=1,t=1;for(let k=1;k<200;k++){t*=(v/(2*k))**2;s+=t;if(t<1e-17*s)break;}return s;},i0b=I0(beta);
+  const taps=2*K,tab=new Float64Array(L*taps);
+  for(let r=0;r<L;r++){
+    const fr=r/L;let sum=0;
+    for(let j=0;j<taps;j++){const tau=(j-K+1)-fr,u=tau/(K+1),w=Math.abs(u)>=1?0:I0(beta*Math.sqrt(1-u*u))/i0b,x=2*fc*tau,sn=x===0?1:Math.sin(Math.PI*x)/(Math.PI*x);const v=2*fc*sn*w;tab[r*taps+j]=v;sum+=v;}
+    for(let j=0;j<taps;j++)tab[r*taps+j]/=sum;
+  }
+  return {L,M,K,taps,tab,fpass,fstop,att};
+}
+function srcResample(chs,from,to,o){
+  if(from===to)return chs.map(c=>Float32Array.from(c));
+  const P=srcPlan(from,to,o),{L,M,K,taps,tab}=P,n=chs[0].length,m=Math.round(n*L/M);
+  return chs.map(x=>{
+    const y=new Float32Array(m);
+    for(let q=0;q<m;q++){
+      const num=q*M,i0=Math.floor(num/L),r=num-i0*L,b=r*taps,s0=i0-K+1;let acc=0;
+      if(s0>=0&&s0+taps<=n){for(let j=0;j<taps;j++)acc+=tab[b+j]*x[s0+j];}
+      else{for(let j=0;j<taps;j++){const k=s0+j;if(k>=0&&k<n)acc+=tab[b+j]*x[k];}}
+      y[q]=acc;
+    }
+    return y;
+  });
 }
 /* ---- ダイナミクス（PSR・DR）---- */
 // hop サンプルごとの 4 倍オーバーサンプリング・ピーク（BS.1770 の 4 倍 FIR、全チャンネルの最大）。
@@ -3584,6 +3619,7 @@ self.onmessage=e=>{
     let out,tr=[];
     if(d.cmd==="encode"){const buf=encodeAudio(d.chs.map(c=>c.subarray(d.s0,d.s1)),d.fs,d.fmt,p=>prog("書き出し中 "+p+"%"));out={buf,chs:d.chs};tr=[buf].concat(back);}
     else if(d.cmd==="region"){out=regionAnalysis(d);tr=[out.spec.db.buffer];}
+    else if(d.cmd==="src"){prog("サンプルレートの変換");out={chs:srcResample(d.chs,d.from,d.to)};tr=out.chs.map(c=>c.buffer);}
     else if(d.cmd==="specgram"){out=specgramCore(d.mono,d.fs,d.off,d.len,d.cols,d.bins,d.N,d.win,d.scale);tr=[out.db.buffer];}
     else if(d.cmd==="pitch"){out=pitchTrack(d.mono,d.fs,d.fmin,d.fmax,prog);tr=[out.f0.buffer,out.conf.buffer];}
     else if(d.cmd==="slm"){prog("騒音計");const slm=soundLevel(d.x,d.fs,d.K);prog("1/1 オクターブ");const oct1=octaveAnalysis(d.x,d.fs,1,d.K);prog("1/3 オクターブ");out={slm,oct1,oct3:octaveAnalysis(d.x,d.fs,3,d.K)};}
@@ -5208,11 +5244,14 @@ async function encodeDecode(chs,fs,c,prog){
   const out=[];for(let ch=0;ch<nc;ch++){const a=new Float32Array(len);let p=0;for(const pl of outs){a.set(pl[Math.min(ch,pl.length-1)],p);p+=pl[0].length;}out.push(a);}
   return {chs:out,fs:dfs||fs,bytes:chunks.reduce((a,c)=>a+c.byteLength,0)};
 }
+// サンプルレート変換：自前の窓付き sinc（srcResample）を Worker で実行する。
+// ブラウザ標準の変換（OfflineAudioContext）は、実測で 20 kHz が −5 dB 落ち、折り返しも −7 dB しか抑えられなかったため使わない。
+// 呼び出し元の配列は Worker に渡さない（コピーを渡す）ので、元の音声はそのまま使える
 async function resampleChs(chs,from,to){
   if(from===to)return chs;
-  const n=chs[0].length,m=Math.round(n*to/from),oc=new OfflineAudioContext(chs.length,m,to),b=oc.createBuffer(chs.length,n,from);
-  chs.forEach((c,i)=>b.copyToChannel(c,i));const s=oc.createBufferSource();s.buffer=b;s.connect(oc.destination);s.start();
-  const r=await oc.startRendering();return chs.map((_,i)=>new Float32Array(r.getChannelData(i)));
+  const cp=chs.map(c=>Float32Array.from(c));
+  const out=await runJob({cmd:"src",chs:cp,from,to},cp.map(c=>c.buffer),null,()=>({chs:srcResample(cp,from,to)}));
+  return out.chs;
 }
 function cdcMsg(t,err){$("cdcStatus").textContent=t;$("cdcStatus").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="コーデック："+t;b.className="sub"+(err?" err":"");}}
 async function runCodec(){
@@ -6063,7 +6102,7 @@ function renderDelivery(m){
   add("Apple Digital Masters","トゥルーピーク","−1 dBTP 以下（BS.1770-4 で測定）",f1(tp)+" dBTP",tp<=-1?"ok":"bad",tp<=-1?"":"10. のおまかせマスタリングで上限を −1 dBTP 以下にして仕上げる");
   // CD
   const fs=fmt&&fmt.fs||m.fs;
-  add("CD（Red Book）","形式","16bit・44.1 kHz・ステレオ",(fmt&&fmt.bits?fmt.bits+"bit・":"")+(fs/1000)+" kHz・"+(m.layout.length===2?"ステレオ":m.layout.length+"ch"),fs===44100&&m.layout.length===2?(fmt&&fmt.bits===16?"ok":"info"):"warn",fs!==44100?"44.1 kHz への変換が必要です（このツールではまだできません。DAW で書き出してください）":m.layout.length!==2?"ステレオにする":fmt&&fmt.bits===16?"":"10. の書き出しで「WAV 16bit（ディザあり）」を選ぶ");
+  add("CD（Red Book）","形式","16bit・44.1 kHz・ステレオ",(fmt&&fmt.bits?fmt.bits+"bit・":"")+(fs/1000)+" kHz・"+(m.layout.length===2?"ステレオ":m.layout.length+"ch"),fs===44100&&m.layout.length===2?(fmt&&fmt.bits===16?"ok":"info"):"warn",fs!==44100?"10. の書き出しで「サンプルレート 44.1 kHz」と「WAV 16bit（ディザあり）」を選ぶ（かんたん表示なら保存の形式で「CD 用」）":m.layout.length!==2?"ステレオにする":fmt&&fmt.bits===16?"":"10. の書き出しで「WAV 16bit（ディザあり）」を選ぶ");
   $("delivNote").textContent=fmt?"ファイル："+fmt.name+"（"+fmt.container+(fmt.bits?"・"+(fmt.float?"32bit 浮動小数点":fmt.bits+"bit"):"")+(fmt.fs?"・"+fmt.fs/1000+" kHz":"")+"）":"編集・仕上げ後の音です（ファイル形式の条件は、書き出すときの形式で決まります）";
   $("delivTable").innerHTML="<tr><th>配信先</th><th>項目</th><th>条件</th><th>この曲</th><th>判定</th><th>対処</th></tr>"+rows.map(r=>"<tr><td>"+esc(r.svc)+"</td><td>"+esc(r.item)+"</td><td>"+esc(r.cond)+"</td><td>"+esc(r.val)+"</td><td class='j "+r.lv+"'>"+J[r.lv]+"</td><td>"+esc(r.fix||"")+"</td></tr>").join("");
 }
@@ -6234,6 +6273,8 @@ $("albumRun").onclick=async()=>{
   stopPlay();busy=true;updateButtons();albumZip=null;albumStopReq=false;$("albumDl").hidden=true;$("albumStop").hidden=false;$("albumRun").disabled=true;
   const rows=list.map(x=>({name:x.name,st:"待機中"})),bufs=new Array(list.length).fill(null);renderAlbum(rows,null);
   const enc=async(r,i)=>{const t=Object.assign({},tagsNow(),{title:list[i].name.replace(/\\.[^.]+$/,""),track:String(i+1)});
+    // CD 用（16bit）は 44.1 kHz に変換してから
+    if(fmt==="wav16"&&r.fs!==44100){r.chs=await resampleChs(r.chs,r.fs,44100);r.fs=44100;}
     const o=await runJob({cmd:"encode",chs:r.chs,fs:r.fs,fmt,s0:0,s1:r.chs[0].length},r.chs.map(c=>c.buffer),null,()=>({buf:encodeAudio(r.chs,r.fs,fmt),chs:r.chs}));
     return new Uint8Array(addTags(o.buf,fmt,t));};
   try{
@@ -6354,7 +6395,7 @@ const easyPlay=side=>{if(!current||!lastRaw)return;if(!player){if(side!==abSide)
 $("easyA").onclick=e=>{e.currentTarget.blur();easyPlay("A");};
 $("easyB").onclick=e=>{e.currentTarget.blur();easyPlay("B");};
 $("easyStop").onclick=e=>{e.currentTarget.blur();stopPlay();setTimeout(easyAbUi,50);};
-$("easySave").onclick=()=>{$("exFmt").value=$("easyFmt").value;$("exRange").value="all";$("exRun").click();};
+$("easySave").onclick=()=>{const f=$("easyFmt").value;$("exFmt").value=f;$("exRange").value="all";$("exRate").value=f==="wav16"?"44100":"";$("exRun").click();};
 $("easyUndo").onclick=async()=>{if(editOrig&&!busy){await edUndo();msLast=null;renderEasy();}};
 $("outMeq").onclick=()=>{
   if(!meqFit||!meqFit.bands.length){edMsg("適用できるマッチ EQ がありません（5. でターゲットか比較対象を選んでください）",true);return;}
@@ -6445,6 +6486,14 @@ function addTags(buf,fmt,tg){
 // 書き出し
 for(const k in SAVE_FORMATS)$("exFmt").add(new Option(SAVE_FORMATS[k].name,k));
 const outBase=()=>($("tgTitle").value.trim()||safeName(current.label)).replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,60);
+// s0〜s1 を、必要ならサンプルレートを変えてから（変換は窓付き sinc）、指定の形式に書き出す。16bit のディザは変換の後にかかる
+async function encodeAt(raw,s0,s1,fmt,fsOut){
+  if(!fsOut||fsOut===raw.fs)return {buf:await encodeRaw(raw,s0,s1,fmt),fs:raw.fs};
+  edMsg("サンプルレートを "+(fsOut/1000)+" kHz に変換中…");
+  const rs=await resampleChs(raw.chs.map(c=>c.subarray(s0,s1)),raw.fs,fsOut);
+  const o=await runJob({cmd:"encode",chs:rs,fs:fsOut,fmt,s0:0,s1:rs[0].length},rs.map(c=>c.buffer),setStatus,()=>({buf:encodeAudio(rs,fsOut,fmt),chs:rs}));
+  return {buf:o.buf,fs:fsOut};
+}
 $("exRun").onclick=async()=>{
   if(!current||!rawOK()){edMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return;}
   const raw=lastRaw,fmt=$("exFmt").value,fm=SAVE_FORMATS[fmt],mode=$("exRange").value;let s0,s1,suf="";
@@ -6454,10 +6503,10 @@ $("exRun").onclick=async()=>{
   stopPlay();busy=true;updateButtons();
   try{
     edMsg("書き出し中…");await tick();
-    const buf=addTags(await encodeRaw(raw,s0,s1,fmt),fmt,tagsNow());
+    const rate=+$("exRate").value||0,enc=await encodeAt(raw,s0,s1,fmt,rate),buf=addTags(enc.buf,fmt,tagsNow());
     // おまかせで仕上げた音は、元のファイルと取り違えないよう名前に _master を付ける
     download(new Blob([buf],{type:fm.mime}),outBase()+(msLast&&msLast.after===current?"_master":"")+suf+"."+fm.ext);
-    edMsg("");$("exInfo").textContent=fm.name+" / "+fmtT((s1-s0)/raw.fs)+" / "+(buf.byteLength/1048576).toFixed(1)+" MB を保存しました";
+    edMsg("");$("exInfo").textContent=fm.name+" / "+(enc.fs/1000)+" kHz"+(enc.fs!==raw.fs?"（"+(raw.fs/1000)+" kHz から変換）":"")+" / "+fmtT((s1-s0)/raw.fs)+" / "+(buf.byteLength/1048576).toFixed(1)+" MB を保存しました";
   }catch(e){console.error(e);edMsg("書き出せませんでした: "+e.message,true);}
   finally{busy=false;updateButtons();}
 };
@@ -6527,12 +6576,6 @@ $("spRun").onclick=async()=>{
 };
 
 // 結合
-async function resampleChs(chs,from,to){
-  const n=chs[0].length,ctx=new OfflineAudioContext(chs.length,Math.ceil(n*to/from),to),b=ctx.createBuffer(chs.length,n,from);
-  chs.forEach((c,i)=>b.copyToChannel(c,i));
-  const s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();
-  const r=await ctx.startRendering();return chs.map((_,i)=>new Float32Array(r.getChannelData(i)));
-}
 $("mgRun").onclick=async()=>{
   if(busy)return;const files=[...$("mgFiles").files],parts=[];
   if($("mgCur").checked&&current&&rawOK())parts.push({chs:lastRaw.chs.map(c=>c.slice(current.trimStart,current.trimEnd)),fs:lastRaw.fs,source:lastRaw.source});
