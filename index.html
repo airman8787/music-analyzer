@@ -2150,19 +2150,24 @@ function srcPlan(from,to,o){
   }
   return {L,M,K,taps,tab,fpass,fstop,att};
 }
+// 出力 q0〜q1−1 だけを計算する。seg は入力の一部（seg[i] が入力の off+i 番目）、n は入力全体の長さ。
+// 並列化のときも、1 本で計算したときと同じ順に同じ係数を掛けるので、結果はビット単位で同じになる
+function srcRange(seg,off,n,P,q0,q1){
+  const {L,M,K,taps,tab}=P,y=new Float32Array(q1-q0);
+  for(let q=q0;q<q1;q++){
+    const num=q*M,i0=Math.floor(num/L),r=num-i0*L,b=r*taps,s0=i0-K+1;let acc=0;
+    if(s0>=0&&s0+taps<=n){const o=s0-off;for(let j=0;j<taps;j++)acc+=tab[b+j]*seg[o+j];}
+    else{for(let j=0;j<taps;j++){const k=s0+j;if(k>=0&&k<n)acc+=tab[b+j]*seg[k-off];}}
+    y[q-q0]=acc;
+  }
+  return y;
+}
+// 出力 q0〜q1−1 の計算に要る入力の範囲 [a, b)
+function srcNeed(P,n,q0,q1){const a=Math.max(0,Math.floor(q0*P.M/P.L)-P.K+1),b=Math.min(n,Math.floor((q1-1)*P.M/P.L)-P.K+1+P.taps);return [a,Math.max(a,b)];}
 function srcResample(chs,from,to,o){
   if(from===to)return chs.map(c=>Float32Array.from(c));
-  const P=srcPlan(from,to,o),{L,M,K,taps,tab}=P,n=chs[0].length,m=Math.round(n*L/M);
-  return chs.map(x=>{
-    const y=new Float32Array(m);
-    for(let q=0;q<m;q++){
-      const num=q*M,i0=Math.floor(num/L),r=num-i0*L,b=r*taps,s0=i0-K+1;let acc=0;
-      if(s0>=0&&s0+taps<=n){for(let j=0;j<taps;j++)acc+=tab[b+j]*x[s0+j];}
-      else{for(let j=0;j<taps;j++){const k=s0+j;if(k>=0&&k<n)acc+=tab[b+j]*x[k];}}
-      y[q]=acc;
-    }
-    return y;
-  });
+  const P=srcPlan(from,to,o),n=chs[0].length,m=Math.round(n*P.L/P.M);
+  return chs.map(x=>srcRange(x,0,n,P,0,m));
 }
 /* ---- ダイナミクス（PSR・DR）---- */
 // hop サンプルごとの 4 倍オーバーサンプリング・ピーク（BS.1770 の 4 倍 FIR、全チャンネルの最大）。
@@ -2954,28 +2959,29 @@ function masterProcess(chs,fs,o,prog){
     if(!Number.isFinite(L0))throw new Error("音が小さすぎて、ラウドネスを測れませんでした");
     prog("リミッター（ピーク検出）");const pk=msPeak4(x);
     let gain=Math.min(30,o.lim.lufs-L0),ceil=o.lim.ceil,best=null,target=o.lim.lufs,psrRounds=0,tpRounds=0,it0=0;
-    // 1) 目標の統合ラウドネスになるまでゲインを調整（リミッターが深くかかるほど上がりにくいので、直前 2 回の傾きで決める＝セカント法）
+    // 1) 目標の統合ラウドネスになるまでゲインを調整（リミッターが深くかかるほど上がりにくいので、直前 2 回の傾きで決める＝セカント法）。
+    //    音質優先（maxSt）のときは、最大ショートタームが maxSt−0.2 を超えないことも同時に満たす：
+    //    「目標を超えた量」と「最大ショートタームが上限を超えた量」の大きいほうを 0 に近づける（どちらも毎回の測定に含まれるので、やり直しの周は要らない）
     // 2) 音質優先（minPsr）のとき：PSR（大きい区間のピークと短時間ラウドネスの差）が minPsr を割っていたら、その分だけ目標を下げてやり直す
     // 3) 精密なトゥルーピーク（解析と同じ方法）で確かめる。検出は 4 倍オーバーサンプリングなので、高域の強い音ではサンプル間のピークを
     //    読み落とすことがある。超えていたら上限をその分下げてやり直し、それでも超えたら出力全体を下げる
+    const stCap=o.lim.maxSt!=null?o.lim.maxSt-0.2:Infinity;
     for(let round=0;round<6;round++){
-      let prev=null;
-      for(let it=0;it<10;it++){
+      let prev=null,stBound=false;
+      for(let it=0;it<12;it++){
         prog("リミッター（調整 "+(++it0)+"）");
         const r=msLimit(x,pk,fs,gain,ceil,o.lim.opt),ld=analyzeLoudness(r.chs,fs,o.weights),L=ld.integrated;
         best={chs:r.chs,gain,ceil,grMax:r.grMax,grT:r.grT,lufs:L,loud:ld};
-        const dL=target-L;if(Math.abs(dL)<=0.1||gain>=30&&dL>0)break;
-        let slope=1;if(prev&&Math.abs(gain-prev.g)>1e-3)slope=Math.max(0.05,Math.min(1,(L-prev.L)/(gain-prev.g)));
-        prev={g:gain,L};gain=Math.min(30,gain+dL/slope);
+        const eL=L-target,eS=Number.isFinite(ld.stMax)?ld.stMax-stCap:-Infinity,e=Math.max(eL,eS);stBound=eS>eL;
+        if(Math.abs(e)<=0.1||gain>=30&&e<0)break;
+        let slope=1;if(prev&&Math.abs(gain-prev.g)>1e-3)slope=Math.max(0.05,Math.min(1,(e-prev.e)/(gain-prev.g)));
+        prev={g:gain,e};gain=Math.min(30,gain-e/slope);
       }
-      // 音質優先：PSR が minPsr 以上、最大ショートタームが maxSt 以下になるよう、足りない分だけ目標を下げてやり直す。
-      // 仕上げ後の解析（トリム後）で目安をわずかに割らないよう、0.2〜0.3 dB の余裕を持たせる
-      if((o.lim.minPsr||o.lim.maxSt!=null)&&psrRounds<3){
-        prog("潰れ具合（PSR）の確認");const ps=o.lim.minPsr?psrAnalysis(best.chs,fs,best.loud).loud:NaN,st=best.loud.stMax;best.psr=ps;
-        const needP=o.lim.minPsr&&Number.isFinite(ps)&&ps<o.lim.minPsr+0.1?o.lim.minPsr+0.3-ps:0;
-        const needS=o.lim.maxSt!=null&&Number.isFinite(st)&&st>o.lim.maxSt-0.1?st-(o.lim.maxSt-0.2):0;
-        const need=Math.max(needP,needS);
-        if(need>0.05){target=best.lufs-need;psrRounds++;info.psrGuard=true;info.guardBy=needS>needP?"st":"psr";continue;}
+      if(stBound&&best.lufs<target-0.1){info.psrGuard=true;info.guardBy="st";}
+      // 音質優先：PSR が minPsr を割っていたら、足りない分だけ目標を下げてやり直す（仕上げ後の解析で割らないよう 0.2〜0.3 dB の余裕）
+      if(o.lim.minPsr&&psrRounds<3){
+        prog("潰れ具合（PSR）の確認");const ps=psrAnalysis(best.chs,fs,best.loud).loud;best.psr=ps;
+        if(Number.isFinite(ps)&&ps<o.lim.minPsr+0.1){target=best.lufs-(o.lim.minPsr+0.3-ps);psrRounds++;info.psrGuard=true;info.guardBy="psr";continue;}
       }
       prog("トゥルーピークの確認");let tp=0;for(const c of best.chs){const r=truePeak(c);if(r.tp>tp)tp=r.tp;}
       const over=toDb(tp)-o.lim.ceil;if(over<=0)break;
@@ -5247,11 +5253,30 @@ async function encodeDecode(chs,fs,c,prog){
 // サンプルレート変換：自前の窓付き sinc（srcResample）を Worker で実行する。
 // ブラウザ標準の変換（OfflineAudioContext）は、実測で 20 kHz が −5 dB 落ち、折り返しも −7 dB しか抑えられなかったため使わない。
 // 呼び出し元の配列は Worker に渡さない（コピーを渡す）ので、元の音声はそのまま使える
+// 並列化：出力を「チャンネル × 区間」に分け、CPU のコア数（最大 8）の使い捨て Worker で同時に計算する。
+// Worker が使えないときは、解析用の Worker（1 本）で計算する
+let srcWorkerUrl=null;
 async function resampleChs(chs,from,to){
   if(from===to)return chs;
-  const cp=chs.map(c=>Float32Array.from(c));
-  const out=await runJob({cmd:"src",chs:cp,from,to},cp.map(c=>c.buffer),null,()=>({chs:srcResample(cp,from,to)}));
-  return out.chs;
+  const n=chs[0].length,P=srcPlan(from,to),m=Math.round(n*P.L/P.M),nw=Math.max(1,Math.min(8,navigator.hardwareConcurrency||2));
+  try{
+    if(typeof Worker==="undefined")throw 0;
+    if(!srcWorkerUrl)srcWorkerUrl=URL.createObjectURL(new Blob([$("dsp").textContent,`
+self.onmessage=e=>{const d=e.data,P=srcPlan(d.from,d.to);const y=srcRange(d.seg,d.off,d.n,P,d.q0,d.q1);self.postMessage(y,[y.buffer]);};`],{type:"text/javascript"}));
+    const parts=Math.max(1,Math.ceil(nw/chs.length)),jobs=[];
+    chs.forEach((x,c)=>{for(let k=0;k<parts;k++){const q0=Math.floor(m*k/parts),q1=Math.floor(m*(k+1)/parts);if(q1>q0)jobs.push({c,q0,q1});}});
+    const res=await Promise.all(jobs.map(j=>new Promise((ok,ng)=>{
+      const [a,b]=srcNeed(P,n,j.q0,j.q1),seg=chs[j.c].slice(a,b),w=new Worker(srcWorkerUrl);
+      w.onmessage=e=>{w.terminate();ok(e.data);};w.onerror=e=>{if(e.preventDefault)e.preventDefault();w.terminate();ng(new Error("サンプルレートの変換に失敗しました"));};
+      w.postMessage({seg,off:a,n,from,to,q0:j.q0,q1:j.q1},[seg.buffer]);
+    })));
+    const out=chs.map(()=>new Float32Array(m));jobs.forEach((j,i)=>out[j.c].set(res[i],j.q0));
+    return out;
+  }catch(e){
+    const cp=chs.map(c=>Float32Array.from(c));
+    const out=await runJob({cmd:"src",chs:cp,from,to},cp.map(c=>c.buffer),null,()=>({chs:srcResample(cp,from,to)}));
+    return out.chs;
+  }
 }
 function cdcMsg(t,err){$("cdcStatus").textContent=t;$("cdcStatus").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="コーデック："+t;b.className="sub"+(err?" err":"");}}
 async function runCodec(){
@@ -6113,7 +6138,8 @@ function renderDelivery(m){
 const DMX_MODEL={url:"https://huggingface.co/ptasior/pizu-audio-models/resolve/74331d1e9344e876513b474325fb8fb316fbb392/htdemucs_embedded.onnx",size:180534758,sha256:"e5e425c17683f163a472462eb5f5a4ffcd11c31858d57fbd0833b012d8b88077"};
 const ORT_BASE="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
 const DMX_NAMES={drums:"ドラム",bass:"ベース",other:"その他（ギター・鍵盤など）",vocals:"ボーカル"};
-let dmxWorker=null,dmxReady=null,dmxEp="",stState=null,stStopReq=false,dmxReject=null;
+let dmxWorker=null,dmxReady=null,dmxEp="",dmxThreads=1,stState=null,stStopReq=false,dmxReject=null;
+const dmxEpName=()=>dmxEp==="webgpu"?"WebGPU":"CPU（WASM・"+dmxThreads+" スレッド）";
 const stMsg=(t,err)=>{$("stMsg").textContent=t;$("stMsg").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="10. "+t;b.className="sub"+(err?" err":"");}};
 const sha256hex=async buf=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",buf))].map(b=>b.toString(16).padStart(2,"0")).join("");
 // モデルを用意する：ブラウザに保存済みならそれを使い、なければダウンロードする。どちらも SHA-256 で本物か確かめる
@@ -6134,7 +6160,7 @@ const DMX_WORKER=`
 let sess=null;
 self.onmessage=async e=>{const d=e.data;try{
   if(d.cmd==="init"){
-    importScripts(d.ort+"ort.webgpu.min.js");ort.env.wasm.wasmPaths=d.ort;
+    importScripts(d.ort+"ort.webgpu.min.js");ort.env.wasm.wasmPaths=d.ort;ort.env.wasm.numThreads=d.threads||1;
     let last=null;const tries=self.navigator&&self.navigator.gpu?[["webgpu"],["wasm"]]:[["wasm"]];
     for(const eps of tries){try{sess=await ort.InferenceSession.create(d.model,{executionProviders:eps,graphOptimizationLevel:"basic"});self.postMessage({type:"ready",ep:eps[0]});return;}catch(err){last=err;}}
     throw last||new Error("ONNX Runtime を初期化できませんでした");
@@ -6155,7 +6181,9 @@ async function dmxInit(){
   dmxReady=(async()=>{
     const model=await dmxModel();stMsg("AI を準備中…");
     const url=URL.createObjectURL(new Blob([$("dsp").textContent,DMX_WORKER],{type:"text/javascript"}));dmxWorker=new Worker(url);
-    const r=await dmxCall({cmd:"init",ort:pref.get("tabAnalyzerOrtBase","")||ORT_BASE,model},[model]);dmxEp=r.ep;return true;
+    // クロスオリジン分離されていれば、WASM を CPU のコア数（最大 8）のスレッドで動かす
+    dmxThreads=window.crossOriginIsolated?Math.max(1,Math.min(8,navigator.hardwareConcurrency||4)):1;
+    const r=await dmxCall({cmd:"init",ort:pref.get("tabAnalyzerOrtBase","")||ORT_BASE,model,threads:dmxThreads},[model]);dmxEp=r.ep;return true;
   })();
   try{return await dmxReady;}catch(e){dmxReady=null;if(dmxWorker){dmxWorker.terminate();dmxWorker=null;}throw e;}
 }
@@ -6179,11 +6207,11 @@ $("stRun").onclick=async()=>{
   try{
     await dmxInit();if(stStopReq)throw new Error("中止しました");
     let L=mix[0],R=mix[1];if(fs!==DMX.FS){stMsg("44.1 kHz に変換中…");[L,R]=await resampleChs([L,R],fs,DMX.FS);}
-    stMsg("パートに分けています（"+(dmxEp==="webgpu"?"WebGPU":"CPU（WASM）")+"）…");
-    const r=await dmxCall({cmd:"sep",L:Float32Array.from(L),R:Float32Array.from(R)},null,p=>{const el=(performance.now()-t0)/1000;stMsg("パートに分けています（"+(dmxEp==="webgpu"?"WebGPU":"CPU（WASM）")+"） "+Math.round(p*100)+"%"+(p>0.05?"・残り約 "+fmtT(el/p*(1-p)):""));});
+    stMsg("パートに分けています（"+dmxEpName()+"）…");
+    const r=await dmxCall({cmd:"sep",L:Float32Array.from(L),R:Float32Array.from(R)},null,p=>{const el=(performance.now()-t0)/1000;stMsg("パートに分けています（"+dmxEpName()+"） "+Math.round(p*100)+"%"+(p>0.05?"・残り約 "+fmtT(el/p*(1-p)):""));});
     let stems=r.out;if(fs!==DMX.FS){stMsg("元のサンプルレートに戻しています…");stems=await Promise.all(stems.map(t=>resampleChs(t,DMX.FS,fs)));stems=stems.map(t=>t.map(c=>{const o=new Float32Array(s1-s0);o.set(c.subarray(0,o.length));return o;}));}
     stState={label:m.label,fs,s0,s1,mix,stems,g:[0,0,0,0],before:m,info:{source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout},mono:lastRaw.chs.length===1};
-    renderStems();stMsg("分けました（"+fmtT((performance.now()-t0)/1000)+"・"+(dmxEp==="webgpu"?"WebGPU":"CPU（WASM）")+"）。音量を動かして「音量を反映して解析」を押してください");
+    renderStems();stMsg("分けました（"+fmtT((performance.now()-t0)/1000)+"・"+dmxEpName()+"）。音量を動かして「音量を反映して解析」を押してください");
   }catch(e){console.error(e);stMsg(stStopReq?"中止しました":"分けられませんでした："+(e.message||e),!stStopReq);}
   finally{busy=false;updateButtons();$("stRun").disabled=false;$("stStop").hidden=true;}
 };
@@ -6742,6 +6770,16 @@ $("cdcListen").onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v)set
 renderTargetSel();initCodecs().then(updateButtons);
 setNvhShown(pref.get("tabAnalyzerShowNvh","0")==="1");
 setMode(pref.get("tabAnalyzerMode","simple")==="full"?"full":"simple");
+// AI のパート分離を複数スレッドで動かすため、Service Worker（coi-sw.js）で COOP / COEP を付けてクロスオリジン分離にする。
+// https か localhost で開いたときだけ（ファイルを直接開いたときは Service Worker が使えないので 1 スレッドのまま）。
+// 初めて登録したときは、ページが Service Worker の管理下に入るよう 1 度だけ再読み込みする（まだ曲を読み込んでいないときだけ）
+(function(){
+  if(window.crossOriginIsolated||!window.isSecureContext||!("serviceWorker" in navigator)||!/^https?:$/.test(location.protocol))return;
+  navigator.serviceWorker.register("coi-sw.js").then(()=>navigator.serviceWorker.ready).then(()=>{
+    let n=0;try{n=+sessionStorage.getItem("coiReload")||0;}catch(e){}
+    if(!window.crossOriginIsolated&&n<1&&!current&&!busy){try{sessionStorage.setItem("coiReload",String(n+1));}catch(e){}location.reload();}
+  }).catch(e=>console.warn("Service Worker を登録できませんでした",e));
+})();
 let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(current){drawTL();refresh();if(current.chEnv)drawChans(current);if(regRes)drawSelSpec();if(current.pitch)renderPitch(current);if(slmRes)renderSlm();if(psyRes)renderPsy();if(ordRes)renderOrder();if(tfRes)renderTf();}},150);});
 })();
 </script>
