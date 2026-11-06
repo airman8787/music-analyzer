@@ -659,7 +659,7 @@ input[type=range]{accent-color:var(--acc)}
       <label class="msItem"><span><input type="checkbox" id="msLimOn" checked> <b>リミッター</b></span>
         <span class="sub">目標ラウドネス<input type="number" id="msLufs" value="-9" min="-30" max="-4" step="0.5" style="width:66px">LUFS</span>
         <span class="sub">上限<input type="number" id="msCeil" value="-1" min="-6" max="0" step="0.1" style="width:60px">dBTP</span>
-        <span class="sub"><input type="checkbox" id="msQuality" checked> 音質優先（PSR が 8 dB を割る手前で、音量を上げるのを止める）</span></label>
+        <span class="sub"><input type="checkbox" id="msQuality" checked> 音質優先（PSR 8 dB 以上・最大ショートターム −10 LUFS 以下を守るところで、音量を上げるのを止める）</span></label>
       <label class="msItem"><span><b>仕上げの補助</b></span>
         <span class="sub">低域のモノラル化（120 Hz 以下）<select id="msMono"><option value="auto">自動（左右に広がりすぎのときだけ）</option><option value="on">いつも</option><option value="off">しない</option></select></span>
         <span class="sub"><input type="checkbox" id="msDeclip" checked> 音割れ（クリップ）が見つかった曲は、先に修復する</span>
@@ -2933,9 +2933,14 @@ function masterProcess(chs,fs,o,prog){
         let slope=1;if(prev&&Math.abs(gain-prev.g)>1e-3)slope=Math.max(0.05,Math.min(1,(L-prev.L)/(gain-prev.g)));
         prev={g:gain,L};gain=Math.min(30,gain+dL/slope);
       }
-      if(o.lim.minPsr&&psrRounds<2){
-        prog("潰れ具合（PSR）の確認");const ps=psrAnalysis(best.chs,fs,best.loud).loud;best.psr=ps;
-        if(Number.isFinite(ps)&&ps<o.lim.minPsr-0.2){target=best.lufs-(o.lim.minPsr-ps)-0.3;psrRounds++;info.psrGuard=true;continue;}
+      // 音質優先：PSR が minPsr 以上、最大ショートタームが maxSt 以下になるよう、足りない分だけ目標を下げてやり直す。
+      // 仕上げ後の解析（トリム後）で目安をわずかに割らないよう、0.2〜0.3 dB の余裕を持たせる
+      if((o.lim.minPsr||o.lim.maxSt!=null)&&psrRounds<3){
+        prog("潰れ具合（PSR）の確認");const ps=o.lim.minPsr?psrAnalysis(best.chs,fs,best.loud).loud:NaN,st=best.loud.stMax;best.psr=ps;
+        const needP=o.lim.minPsr&&Number.isFinite(ps)&&ps<o.lim.minPsr+0.1?o.lim.minPsr+0.3-ps:0;
+        const needS=o.lim.maxSt!=null&&Number.isFinite(st)&&st>o.lim.maxSt-0.1?st-(o.lim.maxSt-0.2):0;
+        const need=Math.max(needP,needS);
+        if(need>0.05){target=best.lufs-need;psrRounds++;info.psrGuard=true;info.guardBy=needS>needP?"st":"psr";continue;}
       }
       prog("トゥルーピークの確認");let tp=0;for(const c of best.chs){const r=truePeak(c);if(r.tp>tp)tp=r.tp;}
       const over=toDb(tp)-o.lim.ceil;if(over<=0)break;
@@ -2943,7 +2948,7 @@ function masterProcess(chs,fs,o,prog){
       const k=Math.pow(10,-(over+0.02)/20);for(const c of best.chs)for(let i=0;i<c.length;i++)c[i]*=k;
       best.gain-=over+0.02;best.lufs-=over+0.02;break;
     }
-    x=best.chs;info.lim={gain:best.gain,ceil:best.ceil,grMax:best.grMax,target:o.lim.lufs,ceilTarget:o.lim.ceil,lufs:best.lufs,psrGuard:!!info.psrGuard,minPsr:o.lim.minPsr||0,grT:best.grT};
+    x=best.chs;info.lim={gain:best.gain,ceil:best.ceil,grMax:best.grMax,target:o.lim.lufs,ceilTarget:o.lim.ceil,lufs:best.lufs,psrGuard:!!info.psrGuard,guardBy:info.guardBy||"",minPsr:o.lim.minPsr||0,maxSt:o.lim.maxSt,grT:best.grT};
   }
   return {chs:x,info};
 }
@@ -5891,7 +5896,7 @@ function buildMasterOpts(m,fs,key,ov){
     const L=ov.lufs!=null?ov.lufs:+$("msLufs").value,C=ov.ceil!=null?Math.min(ov.ceil,+$("msCeil").value||0):+$("msCeil").value;
     if(!Number.isFinite(L)||!Number.isFinite(C)||C>0)return {err:"目標ラウドネスと上限（0 dBTP 以下）を数値で入れてください"};
     const nv=(id,lo,hi,d)=>{const v=+$(id).value;return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d;},rmin=nv("msRelMin",5,500,30);
-    o.lim={lufs:L,ceil:C,minPsr:$("msQuality").checked?8:0,opt:{la:nv("msLA",1,10,4),hold:nv("msHold",0,50,20),relMin:rmin,relMax:Math.max(rmin,nv("msRelMax",10,2000,150))}};
+    o.lim={lufs:L,ceil:C,minPsr:$("msQuality").checked?8:0,maxSt:$("msQuality").checked?-10:null,opt:{la:nv("msLA",1,10,4),hold:nv("msHold",0,50,20),relMin:rmin,relMax:Math.max(rmin,nv("msRelMax",10,2000,150))}};
   }
   if(!o.sos.length&&!o.eq.length&&!o.comp&&!o.lim&&!o.bassMono&&!o.deharsh&&!o.side&&!o.declip)return {err:"かける処理がありません"};
   return {o,eqBands,notes,usedT,lin,P,ref};
@@ -5942,7 +5947,7 @@ function renderMaster(r,eqBands,notes,before){
   if(r.lim&&r.lim.grMax>6)warn.push("リミッターで最大 "+f1(r.lim.grMax)+" dB 抑えています。歪みや音の潰れが気になるときは、目標ラウドネスを 1〜2 dB 下げてください。");
   if(a&&a.psr&&a.psr.loud<8)warn.push("PSR が "+f1(a.psr.loud)+" dB で、8 dB を下回っています"+(before.psr&&before.psr.loud<8?"（処理前から "+f1(before.psr.loud)+" dB）":"")+"。潰れて聞こえやすい状態です。気になるときは、目標ラウドネスを下げるかコンプを弱めてください（3. の公開前チェックも確認してください）。");
   const info2=[];
-  if(r.lim&&r.lim.psrGuard)info2.push("音質優先：これ以上大きくすると潰れる（PSR が "+r.lim.minPsr+" dB を割る）ため、目標 "+f1(r.lim.target)+" LUFS の手前の "+f1(a.lufs)+" LUFS で止めました。もっと大きくしたいときは「音質優先」を外してください。");
+  if(r.lim&&r.lim.psrGuard)info2.push("音質優先：これ以上大きくすると"+(r.lim.guardBy==="st"?"、一番大きい区間が −10 LUFS を超える（大きくしすぎ）":"潰れる（PSR が "+r.lim.minPsr+" dB を割る）")+"ため、目標 "+f1(r.lim.target)+" LUFS の手前の "+f1(a.lufs)+" LUFS で止めました。配信サービスは −14 LUFS 前後にそろえて再生するので、それ以上大きくしても大きくは聞こえません。もっと大きくしたいときは「音質優先」を外してください。");
   else if(r.lim&&Math.abs(a.lufs-r.lim.target)>0.3)warn.push("目標ラウドネスとの差が "+f1(a.lufs-r.lim.target)+" dB あります。");
   if(r.lim&&a.tp>r.lim.ceilTarget+0.05)warn.push("トゥルーピークが上限を "+f1(a.tp-r.lim.ceilTarget,2)+" dB 超えました。上限を少し下げてやり直してください。");
   h+=info2.map(t=>"<div style='color:var(--acc);margin-top:4px'>"+esc(t)+"</div>").join("");
@@ -6315,7 +6320,7 @@ function renderEasy(){
       if(it&&d.length){it.a="目安からのずれ："+d.map(([b,c])=>b.name+" "+(b.ex>0?"+":"")+f1(b.ex)+" → "+(c.ex>0?"+":"")+f1(c.ex)+" dB").join("、");
         if(d.some(([,c])=>Math.abs(c.ex)>=1.5))it.x="仕上げの EQ は音を壊さないよう控えめ（最大 ±3 dB）にしています。まだずれが大きい帯域は、ミックスで楽器の音量や EQ を見直すと確実に良くなります。";}}
     const li=msLast.info&&msLast.info.lim;
-    if(li&&li.psrGuard)h+="<div class='ed info' style='grid-column:1/-1'><div class='et'>音質を守るため、"+f1(current.lufs)+" LUFS で止めました</div><div class='ex'>目安の "+f1(li.target)+" LUFS まで上げると音が潰れる（PSR が 8 dB を割る）ためです。くわしい表示の 10. で「音質優先」を外すと、目安まで上げられます。</div></div>";
+    if(li&&li.psrGuard)h+="<div class='ed info' style='grid-column:1/-1'><div class='et'>音質を守るため、"+f1(current.lufs)+" LUFS で止めました</div><div class='ex'>目安の "+f1(li.target)+" LUFS まで上げると"+(li.guardBy==="st"?"大きくしすぎ（一番大きい区間が −10 LUFS 超え）":"音が潰れる（PSR が 8 dB を割る）")+"ためです。配信サービスは −14 LUFS 前後にそろえて再生するので、聴こえる大きさはほぼ変わりません。くわしい表示の 10. で「音質優先」を外すと、目安まで上げられます。</div></div>";
   }
   h+=items.map(x=>"<div class='ed "+x.lv+"'><div class='et'>"+esc(x.t)+"</div>"+(x.x?"<div class='ex'>"+esc(x.x)+"</div>":"")+(x.a?"<div class='ea'>→ "+esc(x.a)+"</div>":"")+"</div>").join("");
   $("easyDiag").innerHTML=h;
