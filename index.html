@@ -49,6 +49,8 @@ body.simple .adv{display:none!important}
 .easyLbl{display:inline-flex;gap:6px;align-items:center;font-size:14px;white-space:nowrap;max-width:100%}.easyLbl select{font-size:14px;padding:6px;min-width:0;flex:1}
 @media (max-width:640px){.easyLbl{width:100%}.easyRow>button{flex:1}.easyAbBtn{min-width:0;flex:1;padding:12px 8px;font-size:15px}#easyStop{flex:0 0 56px}}
 button.easyBig{font-size:17px;font-weight:600;padding:12px 28px;background:linear-gradient(90deg,#2c4a86,#5b3a86);border-color:#6a7fd0;color:#fff;border-radius:10px}
+.easySeek{display:flex;align-items:center;gap:10px;margin:0 0 12px}.easySeek input{flex:1;min-width:0;accent-color:var(--acc)}
+.easyPlayBtn{font-size:16px;padding:8px 14px;min-width:48px}#easyTime{white-space:nowrap;font-variant-numeric:tabular-nums}
 .easyAB{display:flex;gap:8px;justify-content:center;margin-top:14px}
 .easyAbBtn{font-size:16px;padding:12px 22px;min-width:140px}.easyAbBtn.on{border-color:var(--acc);background:#2c4a86;color:#fff}
 #easyStop{min-width:56px}
@@ -301,6 +303,8 @@ input[type=range]{accent-color:var(--acc)}
   <section class="panel" id="easy">
     <h2>おまかせで仕上げる</h2>
     <div id="easyDiag"></div>
+    <div class="easySeek"><button id="easyPlay" class="easyPlayBtn" title="再生 / 停止（Space）">▶</button>
+      <input type="range" id="easySeek" min="0" max="1" step="0.01" value="0" aria-label="再生位置"><span id="easyTime" class="sub">0:00 / 0:00</span></div>
     <div class="easyRow">
       <label class="easyLbl">ジャンル<select id="easyGenre"></select></label>
       <label class="easyLbl">寄せる先<select id="easyRef"></select></label>
@@ -3704,6 +3708,8 @@ async function run(chs,fs,info){
     const {res,chs:back}=await analyze(chs,fs,{trim:$("optTrim").checked,layout:info.layout||null});
     lastRaw=Object.assign({chs:back,fs},info);
     Object.assign(res,{label:info.label,source:info.source,resampled:info.resampled,gaps:info.gaps||0});
+    // 別の曲になったら、前の曲の「処理前の音」（仕上げ・パート別の音量で自動で B に入れたもの）は外す
+    if(!info.keepOrig&&tempRef&&tempRef.auto){if(refId===tempRef.id)refId=null;tempRef=null;tempAudio=null;bSongId=null;showBInfo();}
     if(!info.keepOrig&&typeof stState!=="undefined"&&stState){stState=null;$("stCtl").hidden=true;$("stMsg").textContent="";} // 別の音になったら、前の分離結果は使えない
     current=res;aSongId=info.songId!=null?info.songId:null;render(res,info.noScroll);renderSongs();
     setStatus("解析が完了しました（"+info.label+" / "+fmtT(res.dur)+"）");
@@ -3958,6 +3964,7 @@ function playPosNow(){
   return sg?sg.pos+Math.min(sg.d,Math.max(0,now-sg.t)):lastPos;
 }
 function showPos(pos){
+  easySeekUi(pos);
   $("playPos").textContent=(refAudio?abSide+" ":"")+(isZoomed()?fmtT2(pos):fmtT(pos))+" / "+fmtT(sideDur(abSide));
   const ph=$("playhead");
   const posA=abSide==="A"?pos:mapPos(pos,abSide,"A"); // B の再生中も、A の波形上の対応位置を示す
@@ -3988,8 +3995,18 @@ function playFrom(t,side,loop){
   },50);
   if(!liveRaf)liveRaf=requestAnimationFrame(liveLoop);
 }
+// かんたん表示のシークバー（いま聴いている側 A / B の位置と長さ）
+let easySeeking=false;
+function easySeekUi(pos){
+  // 長さは処理中でも分かるように直接求める（sideDur は処理中だと 0 を返すため）
+  const el=$("easySeek");if(!el)return;const d=abSide==="B"?sideDur("B"):current&&lastRaw?(current.trimEnd-current.trimStart)/lastRaw.fs:0;
+  el.max=String(Math.max(0.01,d));if(!easySeeking)el.value=String(Math.max(0,Math.min(d,pos)));
+  $("easyTime").textContent=(refAudio&&abSide==="B"?"元の音 ":"")+fmtT(easySeeking?+el.value:pos)+" / "+fmtT(d);
+  $("easyPlay").textContent=player?"■":"▶";
+}
 function stopPlay(){
   if(player){lastPos=playPosNow();for(const x of player.srcs){try{x.stop();}catch(e){}}player=null;}
+  setTimeout(()=>easySeekUi(lastPos),0);
   clearInterval(playTimer);$("btnPlay").textContent="▶ 再生";$("tbPlay").textContent="▶";$("selPlay").textContent="▶ ループ再生";
 }
 function currentRef(){if(refId==null)return null;if(tempRef&&tempRef.id===refId)return tempRef;return loadSaved().find(x=>x.id===refId)||null;}
@@ -5363,6 +5380,11 @@ async function addSongs(files){
     await openSongA(add[0],add.length>1,true);
     if(add.length===2&&!tempRef&&current)await loadFileB(add[1].file,add[1]);
     maybeAutoCodec();
+  }else if(current){
+    // すでに別の曲を表示中：新しく入れた最初の曲に切り替える（仕上げなどの処理中なら、終わるのを待ってから）
+    const x=add[0];setStatus("「"+x.name+"」に切り替えます"+(busy||rec?"（今の処理が終わったら）":"")+"…");
+    for(let t=0;(busy||rec)&&t<1800;t++)await new Promise(r=>setTimeout(r,200));
+    if(!busy&&!rec&&songs.includes(x)&&x.st!=="err"&&aSongId!==x.id)await openSongA(x,false,false);
   }
   if(songs.some(x=>x.st==="wait"))runAllSongs();
 }
@@ -5989,7 +6011,7 @@ async function masterRun(){
   await run(out.chs,fs,Object.assign({label:base.replace(/（おまかせ：[^）]*）$/,"")+"（おまかせ："+P.name+"）",keepOrig:true,noScroll:true},info));
   // 処理前の音を B に入れて、ラウドネスをそろえて聴き比べる
   if($("msAB").checked&&current){
-    const r=snapshot(before,"処理前の音");r.hasAudio=true;
+    const r=snapshot(before,"処理前の音");r.hasAudio=true;r.auto=true;
     tempRef=r;tempAudio={id:r.id,chs:beforeChs,fs};refId=r.id;bSongId=null;
     $("listenMode").value="match";pref.set("tabAnalyzerListen","match");
     showBInfo();renderSongs();refresh();
@@ -6231,7 +6253,7 @@ $("stApply").onclick=async()=>{
   editOrig=orig;
   const lbl=DMX.TRACKS.map((t,i)=>S.g[i]?DMX_NAMES[t].replace(/（.*$/,"")+(S.g[i]>0?"+":"")+S.g[i]:"").filter(Boolean).join("・")||"変更なし";
   await run(chs,S.fs,Object.assign({label:S.label.replace(/（パート：[^）]*）$/,"")+"（パート："+lbl+"）",keepOrig:true,noScroll:true},S.info));
-  if($("stAB").checked&&current){const r=snapshot(S.before,"反映前の音");r.hasAudio=true;tempRef=r;tempAudio={id:r.id,chs:beforeChs,fs:S.fs};refId=r.id;bSongId=null;$("listenMode").value="match";showBInfo();renderSongs();refresh();}
+  if($("stAB").checked&&current){const r=snapshot(S.before,"反映前の音");r.hasAudio=true;r.auto=true;tempRef=r;tempAudio={id:r.id,chs:beforeChs,fs:S.fs};refId=r.id;bSongId=null;$("listenMode").value="match";showBInfo();renderSongs();refresh();}
   stMsg("反映しました（"+lbl+"）。上のバーの A / B で聴き比べられます");
 };
 /* ---------- 再生機器のシミュレーション ---------- */
@@ -6403,7 +6425,7 @@ function renderEasy(){
     if(li&&li.psrGuard)h+="<div class='ed info' style='grid-column:1/-1'><div class='et'>音質を守るため、"+f1(current.lufs)+" LUFS で止めました</div><div class='ex'>目安の "+f1(li.target)+" LUFS まで上げると"+(li.guardBy==="st"?"大きくしすぎ（一番大きい区間が −10 LUFS 超え）":"音が潰れる（PSR が "+f1(li.minPsr)+" dB を割る）")+"ためです。配信サービスは −14 LUFS 前後にそろえて再生するので、聴こえる大きさはほぼ変わりません。くわしい表示の 10. で「音質優先」を外すと、目安まで上げられます。</div></div>";
   }
   h+=items.map(x=>"<div class='ed "+x.lv+"'><div class='et'>"+esc(x.t)+"</div>"+(x.x?"<div class='ex'>"+esc(x.x)+"</div>":"")+(x.a?"<div class='ea'>→ "+esc(x.a)+"</div>":"")+"</div>").join("");
-  $("easyDiag").innerHTML=h;
+  $("easyDiag").innerHTML=h;easySeekUi(player?playPosNow():lastPos);
   $("easyAfter").hidden=!done;$("easyRun").textContent=done?"✨ もう一度仕上げる（元の音から）":"✨ 音を良くする";
   easyAbUi();
 }
@@ -6433,6 +6455,10 @@ $("easyRun").onclick=async()=>{
 const easyPlay=side=>{if(!current||!lastRaw)return;if(!player){if(side!==abSide)switchAB(side);playFrom(lastPos,abSide);}else switchAB(side);setTimeout(easyAbUi,80);};
 $("easyA").onclick=e=>{e.currentTarget.blur();easyPlay("A");};
 $("easyB").onclick=e=>{e.currentTarget.blur();easyPlay("B");};
+$("easyPlay").onclick=e=>{e.currentTarget.blur();if(!current||!lastRaw)return;if(player)stopPlay();else playFrom(lastPos,abSide);easySeekUi(player?playPosNow():lastPos);};
+$("easySeek").addEventListener("input",e=>{easySeeking=true;$("easyTime").textContent=fmtT(+e.target.value)+" / "+fmtT(sideDur(abSide));});
+$("easySeek").addEventListener("change",e=>{const t=+e.target.value;easySeeking=false;e.target.blur();
+  if(player)playFrom(t,abSide,null);else{lastPos=t;showPos(t);}});
 $("easyStop").onclick=e=>{e.currentTarget.blur();stopPlay();setTimeout(easyAbUi,50);};
 $("easySave").onclick=()=>{const f=$("easyFmt").value;$("exFmt").value=f;$("exRange").value="all";$("exRate").value=f==="wav16"?"44100":"";$("exRun").click();};
 $("easyUndo").onclick=async()=>{if(editOrig&&!busy){await edUndo();msLast=null;renderEasy();}};
