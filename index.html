@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-QPiQGDtCgBi27iu4U7eOSLFYtrnQJgfNHBLZ5EfdDZI=' 'sha256-Ng0Cn1tJO/9QhyniVIzdTAwOZAvDWMVD1Qvn3qKQwgM=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-QPiQGDtCgBi27iu4U7eOSLFYtrnQJgfNHBLZ5EfdDZI=' 'sha256-z8eT01iePzJ85ebSogO8GgCY9t5y+G971Xo9fbLwmuQ=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -48,6 +48,29 @@ body:not(.simple) .ez{display:none!important}
 .ezLbl{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#c9cfe6;margin:2px 2px 4px}
 #cvEzGram,#cvEzWave{cursor:pointer;border-radius:8px}#cvEzFft{border-radius:10px}#cvEzWave{margin-top:6px}
 .tpane{margin-top:4px}
+.ezHold{margin-left:auto;font-size:14px;padding:9px 14px;border-radius:20px;background:#3a2c55;border-color:#6a4fa0;user-select:none;touch-action:none}
+.ezHold.on{background:#c58aff;color:#111;border-color:#e0c2ff}
+.ezStep{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 0 8px}.ezStep b{font-size:15px}
+.ezNum{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#5b7cff,#c58aff);color:#fff;font-weight:700;font-size:13px}
+.ezCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.ezCard{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px 8px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;transition:transform .12s,border-color .12s,background .12s}
+.ezCard:hover:not(:disabled){transform:translateY(-2px);border-color:var(--acc)}.ezCard .em{font-size:28px;line-height:1.1}.ezCard .nm{font-size:13px;font-weight:600;text-align:center;line-height:1.3}.ezCard .lv{font-size:11px;color:var(--sub)}
+.ezCard.on{background:linear-gradient(160deg,#2c4a86,#5b3a86);border-color:#9fb6ff}.ezCard.on .lv{color:#dfe5ff}
+.ezRefRow{margin-top:10px}
+.ezMagic{display:flex;align-items:center;gap:10px;justify-content:center;margin:12px 0;font-size:15px;color:#e8dcff}
+.ezSpark{display:inline-block;animation:ezSpin 1.2s linear infinite}@keyframes ezSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.ezKnobs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:560px){.ezKnobs{grid-template-columns:repeat(2,1fr)}}
+.ezKnob{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 4px 8px;outline:none;user-select:none;touch-action:none;cursor:ns-resize}
+.ezKnob:focus-visible{border-color:var(--acc)}.ezKnob.dis{opacity:.4;cursor:default}
+.ezKnob svg{width:96px;height:96px}.ezKnob .kl{font-size:13.5px;font-weight:600}.ezKnob .kv{font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums}.ezKnob .kh{font-size:11px;color:var(--sub)}
+.ezScoreBox{display:flex;gap:16px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+@media (max-width:560px){.ezScoreBox{flex-direction:column;align-items:stretch}.ezGauge{margin:0 auto}}
+.ezGauge{--v:0;--c:#5a6080;flex:0 0 auto;width:108px;height:108px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--v)*1%),#2a2e3b 0);display:grid;place-items:center;transition:--v .4s}
+.ezGIn{width:84px;height:84px;border-radius:50%;background:var(--panel);display:flex;align-items:baseline;justify-content:center;padding-top:22px}.ezGIn b{font-size:30px}.ezGIn span{font-size:12px;color:var(--sub);margin-left:2px}
+.ezScoreTxt{flex:1;min-width:0}.ezScoreHead{font-weight:600;font-size:14.5px;margin-bottom:4px}.ezTips{margin:0;padding-left:18px;font-size:13px;line-height:1.7}.ezTips .ok{color:var(--ok)}.ezTips .warn{color:var(--warn)}.ezTips .bad{color:var(--bad)}
+button.ezSave{font-size:15px;padding:10px 18px}
+.ezDiagBox{margin-top:12px}.ezDiagBox>summary{font-size:13.5px}.ezDiagBox #easyDiag{margin-top:8px}
 #easyDiag{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-bottom:12px}
 .ed{border:1px solid var(--line);border-left-width:4px;border-radius:8px;padding:8px 10px;background:var(--panel2)}
 .ed .et{font-weight:600;font-size:14px}.ed .ex{font-size:12.5px;color:var(--sub);margin-top:2px}.ed .ea{font-size:12.5px;margin-top:4px}
@@ -312,35 +335,44 @@ input[type=range]{accent-color:var(--acc)}
   <section class="panel ez" id="easy" data-nav="かんたん">
     <h2>🎮 音を良くする</h2>
     <div class="ezStage" id="ezStage">
-      <div class="ezLbl"><span>いま鳴っている音</span><span class="sub" id="ezFftNote">左が低い音・右が高い音</span></div>
+      <div class="ezLbl"><span id="ezFftTitle">いま鳴っている音</span><span class="sub" id="ezFftNote">左が低い音・右が高い音</span></div>
       <canvas id="cvEzFft"></canvas>
       <div class="ezLbl"><span>曲全体のスペクトログラム</span><span class="sub">明るいほど強い・下が低い音（クリックでその位置から再生）</span></div>
       <canvas id="cvEzGram"></canvas>
       <canvas id="cvEzWave"></canvas>
     </div>
     <div class="easySeek"><button id="easyPlay" class="easyPlayBtn" title="再生 / 停止（Space）">▶</button>
-      <input type="range" id="easySeek" min="0" max="1" step="0.01" value="0" aria-label="再生位置"><span id="easyTime" class="sub">0:00 / 0:00</span></div>
-    <div class="easyRow">
-      <label class="easyLbl">ジャンル<select id="easyGenre"></select></label>
-      <label class="easyLbl">寄せる先<select id="easyRef"></select></label>
-      <button id="easyRun" class="easyBig">✨ 音を良くする</button>
+      <input type="range" id="easySeek" min="0" max="1" step="0.01" value="0" aria-label="再生位置"><span id="easyTime" class="sub">0:00 / 0:00</span>
+      <button id="ezHold" class="ezHold" disabled title="押している間だけ、仕上げる前の音（音量はそろえています）">👂 押している間だけ元の音</button></div>
+    <div class="ezStep"><span class="ezNum">1</span><b>ジャンルを選ぶ</b><span class="sub">押すと、そのジャンルに合わせて自動で仕上げて再生します</span></div>
+    <div class="ezCards" id="ezCards"></div>
+    <div class="easyRow ezRefRow"><label class="easyLbl">好きな曲に寄せる<select id="easyRef"></select></label><button id="easyRun" class="easyBig">✨ おまかせで仕上げる</button>
+      <select id="easyGenre" hidden></select></div>
+    <div id="ezMagic" class="ezMagic" hidden><span class="ezSpark">✨</span><span id="ezMagicTxt">魔法をかけています…</span></div>
+    <div class="ezStep"><span class="ezNum">2</span><b>つまみで好みに</b><span class="sub" id="ezKnobNote">ジャンルを選ぶと動かせます。動かすとすぐ音が変わります（ダブルクリックで元に戻る）</span></div>
+    <div class="ezKnobs" id="ezKnobs"></div>
+    <div class="ezStep"><span class="ezNum">3</span><b>できあがりを確かめて保存</b></div>
+    <div class="ezScoreBox">
+      <div class="ezGauge" id="ezGauge"><div class="ezGIn"><b id="ezScore">—</b><span>点</span></div></div>
+      <div class="ezScoreTxt"><div class="ezScoreHead" id="ezScoreHead">配信の準備度（目安）</div><ul id="ezTips" class="ezTips"></ul></div>
     </div>
     <div id="easyAfter" hidden>
-      <div class="easyAB"><button id="easyA" class="easyAbBtn">▶ 仕上げた音</button><button id="easyB" class="easyAbBtn">▶ 元の音</button><button id="easyStop" class="easyAbBtn" title="停止（Space）">■</button></div>
-      <div class="sub" style="text-align:center;margin-top:4px">2 つは音量をそろえて再生しています（大きいほうが良く聞こえる錯覚を防ぐため）。<kbd>X</kbd> キーでも切り替えられます。上のバーの「再生機器」で、スマホ・イヤホン・車などで聴いたときの大まかな近似も試せます。</div>
-      <div class="easyRow" style="margin-top:10px">
+      <div class="easyAB"><button id="easyA" class="easyAbBtn">✨ 仕上げた音</button><button id="easyB" class="easyAbBtn">元の音</button><button id="easyStop" class="easyAbBtn" title="停止（Space）">■</button></div>
+      <div class="sub" style="text-align:center;margin-top:4px">2 つは音量をそろえて聴かせています（大きいほうが良く聞こえる錯覚を防ぐため）。<kbd>X</kbd> キーでも切り替えられます。上のバーの「再生機器」で、スマホ・イヤホン・車などで聴いたときの大まかな近似も試せます。</div>
+      <div class="easyRow" style="margin-top:10px;justify-content:center">
         <label class="easyLbl">保存の形式<select id="easyFmt"><option value="wav24">WAV 24bit（おすすめ）</option><option value="wav16">CD 用（WAV 16bit・44.1 kHz・ディザあり）</option><option value="flac24">FLAC 24bit（小さいファイル）</option></select></label>
-        <button id="easySave" class="primary">💾 仕上げた音を保存</button><button id="easyUndo">元の音に戻す</button>
+        <button id="easySave" class="primary ezSave">💾 仕上げた音を保存</button><button id="easyUndo">元の音に戻す</button>
       </div>
     </div>
-    <div id="easyMsg" class="sub" style="margin-top:6px"></div>
-    <h3>診断</h3>
-    <div id="easyDiag"></div>
+    <div id="easyMsg" class="sub" style="margin-top:6px;text-align:center"></div>
+    <details class="ezDiagBox"><summary>くわしい診断（仕上げる前の音）</summary><div id="easyDiag"></div></details>
     <details class="sub" style="margin-top:8px"><summary>何をしているの？</summary>
       <ul>
         <li>選んだジャンルの大まかな目安に合わせて、<b>音色の整え（EQ）→ 音量の粒をそろえる（コンプ）→ 音割れしないように音量を上げる（リミッター）</b>を自動でかけます。</li>
-        <li>音割れの基準（トゥルーピーク）は、−14 LUFS より大きく仕上げるジャンルでは −2 dBTP、それ以外は −1 dBTP（Spotify の推奨）です。ジャンルの音量は市販曲でよく見られる傾向をもとにした目安で、実測データではありません。</li>
-        <li>元の曲より良くなったかは、必ず「仕上げた音」と「元の音」を聴き比べて決めてください。細かく調整したいときは「くわしい表示」の 10. で設定を変えられます。</li>
+        <li>つまみ：<b>迫力</b>＝100 Hz より下をなだらかに上げ下げ、<b>明るさ</b>＝8 kHz より上をなだらかに上げ下げ、<b>広がり</b>＝左右に広がった成分（サイド）の音量、<b>音圧</b>＝リミッターに入れる音量（おまかせの値からの差）です。</li>
+        <li>点数は、音量（ジャンルの目安との差）・ピーク（音割れの余裕）・迫力（PSR：潰れていないか）・音色（目安からのずれ）を 25 点ずつで見た<b>目安</b>です。耳で聴いて良いと思う方を選んでください。</li>
+        <li>音割れの基準（トゥルーピーク）は、−14 LUFS より大きく仕上げるジャンルでは −2 dBTP、それ以外は −1 dBTP（Spotify の推奨）です。ジャンルの音量・音色は市販曲でよく見られる傾向をもとにした目安です。</li>
+        <li>試聴している音と保存する音は、同じ処理で作っています。細かく調整したいときは、上の「🎛 プロ」に切り替えてください。</li>
       </ul></details>
   </section>
   <section class="panel adv" data-nav="概要"><h2>2. 概要</h2><div id="cards"></div>
@@ -3543,6 +3575,7 @@ let scope=pref.get("tabAnalyzerScope","all")==="focus"?"focus":"all";
 
 function setStatus(t,err){const s=$("status");s.textContent=t;s.className=err?"err":"";const b=$("tbStatus");b.textContent=t==="待機中"?"":t;b.className="sub"+(err?" err":"");}
 function updateButtons(){
+  if(typeof EZK!=="undefined")for(const c of $("ezCards").children)c.disabled=!!busy;
   // タブ録音の音声は保存・書き出しをしない（数値の保存のみ）
   const tabSrc=!!(lastRaw&&lastRaw.source==="tab");
   $("saveFmt").disabled=tabSrc;$("selExportNote").textContent=tabSrc?"タブ録音は書き出せません":"";
@@ -5712,6 +5745,7 @@ $("btnPlay").onclick=()=>{if(player)stopPlay();else playFrom(lastPos,abSide);};
 document.addEventListener("keydown",e=>{
   if(/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName)||!current||!lastRaw)return;
   if(e.code==="Space"){e.preventDefault();$("btnPlay").click();}
+  else if(e.code==="KeyX"&&MS&&MS.on&&document.body.classList.contains("simple")){e.preventDefault();msSetWet(!MS.wet);if(!player)playFrom(lastPos,"A");}
   else if(e.code==="KeyX"&&refAudio){e.preventDefault();switchAB();}
   else if(e.key==="Escape"&&sel)clearSel();
   else if(e.key==="+"||e.key==="="){e.preventDefault();zoomAt(zoomCenter(),0.5);}
@@ -6696,7 +6730,7 @@ async function msPlan(opt){
   const info=out.master;
   MS.plan={key,name:P.name,info,eqBands,notes,T:usedT||genreTarget(key),lin,ref};MS.planLufs=info.lim?info.lim.lufs:NaN;
   MS.S=msSettingsFromPlan(info.P,eqBands,lin);MS.P0=info.P;MS.wet=true;
-  msSetP(msCompile(MS.S,fs));msUpdateDry();msEmit("plan");
+  msSetP(msCompile(MS.S,fs));msUpdateDry();msMsg("");msEmit("plan");
   if(opt.play||was)playFrom(was&&was.side==="A"?was.pos:lastPos,"A");
   return out;
 }
@@ -6791,8 +6825,8 @@ function renderEasy(){
   }
   h+=items.map(x=>"<div class='ed "+x.lv+"'><div class='et'>"+esc(x.t)+"</div>"+(x.x?"<div class='ex'>"+esc(x.x)+"</div>":"")+(x.a?"<div class='ea'>→ "+esc(x.a)+"</div>":"")+"</div>").join("");
   $("easyDiag").innerHTML=h;easySeekUi(player?playPosNow():lastPos);
-  $("easyAfter").hidden=!(done||ms);$("easyRun").textContent=done||ms?"✨ もう一度おまかせ（元の音から）":"✨ 音を良くする";
-  easyAbUi();
+  $("easyAfter").hidden=!(done||ms);$("easyRun").textContent=done||ms?"✨ もう一度おまかせ（元の音から）":"✨ おまかせで仕上げる";
+  easyAbUi();if(typeof ezUpdate==="function")ezUpdate();
 }
 function easyAbUi(){
   if(!$("easyA"))return;
@@ -6828,6 +6862,98 @@ $("easyStop").onclick=e=>{e.currentTarget.blur();stopPlay();setTimeout(easyAbUi,
 $("easySave").onclick=e=>{e.currentTarget.blur();const f=$("easyFmt").value;msExport(f,f==="wav16"?44100:0).then(ok=>{if(ok)$("easyMsg").textContent=$("tbStatus").textContent;});};
 $("easyUndo").onclick=e=>{e.currentTarget.blur();if(busy)return;msEnd();$("easyMsg").textContent="元の音に戻しました";renderEasy();};
 
+
+/* ---------- かんたん画面：ジャンルのカード・つまみ・元の音を聴くボタン・準備度 ---------- */
+const EZ_EMOJI={stream:"🌐",pop:"🎤",rock:"🎸",edm:"🪩",hiphop:"🎧",rnb:"💜",acoustic:"🪕",jazz:"🎷",classical:"🎻"};
+const EZ_SHORT={stream:"配信向け",pop:"J-POP",rock:"ロック",edm:"EDM",hiphop:"ヒップホップ",rnb:"R&B・バラード",acoustic:"アコースティック",jazz:"ジャズ",classical:"クラシック"};
+$("ezCards").innerHTML=Object.entries(MASTER_PRESETS).map(([k,P])=>"<button class='ezCard' data-k='"+k+"' title='"+esc(P.name)+"'><span class='em'>"+(EZ_EMOJI[k]||"🎵")+"</span><span class='nm'>"+esc(EZ_SHORT[k]||P.name)+"</span><span class='lv'>"+P.lufs+" LUFS</span></button>").join("");
+$("ezCards").onclick=e=>{const b=e.target.closest(".ezCard");if(!b||b.disabled)return;b.blur();
+  $("easyGenre").value=b.dataset.k;$("easyGenre").onchange({target:$("easyGenre")});$("easyRun").click();};
+const EZK=[{k:"low",l:"迫力",h:"低音（100 Hz 以下）",min:-6,max:6,st:0.5,col:"#ff7ab8"},{k:"high",l:"明るさ",h:"高音（8 kHz 以上）",min:-6,max:6,st:0.5,col:"#7ad7ff"},
+  {k:"width",l:"広がり",h:"左右の広さ",min:-4,max:4,st:0.5,col:"#9cff8a"},{k:"drive",l:"音圧",h:"大きさ",min:-6,max:4,st:0.5,col:"#ffc35a"}];
+function ezArc(cx,cy,r,a0,a1){const p=a=>[cx+r*Math.sin(a*Math.PI/180),cy-r*Math.cos(a*Math.PI/180)],[x0,y0]=p(a0),[x1,y1]=p(a1);return "M"+x0.toFixed(2)+" "+y0.toFixed(2)+"A"+r+" "+r+" 0 "+(Math.abs(a1-a0)>180?1:0)+" "+(a1>a0?1:0)+" "+x1.toFixed(2)+" "+y1.toFixed(2);}
+function ezKnobDraw(el,o,v){
+  const ang=x=>-135+(x-o.min)/(o.max-o.min)*270,z=ang(0),a=ang(v),pt=[48+30*Math.sin(a*Math.PI/180),48-30*Math.cos(a*Math.PI/180)];
+  el.querySelector("svg").innerHTML="<path d='"+ezArc(48,48,38,-135,135)+"' stroke='#2b3040' stroke-width='9' fill='none' stroke-linecap='round'/>"
+    +(Math.abs(a-z)>0.5?"<path d='"+ezArc(48,48,38,Math.min(a,z),Math.max(a,z))+"' stroke='"+o.col+"' stroke-width='9' fill='none' stroke-linecap='round'/>":"")
+    +"<circle cx='48' cy='48' r='27' fill='#171a24' stroke='#3a4055'/><line x1='48' y1='48' x2='"+pt[0].toFixed(1)+"' y2='"+pt[1].toFixed(1)+"' stroke='"+o.col+"' stroke-width='4' stroke-linecap='round'/>"
+    +"<circle cx='"+(48+38*Math.sin(z*Math.PI/180)).toFixed(1)+"' cy='"+(48-38*Math.cos(z*Math.PI/180)).toFixed(1)+"' r='2' fill='#9aa0b4'/>";
+  el.querySelector(".kv").textContent=(v>0?"+":v<0?"−":"±")+Math.abs(v).toFixed(1)+" dB";el.setAttribute("aria-valuenow",String(v));
+}
+let ezKT=0;
+function ezKnobSet(o,v,final){
+  v=Math.max(o.min,Math.min(o.max,Math.round(v/o.st)*o.st));if(Object.is(v,-0))v=0;
+  const el=$("ezK_"+o.k);ezKnobDraw(el,o,v);
+  if(!MS||!MS.S)return;if(MS.S.knobs[o.k]===v&&!final)return;MS.S.knobs[o.k]=v;
+  clearTimeout(ezKT);ezKT=setTimeout(msApplyS,final?0:45);
+}
+$("ezKnobs").innerHTML=EZK.map(o=>"<div class='ezKnob dis' id='ezK_"+o.k+"' tabindex='0' role='slider' aria-label='"+o.l+"' aria-valuemin='"+o.min+"' aria-valuemax='"+o.max+"' aria-valuenow='0'><svg viewBox='0 0 96 96'></svg><span class='kl'>"+o.l+"</span><span class='kv'></span><span class='kh'>"+o.h+"</span></div>").join("");
+for(const o of EZK){
+  const el=$("ezK_"+o.k),val=()=>MS&&MS.S?MS.S.knobs[o.k]||0:0,ok=()=>!el.classList.contains("dis");ezKnobDraw(el,o,0);
+  let drag=null;
+  el.addEventListener("pointerdown",e=>{if(!ok())return;el.setPointerCapture(e.pointerId);drag={y:e.clientY,x:e.clientX,v:val()};el.focus();e.preventDefault();});
+  el.addEventListener("pointermove",e=>{if(!drag)return;const k=(e.shiftKey?0.25:1)*(o.max-o.min)/170;ezKnobSet(o,drag.v+((drag.y-e.clientY)+(e.clientX-drag.x)*0.5)*k);});
+  const up=()=>{if(!drag)return;drag=null;ezKnobSet(o,val(),true);};el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
+  el.addEventListener("dblclick",()=>{if(ok())ezKnobSet(o,0,true);});
+  el.addEventListener("wheel",e=>{if(!ok())return;e.preventDefault();ezKnobSet(o,val()+(e.deltaY<0?o.st:-o.st));},{passive:false});
+  el.addEventListener("keydown",e=>{if(!ok())return;const m={ArrowUp:o.st,ArrowRight:o.st,ArrowDown:-o.st,ArrowLeft:-o.st,PageUp:2,PageDown:-2}[e.key];
+    if(m!=null){e.preventDefault();e.stopPropagation();ezKnobSet(o,val()+m);}else if(e.key==="Home"){e.preventDefault();ezKnobSet(o,o.min,true);}else if(e.key==="End"){e.preventDefault();ezKnobSet(o,o.max,true);}else if(e.key==="0"||e.key==="Delete"){e.preventDefault();ezKnobSet(o,0,true);}});
+}
+// 押している間だけ元の音（音量はそろえる）。再生していなければ再生を始める
+{const h=$("ezHold");let on=false;
+  const down=e=>{if(h.disabled||!MS||!MS.on)return;e.preventDefault();h.setPointerCapture&&h.setPointerCapture(e.pointerId);on=true;h.classList.add("on");msSetWet(false);if(!player)playFrom(lastPos,"A");};
+  const up=()=>{if(!on)return;on=false;h.classList.remove("on");msSetWet(true);};
+  h.addEventListener("pointerdown",down);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);h.addEventListener("lostpointercapture",up);}
+// 配信の準備度（目安）：音量・ピーク・迫力（PSR）・音色を 25 点ずつ
+function ezScoreOf(st){
+  const it=[];let tot=0;const add=(lv,t,p)=>{it.push({lv,t,p});tot+=p;};
+  if(!Number.isFinite(st.lufs)){add("bad","音がほとんどありません",0);return {tot:0,it};}
+  const dL=st.lufs-st.target,aL=Math.abs(dL);
+  if(st.guard)add("ok","音量："+f1(st.lufs)+" LUFS（音が潰れないよう、目安 "+st.target+" より控えめに止めています）",25);
+  else add(aL<=1?"ok":aL<=3?"warn":"bad","音量："+f1(st.lufs)+" LUFS"+(aL<=1?"（ジャンルの目安どおり）":"（目安 "+st.target+" より"+f1(aL)+" dB "+(dL>0?"大きい":"小さい")+"）"),25*Math.max(0,Math.min(1,1-Math.max(0,aL-1)/5)));
+  const ov=st.tp-st.ceil;
+  add(ov<=0?"ok":ov<=0.5?"warn":"bad","ピーク："+f1(st.tp)+" dBTP"+(ov<=0?"（音割れの余裕あり）":"（上限 "+st.ceil+" を "+f1(ov)+" dB 超え。配信の変換で歪むかも）"),Number.isFinite(st.tp)?ov<=0?25:25*Math.max(0,1-ov/2):0);
+  const ps=st.psr;
+  add(!Number.isFinite(ps)?"warn":ps>=8?"ok":ps>=6?"warn":"bad","迫力："+(Number.isFinite(ps)?"PSR "+f1(ps)+" dB"+(ps>=8?"（潰れていない）":"（潰れ気味。音圧を下げると改善）"):"測れません"),Number.isFinite(ps)?25*Math.max(0,Math.min(1,(ps-4)/4)):12);
+  if(st.cmp){const bad=st.cmp.broad.filter(b=>!b.na&&Math.abs(b.ex)>=0.5),sum=st.cmp.broad.reduce((a,b)=>a+(b.na?0:Math.abs(b.ex)),0);
+    add(sum<1?"ok":sum<4?"warn":"bad","音色："+(bad.length?bad.map(b=>b.name+(Math.abs(b.ex)<1.5?"がやや":"が")+(b.ex>0?"多め":"少なめ")).join("・"):"目安の範囲内"),25*Math.max(0,Math.min(1,1-sum/8)));}
+  else add("ok","音色：比べる目安がありません",25);
+  return {tot:Math.round(tot),it};
+}
+function ezStateBefore(key){
+  const m=MS?MS.m0:current,P=MASTER_PRESETS[key]||MASTER_PRESETS.stream,R=msRefObj(),T=R?singleTarget(R,"リファレンス："+R.name):genreTarget(key);
+  const target=R?Math.round(Math.max(-24,Math.min(-5,R.lufs))*10)/10:P.lufs,ceil=R?(R.lufs>-14?-2:-1):P.ceil;
+  return {lufs:m.lufs,tp:m.tp,psr:m.psr?m.psr.loud:NaN,cmp:compareTonal(m,T),target,ceil};
+}
+function ezStateAfter(){
+  const M=MS.metrics,pl=MS.plan,li=pl&&pl.info.lim,m0=MS.m0,T=pl?pl.T:null;
+  return {lufs:M.lufs,tp:M.tp,psr:M.psr,cmp:M.curve&&T?compareTonal({curve:M.curve,source:m0.source,cutoff:m0.cutoff,fs:m0.fs},T):null,
+    target:li?Math.round(li.target*10)/10:-14,ceil:li?li.ceilTarget:-1,guard:!!(li&&li.psrGuard)&&!(MS.S&&MS.S.knobs.drive)};
+}
+function ezRenderScore(){
+  if(!current)return;const key=$("easyGenre").value,ms=!!(MS&&MS.on&&MS.P),b=ezScoreOf(ezStateBefore(key));
+  let sc=b,head="いまの状態（仕上げる前）";
+  if(ms&&MS.metrics){sc=ezScoreOf(ezStateAfter());head="仕上げ前 "+b.tot+" 点 → 仕上げ後 "+sc.tot+" 点";}
+  else if(ms)head="仕上げた音を測っています… "+Math.round((MS.prog||0)*100)+"%（仕上げ前は "+b.tot+" 点）";
+  const g=$("ezGauge");g.style.setProperty("--v",String(sc.tot));g.style.setProperty("--c",sc.tot>=80?"#5ad19a":sc.tot>=60?"#f5c04a":"#ff6b6b");
+  $("ezScore").textContent=ms&&!MS.metrics?"…":String(sc.tot);$("ezScoreHead").textContent="配信の準備度（目安）："+head;
+  $("ezTips").innerHTML=sc.it.map(x=>"<li class='"+x.lv+"'>"+esc(x.t)+"</li>").join("");
+}
+function ezUpdate(){
+  const ms=!!(MS&&MS.on&&MS.P),key=$("easyGenre").value,planning=busy&&MS&&!MS.P;
+  for(const c of $("ezCards").children){c.classList.toggle("on",ms&&MS.plan&&MS.plan.key===c.dataset.k);c.disabled=!!busy;}
+  for(const o of EZK){const el=$("ezK_"+o.k);const dis=!ms||o.k==="width"&&MS.src.chs.length!==2;el.classList.toggle("dis",dis);el.setAttribute("aria-disabled",dis?"true":"false");ezKnobDraw(el,o,ms?MS.S.knobs[o.k]||0:0);}
+  $("ezKnobNote").textContent=ms?"動かすとすぐ音が変わります（ダブルクリックで元に戻る・Shift を押しながらで細かく）":"ジャンルを選ぶと動かせます";
+  $("ezHold").disabled=!ms;ezRenderScore();ezStatic();
+}
+msHooks.push(t=>{
+  if(t==="planstart"){$("ezMagic").hidden=false;$("ezMagicTxt").textContent="魔法をかけています…";ezUpdate();}
+  else if(t==="planprog"){$("ezMagicTxt").textContent="魔法をかけています…（"+(MS&&MS.planStep||"")+"）";}
+  else if(t==="plan"||t==="planfail"||t==="end"){$("ezMagic").hidden=true;ezUpdate();}
+  else if(t==="metrics"||t==="params"){ezRenderScore();if(!player)ezStatic();}
+  else if(t==="progress"){if(MS&&!MS.metrics&&((MS.prog*20)|0)!==((MS._pp||0)|0)){MS._pp=MS.prog*20;ezRenderScore();}}
+  else if(t==="wet"){$("ezFftTitle").textContent=MS&&!MS.wet?"いま鳴っている音：元の音":"いま鳴っている音"+(MS&&MS.on?"：仕上げた音":"");easyAbUi();}
+});
 /* ---------- かんたん画面の「動く絵」：いま鳴っている音（FFT）・曲全体のスペクトログラム・波形 ---------- */
 const EZ={pk:null,lv:null,gram:null,wave:null,key:"",raf:0,ghost:null};
 const ezOn=()=>document.body.classList.contains("simple")&&!$("result").hidden&&!!current;
@@ -6851,8 +6977,10 @@ function drawEzFft(live){
     for(let i=0;i<nb;i++){const k0=Math.max(1,Math.floor(ezF(i)/bh)),k1=Math.max(k0+1,Math.ceil(ezF(i+1)/bh));let v=-200;for(let k=k0;k<k1&&k<liveSpec.length;k++)if(liveSpec[k]>v)v=liveSpec[k];
       lv[i]=Math.max(0,Math.min(1,(v+95)/80));}
   }else if(current&&current.curve){
-    let mx=-200;for(const c of current.curve)if(Number.isFinite(c.db)&&c.db>mx)mx=c.db;
-    for(let i=0;i<nb;i++){const v=ezCurveAt(current.curve,Math.sqrt(ezF(i)*ezF(i+1)));lv[i]=Number.isFinite(v)?Math.max(0,Math.min(1,(v-(mx-50))/52)):0;}
+    const after=MS&&MS.on&&MS.metrics&&MS.metrics.curve,cv=after?MS.metrics.curve:(MS&&MS.on?MS.m0.curve:current.curve);
+    let mx=-200;for(const c of cv)if(Number.isFinite(c.db)&&c.db>mx)mx=c.db;
+    const toLv=curve=>{const o=new Float32Array(nb);for(let i=0;i<nb;i++){const v=ezCurveAt(curve,Math.sqrt(ezF(i)*ezF(i+1)));o[i]=Number.isFinite(v)?Math.max(0,Math.min(1,(v-(mx-50))/52)):0;}return o;};
+    lv.set(toLv(cv));EZ.ghost=after?toLv(MS.m0.curve):null;
   }
   for(let i=0;i<nb;i++){
     // なめらかに動かす（上がるときは速く、下がるときはゆっくり）
@@ -6864,9 +6992,9 @@ function drawEzFft(live){
     if(live){g.fillStyle="hsla("+hue+",100%,85%,.9)";g.fillRect(x,H-EZ.pk[i]*(H-18)-2,Math.max(1,bw-2),2);}
   }
   // 比べる線（段階 3 で「仕上げる前」の形を重ねる）
-  if(EZ.ghost){g.strokeStyle="rgba(255,255,255,.55)";g.setLineDash([4,3]);g.lineWidth=1.4;g.beginPath();
+  if(EZ.ghost&&!live){g.strokeStyle="rgba(255,255,255,.55)";g.setLineDash([4,3]);g.lineWidth=1.4;g.beginPath();
     for(let i=0;i<nb;i++){const y=H-EZ.ghost[i]*(H-18),x=(i+0.5)*bw;i?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();g.setLineDash([]);}
-  if(!live){g.fillStyle="#c9cfe6";g.font="11px sans-serif";g.fillText(current?"曲全体の平均（▶ で再生すると動きます）":"曲を読み込むと表示します",8,14);}
+  if(!live){g.fillStyle="#c9cfe6";g.font="11px sans-serif";g.fillText(!current?"曲を読み込むと表示します":EZ.ghost?"曲全体の平均：バー＝仕上げた音・点線＝元の音（▶ で再生すると動きます）":"曲全体の平均（▶ で再生すると動きます）",8,14);}
 }
 // スペクトログラムと波形は、曲ごと・幅ごとに一度だけ描いておき、再生位置だけを重ねる
 function ezBase(){
