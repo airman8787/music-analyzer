@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wD5R7wC1ojJ/Wbk3NFZVOnuKrNJueJ5Dsli+8Cx62JQ=' 'sha256-vpAYILyfMKvqSf08GuvJB+FJd9eVFPj+0b+70AsKXxw=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wD5R7wC1ojJ/Wbk3NFZVOnuKrNJueJ5Dsli+8Cx62JQ=' 'sha256-8puuof0nuw2DmlGR81c9UTYGbCrVWU4WO6kp8KdQTiA=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ — マスタリングスタジオ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -455,7 +455,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
     </div>
     <canvas id="cvRkMeter"></canvas></div>
     <div id="rkMsg" class="sub" style="min-height:1.5em"></div>
-    <details class="rkMod stgBox" id="stgProBox"><summary><b>🎭 サウンドステージ</b><span class="sub">　各パートの位置と前後を見る・動かす（AI）</span></summary><div class="stg" id="stgPro"></div></details>
+    <details class="rkMod stgBox" id="stgProBox" open><summary><b>🎭 サウンドステージ</b><span class="sub">　帯域ごとの位置と前後を見る・動かす（ボーカルの埋もれ・低音の弱さに）</span></summary><div class="stg" id="stgPro"></div></details>
     <div id="rkEmpty" class="note">「✨ おまかせで設定」で元の音から数値を決めるか、「まっさらから」で何もかかっていない状態から始めてください。動かすとすぐ音が変わり、書き出す音も同じ処理で作ります。</div>
     <div class="rkMods" id="rkMods" hidden>
       <div class="rkMod rkWide"><div class="rkHd"><b>EQ</b><label class="sub"><input type="checkbox" id="rkLin"> リニアフェーズ</label><label class="sub"><input type="checkbox" id="rkHp"> 20 Hz 以下をカット</label><span class="sub">点をドラッグ：周波数とゲイン／ホイール：Q／ダブルクリック：追加／Delete：削除</span></div>
@@ -486,7 +486,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
     <div id="ezMagic" class="ezMagic" hidden><span class="ezSpark">✨</span><span id="ezMagicTxt">魔法をかけています…</span></div>
     <div class="ezStep"><span class="ezNum">2</span><b>つまみで好みに</b><span class="sub" id="ezKnobNote">ジャンルを選ぶと動かせます。動かすとすぐ音が変わります（ダブルクリックで元に戻る）</span></div>
     <div class="ezKnobs" id="ezKnobs"></div>
-    <details class="ezStgBox" id="stgEzBox"><summary>🎭 もっとこだわる：楽器の位置を見る・動かす（ボーカルが埋もれる、低音が聞こえない、を直す）</summary><div class="stg" id="stgEz"></div></details>
+    <details class="ezStgBox" id="stgEzBox" open><summary>🎭 サウンドステージ：音の位置を見る・動かす（ボーカルが埋もれる、低音が聞こえない、を直す）</summary><div class="stg" id="stgEz"></div></details>
     <div class="ezStep"><span class="ezNum">3</span><b>できあがりを確かめて保存</b></div>
     <div class="ezScoreBox">
       <div class="ezGauge" id="ezGauge"><div class="ezGIn"><span class="rk" id="ezRank"></span><span class="num"><b id="ezScore">—</b><span>点</span></span></div></div>
@@ -667,7 +667,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
     <span id="edStatus" class="sub"></span>
   </div>
   <div class="note">処理した音は新しい解析結果として 1.〜7. に表示され、そのまま再生・比較できます（「元の音に戻す」で処理前に戻せます）。編集した音は「書き出し・結合・分割」タブから WAV / FLAC で書き出せます。</div>
-  <div class="tabs" id="edTabs"><button data-tab="master" class="on">おまかせマスタリング</button><button data-tab="basic">基本編集</button><button data-tab="out">書き出し・結合・分割</button><button data-tab="fix">修復</button><button data-tab="stems">パート別の音量（AI）</button></div>
+  <div class="tabs" id="edTabs"><button data-tab="master" class="on">おまかせマスタリング</button><button data-tab="basic">基本編集</button><button data-tab="out">書き出し・結合・分割</button><button data-tab="fix">修復</button></div>
 
   <div class="pane" data-pane="master">
     <div class="row"><label class="sub">ジャンル<select id="msPreset"></select></label><label class="sub">寄せる先<select id="msRef"></select></label><span id="msPresetNote" class="sub"></span></div>
@@ -794,27 +794,11 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
     <div class="row" style="margin-top:8px"><label class="sub"><input type="checkbox" id="fixDiff"> 取り除いた音を聴く（元の音 − 処理後）</label></div>
     <div class="legend">ハム・定常音：狭いノッチフィルタを前後 2 回かけます（位相はずれません）。自動判定は長時間平均スペクトルで 50 / 60 Hz とその倍音の尖り具合を比べます。背景雑音：帯域ごとの雑音のパワーを手本にしたウィーナー型の低減です。強くしすぎると「シュワシュワ」した音（ミュージカルノイズ）が出ます。雑音だけの部分を 4. で選んで手本にすると精度が上がります。クリック：線形予測の誤差が前向き・後ろ向きの両方で飛び出た短い区間を探し、最小二乗 AR 補間でつなぎ直します。ドラムなどのアタックは誤差が大きいまま続くので除外しますが、アタックと重なったクリックは見逃すことがあります。</div>
   </div>
-
-  <div class="pane" data-pane="stems" hidden>
-    <div class="note">AI（Meta の HTDemucs）で、曲を<b>ボーカル・ドラム・ベース・その他</b>の 4 つに分け、それぞれの音量を変えます（例：ボーカルだけ +2 dB）。
-      初回だけ、AI のモデル（約 180 MB）を Hugging Face からダウンロードし、このブラウザに保存します（次回からはダウンロードしません）。<b>音声はどこにも送信しません。</b>
-      PC 版の Chrome / Edge 推奨。WebGPU が使えない環境では、曲の長さの数倍以上の時間がかかります。</div>
-    <div class="row" style="margin-top:8px"><button id="stRun" class="primary">パートに分ける</button><button id="stStop" hidden>中止</button><span id="stMsg" class="sub"></span></div>
-    <div id="stCtl" hidden>
-      <div class="songWrap"><table id="stTable" style="margin-top:8px"></table></div>
-      <div class="row" style="margin-top:8px"><button id="stApply" class="primary">音量を反映して解析</button><button id="stReset">すべて 0 dB に戻す</button>
-        <label class="sub"><input type="checkbox" id="stAB" checked> 反映前の音を B に入れて聴き比べる</label></div>
-    </div>
-    <div class="legend">仕上がりは「元の音 ＋ Σ（ゲイン − 1）× 各パート」です。すべて 0 dB なら元の音とまったく同じで、AI が分けきれなかった成分も失われません。
-      分離は完全ではないので、大きく動かすほど、ほかのパートの音が少し混じって聞こえます（目安：±3 dB 程度まで）。「書き出す」で、そのパートだけを WAV で保存できます。
-      モデル：<a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noopener">HTDemucs</a>（Meta・MIT）を <a href="https://www.npmjs.com/package/demucs-web" target="_blank" rel="noopener">demucs-web</a>（MIT）が ONNX にしたもの（<a href="https://huggingface.co/ptasior/pizu-audio-models" target="_blank" rel="noopener">配布元</a>・SHA-256 で照合）。実行は <a href="https://onnxruntime.ai/" target="_blank" rel="noopener">ONNX Runtime Web</a>。</div>
-  </div>
-
 </section>
 <section class="panel tools" id="tools" data-nav="ツール" hidden>
   <h2>🧰 ツール</h2>
   <div class="row" style="margin-bottom:6px"><span class="sub">マスタリング以外の解析・編集です。どれもボタンを押したときだけ動きます。音を変えるツールは、処理した音を新しい解析結果にします（プロ画面の「元の音に戻す」で戻せます）。</span><button id="toolsClose">ツールを閉じる</button></div>
-  <div class="tabs" id="toolTabs"><button data-tab="pitchA" class="on">ピッチ解析</button><button data-tab="notes">音符・MIDI</button><button data-tab="score">コード・TAB譜</button><button data-tab="sep">分離（信号処理）</button><button data-tab="pitch">ピッチ補正・時間</button><button data-tab="nvh">音響・振動解析</button></div>
+  <div class="tabs" id="toolTabs"><button data-tab="pitchA" class="on">ピッチ解析</button><button data-tab="notes">音符・MIDI</button><button data-tab="score">コード・TAB譜</button><button data-tab="sep">分離（信号処理）</button><button data-tab="pitch">ピッチ補正・時間</button><button data-tab="stems">パート別の音量（AI・実験的）</button><button data-tab="nvh">音響・振動解析</button></div>
   <div class="tpane" data-tp="pitchA">
     <div class="row"><label class="sub">対象<select id="pitchRange"><option value="voice">声・メロディ（70〜1000 Hz）</option><option value="bass">ベース（35〜300 Hz）</option><option value="wide">広め（50〜2000 Hz）</option></select></label>
       <button id="btnPitch" class="primary" disabled>ピッチを解析</button><span id="pitchStatus" class="sub"></span></div>
@@ -891,6 +875,20 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
     <div class="row"><span class="sub">速さ</span><input type="number" id="tsPct" value="80" min="25" max="400"><span class="sub">%（100 = 元の速さ、50 = 半分の速さ）</span>
       <button id="tsRun" class="primary">伸縮して解析</button></div>
     <div class="legend">音階への補正：YIN 法で求めた基本周波数を、選んだ音階の一番近い音（A4 = 440 Hz）へ寄せ、TD-PSOLA で波形を並べ直します。「速さ」は目標の音へ寄せるまでの時間で、0 ms にするとケロケロした機械的な音、大きくするとビブラートが残る自然な補正になります。歌・単音の楽器向けで、和音や伴奏の入った音では正しく動きません。グラフは元のピッチ（青）と補正後のピッチ（橙）で、縦軸は MIDI のノート番号（60 = C4、1 = 半音）です。ピッチシフト・タイムストレッチ：位相ボコーダー（ピーク周辺の位相をロック）。シフトはフォルマントも一緒に動くため、大きくずらすと声の性質が変わります。</div>
+  </div>
+  <div class="tpane" data-tp="stems" hidden>
+    <div class="note"><b>実験的な機能です。</b>分離は完全ではないので、動かすとほかのパートの音が混じったり、ノイズのように聞こえたりすることがあります。時間もかかります。AI（Meta の HTDemucs）で、曲を<b>ボーカル・ドラム・ベース・その他</b>の 4 つに分け、それぞれの音量を変えます（例：ボーカルだけ +2 dB）。
+      初回だけ、AI のモデル（約 180 MB）を Hugging Face からダウンロードし、このブラウザに保存します（次回からはダウンロードしません）。<b>音声はどこにも送信しません。</b>
+      PC 版の Chrome / Edge 推奨。WebGPU が使えない環境では、曲の長さの数倍以上の時間がかかります。</div>
+    <div class="row" style="margin-top:8px"><button id="stRun" class="primary">パートに分ける</button><button id="stStop" hidden>中止</button><span id="stMsg" class="sub"></span></div>
+    <div id="stCtl" hidden>
+      <div class="songWrap"><table id="stTable" style="margin-top:8px"></table></div>
+      <div class="row" style="margin-top:8px"><button id="stApply" class="primary">音量を反映して解析</button><button id="stReset">すべて 0 dB に戻す</button>
+        <label class="sub"><input type="checkbox" id="stAB" checked> 反映前の音を B に入れて聴き比べる</label></div>
+    </div>
+    <div class="legend">仕上がりは「元の音 ＋ Σ（ゲイン − 1）× 各パート」です。すべて 0 dB なら元の音とまったく同じで、AI が分けきれなかった成分も失われません。
+      分離は完全ではないので、大きく動かすほど、ほかのパートの音が少し混じって聞こえます（目安：±3 dB 程度まで）。「書き出す」で、そのパートだけを WAV で保存できます。
+      モデル：<a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noopener">HTDemucs</a>（Meta・MIT）を <a href="https://www.npmjs.com/package/demucs-web" target="_blank" rel="noopener">demucs-web</a>（MIT）が ONNX にしたもの（<a href="https://huggingface.co/ptasior/pizu-audio-models" target="_blank" rel="noopener">配布元</a>・SHA-256 で照合）。実行は <a href="https://onnxruntime.ai/" target="_blank" rel="noopener">ONNX Runtime Web</a>。</div>
   </div>
   <div class="tpane" id="nvh" data-tp="nvh" hidden>
   <div class="sub" style="margin-bottom:6px">測定・工業向けの機能です（騒音計・心理音響・次数解析・伝達関数・再生用フィルタなど）。</div>
@@ -4821,7 +4819,7 @@ function render(m,noScroll){
   view={t0:0,t1:m.dur};sel=null;sgView=null;regRes=null;$("selPanel").hidden=true;$("pitchResult").hidden=true;$("pitchStatus").textContent="";
   renderPlatforms(m);renderChannels(m);fillNvhChannels();renderMarkers();setView(0,m.dur);
   cdc=null;aVariant="orig";meqKey="";meqFit=null;$("cdcOut").hidden=true;cdcMsg(m.source==="tab"?"タブ録音はすでに配信コーデックを通った音です。変換の影響を確かめるにはマスター音源（WAV / FLAC）を読み込んでください。":"");
-  if(typeof rkRender==="function")setTimeout(()=>{rkRender();rkMeter();stgCheck();stgUi();},0);
+  if(typeof rkRender==="function")setTimeout(()=>{rkRender();rkMeter();stgUi();},0);
   $("quick").hidden=true;$("nvhEmpty").hidden=true;setTimeout(updateNav,0);drawSegTable(m);drawGonio(m);refresh();
   if(!noScroll)$("result").scrollIntoView({behavior:"smooth"});
 }
@@ -6735,7 +6733,6 @@ function msBegin(){
   MS={m0:current,fs,len:s1-s0,C:pvGrid(fs),src:{chs},weights:current.layout.map(chWeight),
     info:{source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout},label:current.label,
     P:null,S:null,ver:0,cache:new Map(),wet:true,dryDb:0,metrics:null,prog:0,on:false,srcSent:false,src0:null};
-  if(typeof stgAttach==="function")stgAttach(); // サウンドステージで動かしてあれば、入力に反映する
   return MS;
 }
 function msSendSrc(){
@@ -6848,7 +6845,7 @@ function msSettingsFromPlan(P0,eqBands,lin){
     bassMono:P0.bassMono?P0.bassMono.f:0,declip:P0.declip,deharsh:P0.deharsh,
     comp:P0.comp?Object.assign({on:true},P0.comp):{on:false,ratio:2,attack:30,release:150,gr:2.5,thr:-24,L90:-19},
     lim:P0.lim?Object.assign({on:true},P0.lim,{opt:Object.assign({},P0.lim.opt)}):{on:false,gain:0,ceil:-1,opt:{la:4,hold:20,relMin:30,relMax:150}},
-    post:P0.post||0,knobs:{low:0,high:0,width:0,drive:0}};
+    post:P0.post||0,knobs:{low:0,high:0,width:0,drive:0},stage:{low:0,body:0,vox:0,air:0,wide:0}};
 }
 function msCompile(S,fs){
   const lin=!!S.lin,eqG=(type,g)=>lin&&!/pass$/.test(type)?g/2:g,groups={st:[],m:[],s:[]};
@@ -6857,7 +6854,13 @@ function msCompile(S,fs){
   // かんたん画面のつまみ：迫力（100 Hz 以下のシェルフ）・明るさ（8 kHz 以上のシェルフ）・広がり（サイド）・音圧（リミッターへの入力）
   if(K.low)groups.st.push(rbjBiquad("lowshelf",100,0.7,eqG("lowshelf",K.low),fs));
   if(K.high)groups.st.push(rbjBiquad("highshelf",8000,0.7,eqG("highshelf",K.high),fs));
-  const side=Math.round(((S.side||0)+(K.width||0))*10)/10,c=S.comp,l=S.lim;
+  // サウンドステージ：低音とボーカル帯は中央の成分（ミッド）を動かす。ボーカル帯は、同じ高さの左右の成分を 1/3 だけ逆に動かして、中央を際立たせる
+  const G=S.stage||{},st2=!!(MS&&MS.src.chs.length===2),mid=st2?"m":"st";
+  if(G.low)groups[mid].push(rbjBiquad("peaking",70,0.8,eqG("peaking",G.low),fs));
+  if(G.body)groups.st.push(rbjBiquad("peaking",250,0.9,eqG("peaking",G.body),fs));
+  if(G.vox){groups[mid].push(rbjBiquad("peaking",2500,0.8,eqG("peaking",G.vox),fs));if(st2)groups.s.push(rbjBiquad("peaking",2500,0.8,eqG("peaking",-G.vox/3),fs));}
+  if(G.air)groups.st.push(rbjBiquad("highshelf",9000,0.7,eqG("highshelf",G.air),fs));
+  const side=Math.round(((S.side||0)+(K.width||0)+(G.wide||0))*10)/10,c=S.comp,l=S.lim;
   return {declip:S.declip||null,sos:S.hp?[rbjBiquad("highpass",20,0.707,0,fs)]:[],eq:["st","m","s"].map(t=>({target:t,sos:groups[t]})).filter(g=>g.sos.length),eqZero:lin,
     side:side&&MS&&MS.src.chs.length===2?{db:side}:null,bassMono:S.bassMono?{f:S.bassMono}:null,deharsh:S.deharsh||null,
     comp:c&&c.on?{ratio:c.ratio,attack:c.attack,release:c.release,gr:c.gr,thr:c.thr,L90:c.L90}:null,
@@ -6912,7 +6915,7 @@ async function msPlan(opt){
   const apply=(info,rough)=>{
     const knobs=gotFirst&&ms.S?ms.S.knobs:null; // 先に鳴らしている間に動かしたつまみは、差し替えの後も残す
     ms.plan={key,name:P.name,info,eqBands,notes,T:usedT||genreTarget(key),lin,ref};ms.planLufs=info.lim?info.lim.lufs:NaN;
-    ms.S=msSettingsFromPlan(info.P,eqBands,lin);if(knobs)ms.S.knobs=knobs;ms.P0=info.P;ms.rough=rough;if(!gotFirst)ms.wet=true;
+    const stage=ms.S&&ms.S.stage;ms.S=msSettingsFromPlan(info.P,eqBands,lin);if(knobs)ms.S.knobs=knobs;if(stage)ms.S.stage=stage;ms.P0=info.P;ms.rough=rough;if(!gotFirst)ms.wet=true;
     msSetP(msCompile(ms.S,fs));msUpdateDry();
     if(!gotFirst){gotFirst=true;const wasPos=player&&player.side==="A"?playPosNow():null;
       if(opt.play||wasPos!=null){if(player)stopPlay();playFrom(wasPos!=null?wasPos:lastPos,"A");}first(true);}
@@ -7070,7 +7073,7 @@ const RK={sel:-1,drag:null,hist:[],hi:-1,snaps:[null,null,null,null],snapOn:-1,h
 const rkOn=()=>!!(MS&&MS.S&&!MS.rough);
 function rkFlatS(){const m=MS.m0;return {eqBands:[],lin:false,hp:false,side:0,bassMono:0,declip:null,deharsh:null,
   comp:{on:false,ratio:2,attack:30,release:150,gr:2.5,thr:Math.round((Number.isFinite(m.lufs)?m.lufs:-20)-2),L90:Number.isFinite(m.lufs)?m.lufs+1:-19},
-  lim:{on:false,gain:0,ceil:-1,opt:{la:4,hold:20,relMin:30,relMax:150}},post:0,knobs:{low:0,high:0,width:0,drive:0}};}
+  lim:{on:false,gain:0,ceil:-1,opt:{la:4,hold:20,relMin:30,relMax:150}},post:0,knobs:{low:0,high:0,width:0,drive:0},stage:{low:0,body:0,vox:0,air:0,wide:0}};}
 // 設定を変えた：すぐ試聴に反映し、少し落ち着いたら履歴に積む
 let rkAT=0;
 function rkChanged(redraw){
@@ -7239,154 +7242,123 @@ msHooks.push(t=>{if(t==="end"){RK.hist=[];RK.hi=-1;rkRender();}else if(t==="plan
 const rkTbh=()=>document.documentElement.style.setProperty("--tbh",$("topbar").offsetHeight+"px");rkTbh();
 window.addEventListener("resize",()=>{rkTbh();if(rkOn()&&!document.body.classList.contains("simple"))rkDrawEq();});
 new ResizeObserver(rkTbh).observe($("topbar"));
-/* ---------- サウンドステージ：AI で分けた 4 つのパートの「位置（左右）」と「前後（大きさ）」を舞台の絵で見せ、少し動かす ----------
-   左右＝そのパートの左右の音量差、前後＝曲全体に対するそのパートの大きさ（大きいほど手前）、玉の横幅＝左右への広がり（サイド / ミッド）。
-   動かした結果は「元の音 ＋ Σ（動かした後のパート − 元のパート）」として作り、マスタリングの入力（試聴・書き出し）になる。
-   何も動かしていなければ、元の音とまったく同じ */
-const STG={stems:null,sig:"",fs:0,len:0,an:null,g:[0,0,0,0],pan:[0,0,0,0],running:false,hover:-1,drag:null,views:[],mono:false};
-const STG_COL=["#ffc857","#6fd6ff","#6dffb0","#ff6ad5"],STG_ICON=["🥁","🎸","🎹","🎤"],STG_NAME=["ドラム","ベース","その他","ボーカル"];
-function stgSig(chs,fs){if(!chs||!chs.length)return "";const n=chs[0].length;let s=0;for(let k=0;k<97;k++){const i=Math.floor(n*(k+0.5)/97);s+=Math.abs(chs[0][i])*(k+1);}return n+"/"+fs+"/"+chs.length+"/"+s.toFixed(6);}
-// 分ける元の音（仕上げのセッション中は、動かす前の元の音）
-function stgSrc(){if(MS)return {chs:MS.src0||MS.src.chs,fs:MS.fs};if(current&&rawOK())return {chs:lastRaw.chs.map(c=>c.subarray(current.trimStart,current.trimEnd)),fs:lastRaw.fs};return null;}
-const stgValid=()=>{const s=stgSrc();return !!(STG.stems&&s&&stgSig(s.chs,s.fs)===STG.sig);};
-const stgActive=()=>STG.g.some(v=>v)||STG.pan.some(v=>v);
-// 各パートの位置・大きさ・広がり・時間ごとの大きさ（脈打つ表示用、50 ms ごと）
-function stgAnalyze(stems,mix,fs){
-  const n=mix[0].length,H=Math.round(fs*0.05),nb=Math.ceil(n/H);let em=0;for(const c of mix)for(let i=0;i<n;i+=2)em+=c[i]*c[i];em=em/(mix.length*Math.ceil(n/2))+1e-20;
-  return stems.map(st=>{const L=st[0],R=st[1],env=new Float32Array(nb);let eL=0,eR=0,eM=0,eS=0,mx=0;
-    for(let b=0;b<nb;b++){let e=0;const a=b*H,z=Math.min(n,a+H);for(let i=a;i<z;i++){const l=L[i],r=R[i];eL+=l*l;eR+=r*r;const m=(l+r)*0.5,s=(l-r)*0.5;eM+=m*m;eS+=s*s;e+=l*l+r*r;}env[b]=Math.sqrt(e/(2*Math.max(1,z-a)));if(env[b]>mx)mx=env[b];}
-    return {pan:(eR-eL)/(eR+eL+1e-20),rel:10*Math.log10((eL+eR)/(2*n)/em+1e-12),width:Math.min(1,Math.sqrt(eS/(eM+1e-20))),env,envMax:mx||1,silent:(eL+eR)/(2*n)<1e-9};});
+/* ---------- サウンドステージ：帯域ごとの「位置（左右）」と「前後」を舞台の絵で見せ、動かす ----------
+   AI の分離は使わない（ダウンロードも待ち時間もない）。玉は楽器ではなく帯域：低音（40〜120 Hz）・厚み（150〜400 Hz）・
+   ボーカル帯（1〜4 kHz）・きらめき（8 kHz 以上）と、左右の広がり。
+   左右＝その帯域の左右の音量差、前後＝ジャンルの目安と比べた強さ（目安より強いほど手前）、玉の横幅＝左右への広がり。
+   動かすと、マスタリングの EQ（低音・ボーカル帯は中央の成分）とサイドの音量が変わる。リミッターの手前に入るので音割れしない */
+const SS={an:null,key:"",views:[],hover:-1,drag:null,p:[0,0,0,0,0]};
+const SS_Z=[{k:"low",n:"低音",s:"キック・ベース",ic:"🥁",f0:40,f1:120,col:"#6fd6ff"},{k:"body",n:"厚み",s:"中低音",ic:"🎸",f0:150,f1:400,col:"#ffc857"},
+  {k:"vox",n:"ボーカル帯",s:"歌・主旋律",ic:"🎤",f0:1000,f1:4000,col:"#ff6ad5"},{k:"air",n:"きらめき",s:"高音",ic:"✨",f0:8000,f1:16000,col:"#6dffb0"}];
+const SS_WIDE={k:"wide",n:"広がり",col:"#b18cff"};
+const ssVals=()=>MS&&MS.S&&MS.S.stage||{low:0,body:0,vox:0,air:0,wide:0};
+const ssSrc=()=>MS?{chs:MS.src.chs,fs:MS.fs,m:MS.m0}:current&&rawOK()?{chs:lastRaw.chs.map(c=>c.subarray(current.trimStart,current.trimEnd)),fs:lastRaw.fs,m:current}:null;
+// 帯域ごとの左右の位置と広がり（曲全体から均等に取った最大 80 コマの FFT）
+function ssAnalyze(){
+  const S=ssSrc();if(!S)return null;const key=S.m.label+"/"+S.chs[0].length+"/"+S.fs+"/"+$("msPreset").value;if(SS.an&&SS.key===key)return SS.an;
+  const N=4096,n=S.chs[0].length,L=S.chs[0],R=S.chs.length>1?S.chs[1]:S.chs[0],w=hannP(N),nf=Math.max(1,Math.min(80,Math.floor(n/N))),bh=S.fs/N;
+  const acc=SS_Z.map(()=>({l:0,r:0,m:0,s:0}));let tm=0,ts=0;const lr=new Float64Array(N),li=new Float64Array(N),rr=new Float64Array(N),ri=new Float64Array(N);
+  for(let f=0;f<nf;f++){const a=Math.floor((n-N)*(nf>1?f/(nf-1):0));for(let i=0;i<N;i++){lr[i]=L[a+i]*w[i];li[i]=0;rr[i]=R[a+i]*w[i];ri[i]=0;}fft(lr,li);fft(rr,ri);
+    for(let k=2;k<N/2;k++){const fr=k*bh,pl=lr[k]*lr[k]+li[k]*li[k],pr=rr[k]*rr[k]+ri[k]*ri[k],mr=(lr[k]+rr[k])*0.5,mi=(li[k]+ri[k])*0.5,sr=(lr[k]-rr[k])*0.5,si=(li[k]-ri[k])*0.5,pm=mr*mr+mi*mi,ps=sr*sr+si*si;
+      if(fr>=200){tm+=pm;ts+=ps;}for(let z=0;z<SS_Z.length;z++)if(fr>=SS_Z[z].f0&&fr<SS_Z[z].f1){const A=acc[z];A.l+=pl;A.r+=pr;A.m+=pm;A.s+=ps;}}}
+  // 前後：ジャンルの目安（1/6 オクターブ）との差を、帯域の中で平均
+  const cmp=compareTonal(S.m,genreTarget($("msPreset").value)),dev=SS_Z.map(z=>{if(!cmp)return 0;let d=0,c=0;for(let j=0;j<TB_N;j++)if(TB_F[j]>=z.f0&&TB_F[j]<z.f1&&Number.isFinite(cmp.dev[j])){d+=cmp.dev[j];c++;}return c?d/c:NaN;});
+  SS.key=key;SS.an={stereo:S.chs.length===2,zones:acc.map((A,i)=>({pan:(A.r-A.l)/(A.r+A.l+1e-30),width:Math.min(1,Math.sqrt(A.s/(A.m+1e-30))),dev:dev[i],none:!Number.isFinite(dev[i])||A.l+A.r<1e-12})),sm:10*Math.log10((ts+1e-30)/(tm+1e-30))};
+  return SS.an;
 }
-// 動かした後の音を作る。左右：p>0 なら左の音を右へ移す（L′=(1−p)L、R′=R+pL）、p<0 はその逆
-function stgRemix(src){
-  const n=src[0].length,mono=src.length===1,out=src.map(c=>Float32Array.from(c));
-  for(let t=0;t<4;t++){const g=Math.pow(10,STG.g[t]/20),p=mono?0:STG.pan[t];if(g===1&&!p)continue;const L=STG.stems[t][0],R=STG.stems[t][1];
-    if(mono){const o=out[0],k=g-1;for(let i=0;i<n;i++)o[i]+=k*(L[i]+R[i])*0.5;continue;}
-    const oL=out[0],oR=out[1],a=Math.abs(p);
-    if(p>=0)for(let i=0;i<n;i++){const l=L[i],r=R[i];oL[i]+=g*(1-a)*l-l;oR[i]+=g*(r+a*l)-r;}
-    else for(let i=0;i<n;i++){const l=L[i],r=R[i];oL[i]+=g*(l+a*r)-l;oR[i]+=g*(1-a)*r-r;}}
-  return out;
+// セッションが無ければ、音割れしないようにリミッター（ゲイン 0 dB・上限 −1 dBTP）だけを入れた設定で始める
+async function ssEnsure(){
+  if(MS)return !!MS.S;if(busy||!current||!rawOK())return false;
+  if(editOrig&&msLast&&msLast.after===current){await edUndo();if(busy||!current||!rawOK())return false;}
+  if(!msBegin())return false;MS.S=rkFlatS();MS.S.lim.on=true;MS.P0=null;MS.plan=null;MS.wet=true;msSetP(msCompile(MS.S,MS.fs));rkReset();
+  if(!document.body.classList.contains("simple"))rkRender();else renderEasy();return true;
 }
-// セッションの入力を、動かした後の音に差し替える（セッションが無ければ、何もかけない設定で始める）
-let stgAT=0;
-async function stgApply(){
-  if(!STG.stems||busy)return;let fresh=false;
-  if(!MS){if(!current||!rawOK())return;if(editOrig&&msLast&&msLast.after===current){await edUndo();if(busy||!current||!rawOK())return;}
-    if(!stgValid()){stgDrop();return;}if(!msBegin())return;MS.S=rkFlatS();MS.P0=null;MS.plan=null;MS.wet=true;fresh=true;}
-  const src0=MS.src0||MS.src.chs;if(stgSig(src0,MS.fs)!==STG.sig){stgDrop();return;}
-  MS.src0=src0;MS.src.chs=stgActive()?stgRemix(src0):src0;MS.srcSent=false;
-  if(!MS.S)return; // おまかせの計算中（まだ設定が無い）：計算が終わると、この入力で鳴る
-  MS.P=msCompile(MS.S,MS.fs);MS.on=true;MS.dirty=true;MS.metrics=null;msFlush(true);
-  if(fresh){rkReset();if(!document.body.classList.contains("simple"))rkRender();else renderEasy();}
-  msEmit("params");stgUi();
+let ssAT=0;
+function ssSet(k,v,final){
+  if(!MS||!MS.S)return;const lim=k==="wide"?4:6;v=Math.round(Math.max(-lim,Math.min(lim,v))*2)/2||0;if(!MS.S.stage)MS.S.stage={low:0,body:0,vox:0,air:0,wide:0};
+  if(MS.S.stage[k]===v&&!final){stgDraw();return;}MS.S.stage[k]=v;clearTimeout(ssAT);ssAT=setTimeout(()=>{msApplyS();if(final&&typeof rkPush==="function")rkPush();},final?0:45);stgUi();
 }
-// 別の曲を表示したら、前の曲の分離結果は捨てる（メモリを空ける）。編集・仕上げの途中（元の音を持っている間）は捨てない
-function stgCheck(){if(STG.stems&&!STG.running&&!MS&&!editOrig&&!stgValid()){STG.stems=null;STG.an=null;STG.sig="";STG.g=[0,0,0,0];STG.pan=[0,0,0,0];}}
-function stgDrop(){STG.stems=null;STG.an=null;STG.sig="";STG.g=[0,0,0,0];STG.pan=[0,0,0,0];stgUi();}
-// 新しいセッションを始めるとき、すでに動かしてあれば入力に反映する
-function stgAttach(){if(!MS||!STG.stems||stgSig(MS.src.chs,MS.fs)!==STG.sig)return;MS.src0=MS.src.chs;if(stgActive())MS.src.chs=stgRemix(MS.src0);}
-async function stgRun(view){
-  if(STG.running||busy){stgMsg("他の処理が終わるまでお待ちください",true);return;}
-  if(!current||!rawOK()){stgMsg("先に曲を読み込んでください",true);return;}
-  if(!MS&&editOrig&&msLast&&msLast.after===current){await edUndo();if(busy||!current||!rawOK())return;}
-  const S=stgSrc();if(!S)return;if(S.chs.length>2){stgMsg("ステレオかモノラルの曲だけ分けられます",true);return;}
-  const sig=stgSig(S.chs,S.fs),fs=S.fs,n=S.chs[0].length,mix=S.chs.length===1?[S.chs[0],S.chs[0]]:S.chs;
-  STG.running=true;stStopReq=false;stgUi();stgMsg("AI を準備中…（初回はモデルをダウンロードします。曲の再生やつまみは、このまま使えます）");const t0=performance.now();
-  try{
-    await dmxInit();if(stStopReq)throw new Error("中止しました");
-    let L=Float32Array.from(mix[0]),R=Float32Array.from(mix[1]);if(fs!==DMX.FS){stgMsg("44.1 kHz に変換中…");[L,R]=await resampleChs([L,R],fs,DMX.FS);}
-    stgMsg("パートに分けています（"+dmxEpName()+"）…");
-    const r=await dmxCall({cmd:"sep",L,R},null,p=>{const el=(performance.now()-t0)/1000;stgMsg("パートに分けています（"+dmxEpName()+"） "+Math.round(p*100)+"%"+(p>0.05?"・残り約 "+fmtT(el/p*(1-p)):""));});
-    let stems=r.out;if(fs!==DMX.FS){stgMsg("元のサンプルレートに戻しています…");stems=await Promise.all(stems.map(t=>resampleChs(t,DMX.FS,fs)));}
-    stems=stems.map(t=>t.map(c=>{if(c.length===n)return c;const o=new Float32Array(n);o.set(c.subarray(0,Math.min(n,c.length)));return o;}));
-    const now=stgSrc();if(!now||stgSig(now.chs,now.fs)!==sig)throw new Error("分けている間に曲が変わりました");
-    STG.stems=stems;STG.sig=sig;STG.fs=fs;STG.len=n;STG.mono=S.chs.length===1;STG.g=[0,0,0,0];STG.pan=[0,0,0,0];STG.an=stgAnalyze(stems,mix,fs);
-    stgMsg("分けました（"+fmtT((performance.now()-t0)/1000)+"・"+dmxEpName()+"）。玉をドラッグして動かせます");
-  }catch(e){console.error(e);stgMsg(stStopReq?"中止しました":"分けられませんでした："+(e.message||e),!stStopReq);}
-  finally{STG.running=false;const b=$("tbStatus");if(/^8\. /.test(b.textContent))b.textContent="";stgUi();}
-}
-function stgMsg(t,err){for(const v of STG.views){const el=v.root.querySelector("[data-msg]");el.textContent=t;el.style.color=err?"var(--bad)":"";}}
-const stgTxt=t=>{const g=STG.g[t],p=STG.pan[t];return STG_ICON[t]+" "+STG_NAME[t]+" "+(g>0?"+":g<0?"−":"±")+Math.abs(g).toFixed(1)+" dB"+(p?"・"+(p>0?"右":"左")+"へ "+Math.round(Math.abs(p)*100)+"%":"");};
+const ssTxt=(z,v)=>z.ic+" "+z.n+" "+(v>0?"+":v<0?"−":"±")+Math.abs(v).toFixed(1)+" dB";
 function stgUi(){
-  const ok=stgValid();
-  for(const v of STG.views){const q=s=>v.root.querySelector(s);q(".stgBody").hidden=!ok;q("[data-a=run]").hidden=ok||STG.running;q("[data-a=stop]").hidden=!STG.running;q(".stgLead").hidden=ok;
-    if(ok){q("[data-info]").textContent=[3,0,1,2].map(stgTxt).join("　");
-      const tips=[],lv=t=>STG.an[t].rel+STG.g[t],A=STG.an;
-      if(!A[3].silent&&lv(3)<-12)tips.push("🎤 ボーカルが奥にいます（曲全体より "+f1(-lv(3))+" dB 小さい）。埋もれて聞こえるなら「ボーカルを前に」");
-      if(!A[1].silent&&lv(1)<-12)tips.push("🎸 ベースが奥にいます（"+f1(-lv(1))+" dB 小さい）。低音が物足りないなら「低音をはっきり」");
-      if(!A[0].silent&&lv(0)<-12)tips.push("🥁 ドラムが奥にいます（"+f1(-lv(0))+" dB 小さい）。リズムが弱いなら「ドラムにパンチ」");
-      const tp=q("[data-tip]");tp.hidden=!tips.length;tp.textContent=tips.join("　／　");const big=STG.g.some(x=>Math.abs(x)>3);q("[data-warn]").hidden=!big;
-      const over=MS&&MS.on&&MS.metrics&&MS.metrics.tp>-0.5&&!(MS.S&&MS.S.lim&&MS.S.lim.on);q("[data-clip]").hidden=!over;}}
+  const an=current?ssAnalyze():null,V=ssVals();
+  for(const v of SS.views){const q=s=>v.root.querySelector(s);q(".stgBody").hidden=!an;if(!an)continue;
+    q("[data-info]").textContent=SS_Z.map(z=>ssTxt(z,V[z.k])).join("　")+(an.stereo?"　↔ 広がり "+(V.wide>0?"+":V.wide<0?"−":"±")+Math.abs(V.wide).toFixed(1)+" dB":"");
+    const tips=[],lv=i=>an.zones[i].dev+V[SS_Z[i].k],Z=an.zones;
+    if(!Z[2].none&&lv(2)<-1.5)tips.push("🎤 ボーカル帯が奥にいます（目安より "+f1(-lv(2))+" dB 弱い）。歌が埋もれて聞こえるなら「ボーカルを前に」");
+    if(!Z[0].none&&lv(0)<-2)tips.push("🥁 低音が奥にいます（目安より "+f1(-lv(0))+" dB 弱い）。キックやベースが物足りないなら「低音をはっきり」");
+    if(!Z[1].none&&lv(1)>2)tips.push("🎸 厚みが前に出すぎています（目安より "+f1(lv(1))+" dB 強い）。こもって聞こえるなら「こもりを取る」");
+    const tp=q("[data-tip]");tp.hidden=!tips.length;tp.textContent=tips.join("　／　");}
   stgDraw();
 }
-// 舞台の絵。奥（上）ほど小さく、手前（下）ほど大きい。玉は再生に合わせて脈打つ
-function stgGeom(W,H){return {yB:46,yF:H-58,cx:W/2,half:W/2-46};}
-function stgPos(t,G){const a=STG.an[t],d=Math.max(0,Math.min(1,(a.rel+STG.g[t]+20)/20)),sc=0.5+0.5*d,pd=Math.max(-1,Math.min(1,a.pan*2.2+STG.pan[t]*1.6));
-  return {x:G.cx+pd*G.half*sc,y:G.yB+d*(G.yF-G.yB),d,sc,r:13+21*d};}
+function stgGeom(W,H){return {yB:50,yF:H-62,cx:W/2,half:W/2-46};}
+function ssPos(i,G,an,V,orig){const z=an.zones[i],d=Math.max(0,Math.min(1,0.5+(z.dev+(orig?0:V[SS_Z[i].k]))/14)),sc=0.5+0.5*d;return {x:G.cx+Math.max(-1,Math.min(1,z.pan*2.5))*G.half*sc,y:G.yB+d*(G.yF-G.yB),d,sc,r:14+20*d};}
+function ssWide(G,an,V,orig){const wn=Math.max(0,Math.min(1,(an.sm+(orig?0:V.wide)+22)/22)),y=G.yB+0.5*(G.yF-G.yB);return {dx:(0.22+0.72*wn)*G.half*0.75,y,wn};}
 function stgDraw(){
-  if(!STG.an||!stgValid())return;const pos=player&&player.side==="A"?playPosNow():lastPos,playing=!!player&&player.side==="A";
-  for(const v of STG.views){const cv=v.cv;if(!cv.offsetParent)continue;const W=Math.max(260,cv.parentElement.clientWidth),H=W<520?250:320,g=fitCanvas(cv,W,H),G=stgGeom(W,H);v.W=W;v.H=H;
+  const an=SS.an;if(!an||!current)return;const V=ssVals(),playing=!!player&&player.side==="A"&&anMix&&playCtx;
+  // 再生中は、その帯域がいま鳴っている強さで脈打つ
+  const lvl=[0.3,0.3,0.3,0.3];
+  if(playing){if(!liveSpec||liveSpec.length!==anMix.frequencyBinCount)liveSpec=new Float32Array(anMix.frequencyBinCount);anMix.getFloatFrequencyData(liveSpec);const bh=playCtx.sampleRate/anMix.fftSize;
+    SS_Z.forEach((z,i)=>{let mx=-200;for(let k=Math.max(1,Math.floor(z.f0/bh));k<liveSpec.length&&k*bh<z.f1;k++)if(liveSpec[k]>mx)mx=liveSpec[k];lvl[i]=Math.max(0,Math.min(1,(mx+78)/52));});}
+  for(let i=0;i<4;i++)SS.p[i]=SS.p[i]*0.6+lvl[i]*0.4;
+  for(const v of SS.views){const cv=v.cv;if(!cv.offsetParent)continue;const W=Math.max(260,cv.parentElement.clientWidth),H=W<520?260:330,g=fitCanvas(cv,W,H),G=stgGeom(W,H);v.W=W;v.H=H;
     const bg=g.createRadialGradient(W/2,H*1.1,10,W/2,H*0.5,W*0.75);bg.addColorStop(0,"#1a2150");bg.addColorStop(1,"#070913");g.fillStyle=bg;g.fillRect(0,0,W,H);
-    // 床の格子（遠近）
     g.strokeStyle="rgba(120,150,255,.16)";g.lineWidth=1;
     for(let k=0;k<=8;k++){const d=k/8,y=G.yB+d*(G.yF-G.yB),sc=0.5+0.5*d;g.beginPath();g.moveTo(G.cx-G.half*sc,y);g.lineTo(G.cx+G.half*sc,y);g.stroke();}
     for(let k=-4;k<=4;k++){g.beginPath();g.moveTo(G.cx+k/4*G.half*0.5,G.yB);g.lineTo(G.cx+k/4*G.half,G.yF);g.stroke();}
-    g.strokeStyle="rgba(160,180,255,.35)";g.beginPath();g.moveTo(G.cx,G.yB);g.lineTo(G.cx,G.yF);g.stroke();
-    g.fillStyle="#8f98c4";g.font="11px sans-serif";g.textAlign="left";g.fillText("奥（小さい）",8,G.yB-14);g.fillText("手前（大きい）",8,G.yF+18);g.fillText("左",G.cx-G.half+2,G.yF+18+14);g.textAlign="right";g.fillText("右",G.cx+G.half-2,G.yF+32);
-    g.textAlign="center";g.font="20px sans-serif";g.fillText("🎧",G.cx,H-12);g.font="10.5px sans-serif";g.fillStyle="#8f98c4";g.fillText("聴く人",G.cx+34,H-16);
-    // 奥のパートから順に描く
-    const order=[0,1,2,3].filter(t=>!STG.an[t].silent).sort((a,b)=>stgPos(a,G).y-stgPos(b,G).y),lab=[];
-    for(const t of order){const a=STG.an[t],P=stgPos(t,G),e=playing?Math.min(1,a.env[Math.min(a.env.length-1,Math.floor(pos/0.05))]/a.envMax*1.6):0.35;
-      v.p[t]=(v.p[t]||0)*0.6+e*0.4;const r=P.r*(1+0.28*v.p[t]),rx=r*(1+1.3*a.width),col=STG_COL[t],sel=STG.hover===t||STG.drag&&STG.drag.t===t;
-      // 元の位置（動かしたとき）
-      if(STG.g[t]||STG.pan[t]){const d0=Math.max(0,Math.min(1,(a.rel+20)/20)),sc0=0.5+0.5*d0,x0=G.cx+Math.max(-1,Math.min(1,a.pan*2.2))*G.half*sc0,y0=G.yB+d0*(G.yF-G.yB);
-        g.strokeStyle=col;g.globalAlpha=.45;g.setLineDash([3,4]);g.beginPath();g.moveTo(x0,y0);g.lineTo(P.x,P.y);g.stroke();g.beginPath();g.ellipse(x0,y0,(13+21*d0)*(1+1.3*a.width)*0.8,(13+21*d0)*0.8,0,0,Math.PI*2);g.stroke();g.setLineDash([]);g.globalAlpha=1;}
+    // 目安の線（ここが「ジャンルの目安どおり」）
+    {const y=G.yB+0.5*(G.yF-G.yB);g.strokeStyle="rgba(200,210,255,.45)";g.setLineDash([6,5]);g.beginPath();g.moveTo(G.cx-G.half*0.75,y);g.lineTo(G.cx+G.half*0.75,y);g.stroke();g.setLineDash([]);
+      g.fillStyle="#8f98c4";g.font="10.5px sans-serif";g.textAlign="right";g.fillText("目安",G.cx+G.half*0.75-4,y-4);}
+    g.fillStyle="#8f98c4";g.font="11px sans-serif";g.textAlign="left";g.fillText("奥（目安より弱い）",8,G.yB-18);g.fillText("手前（目安より強い）",8,G.yF+18);g.fillText("左",G.cx-G.half+2,G.yF+34);g.textAlign="right";g.fillText("右",G.cx+G.half-2,G.yF+34);
+    g.textAlign="center";g.font="20px sans-serif";g.fillText("🎧",G.cx,H-12);
+    const lab=[];
+    // 広がり：左右に 1 つずつ。外へ動かすほど広い
+    if(an.stereo){const Wd=ssWide(G,an,V),W0=ssWide(G,an,V,true),sel=SS.hover===4||SS.drag&&SS.drag.i===4;
+      for(const sg of [-1,1]){const x=G.cx+sg*Wd.dx;if(V.wide){g.strokeStyle=SS_WIDE.col;g.globalAlpha=.5;g.setLineDash([3,4]);g.beginPath();g.moveTo(G.cx+sg*W0.dx,Wd.y);g.lineTo(x,Wd.y);g.stroke();g.setLineDash([]);g.globalAlpha=1;}
+        g.save();g.shadowColor=SS_WIDE.col;g.shadowBlur=16;g.globalAlpha=.8;g.fillStyle=SS_WIDE.col;g.beginPath();g.ellipse(x,Wd.y,9,22,0,0,Math.PI*2);g.fill();g.restore();
+        if(sel){g.strokeStyle="#fff";g.lineWidth=2;g.beginPath();g.ellipse(x,Wd.y,13,26,0,0,Math.PI*2);g.stroke();g.lineWidth=1;}
+        g.fillStyle="#fff";g.font="13px sans-serif";g.fillText(sg<0?"◀":"▶",x,Wd.y+5);}
+      lab.push({x:G.cx+Wd.dx,y:Wd.y-30,col:SS_WIDE.col,txt:"広がり"+(V.wide?" "+(V.wide>0?"+":"−")+Math.abs(V.wide).toFixed(1):"")});}
+    const order=[0,1,2,3].filter(i=>!an.zones[i].none).sort((a,b)=>ssPos(a,G,an,V).y-ssPos(b,G,an,V).y);
+    for(const i of order){const z=SS_Z[i],A=an.zones[i],P=ssPos(i,G,an,V),r=P.r*(1+0.3*SS.p[i]),rx=r*(1+1.2*A.width),sel=SS.hover===i||SS.drag&&SS.drag.i===i,val=V[z.k];
+      if(val){const O=ssPos(i,G,an,V,true);g.strokeStyle=z.col;g.globalAlpha=.5;g.setLineDash([3,4]);g.beginPath();g.moveTo(O.x,O.y);g.lineTo(P.x,P.y);g.stroke();g.beginPath();g.ellipse(O.x,O.y,O.r*(1+1.2*A.width)*0.8,O.r*0.8,0,0,Math.PI*2);g.stroke();g.setLineDash([]);g.globalAlpha=1;}
       g.fillStyle="rgba(0,0,0,.35)";g.beginPath();g.ellipse(P.x,P.y+r*0.9,rx*0.9,r*0.28,0,0,Math.PI*2);g.fill();
-      const rg=g.createRadialGradient(P.x-rx*0.25,P.y-r*0.3,r*0.1,P.x,P.y,Math.max(rx,r));rg.addColorStop(0,"#fff");rg.addColorStop(0.25,col);rg.addColorStop(1,col+"22");
-      g.save();g.shadowColor=col;g.shadowBlur=14+26*v.p[t];g.globalAlpha=0.55+0.4*P.d;g.fillStyle=rg;g.beginPath();g.ellipse(P.x,P.y,rx,r,0,0,Math.PI*2);g.fill();g.restore();
+      const rg=g.createRadialGradient(P.x-rx*0.25,P.y-r*0.3,r*0.1,P.x,P.y,Math.max(rx,r));rg.addColorStop(0,"#fff");rg.addColorStop(0.25,z.col);rg.addColorStop(1,z.col+"22");
+      g.save();g.shadowColor=z.col;g.shadowBlur=14+28*SS.p[i];g.globalAlpha=0.6+0.35*P.d;g.fillStyle=rg;g.beginPath();g.ellipse(P.x,P.y,rx,r,0,0,Math.PI*2);g.fill();g.restore();
       if(sel){g.strokeStyle="#fff";g.lineWidth=2;g.beginPath();g.ellipse(P.x,P.y,rx+4,r+4,0,0,Math.PI*2);g.stroke();g.lineWidth=1;}
-      g.textAlign="center";g.font=Math.round(12+8*P.d)+"px sans-serif";g.fillText(STG_ICON[t],P.x,P.y+5);
-      let ly=Math.max(14,P.y-r-8);for(let k=0;k<6;k++){const hit=lab.find(q=>Math.abs(q.x-P.x)<70&&Math.abs(q.y-ly)<13);if(!hit)break;ly=hit.y-14;}
-      lab.push({x:P.x,y:ly,col,txt:STG_NAME[t]+(STG.g[t]?" "+(STG.g[t]>0?"+":"−")+Math.abs(STG.g[t]).toFixed(1):"")});}
-    g.textAlign="center";g.font="bold 11.5px sans-serif";g.lineWidth=3;g.strokeStyle="rgba(5,7,16,.85)";
-    for(const q of lab){g.strokeText(q.txt,q.x,q.y);g.fillStyle=q.col;g.fillText(q.txt,q.x,q.y);}g.lineWidth=1;
-    g.textAlign="left";
+      g.font=Math.round(13+7*P.d)+"px sans-serif";g.fillStyle="#fff";g.fillText(z.ic,P.x,P.y+5);
+      let ly=Math.max(14,P.y-r-8);for(let k=0;k<6;k++){const hit=lab.find(q=>Math.abs(q.x-P.x)<84&&Math.abs(q.y-ly)<13);if(!hit)break;ly=hit.y-14;}
+      lab.push({x:P.x,y:ly,col:z.col,txt:z.n+(val?" "+(val>0?"+":"−")+Math.abs(val).toFixed(1):"")});}
+    g.font="bold 11.5px sans-serif";g.lineWidth=3;g.strokeStyle="rgba(5,7,16,.85)";for(const q of lab){g.strokeText(q.txt,q.x,q.y);g.fillStyle=q.col;g.fillText(q.txt,q.x,q.y);}g.lineWidth=1;g.textAlign="left";
   }
 }
-function stgHit(v,e){const r=v.cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,G=stgGeom(v.W,v.H);let best=-1,bd=1e9;
-  for(let t=0;t<4;t++){if(STG.an[t].silent)continue;const P=stgPos(t,G),rx=P.r*(1+1.3*STG.an[t].width)+8,d=Math.hypot((x-P.x)/rx,(y-P.y)/(P.r+8));if(d<1.15&&d<bd){bd=d;best=t;}}return best;}
-function stgSet(t,g,p){STG.g[t]=Math.round(Math.max(-6,Math.min(6,g))*2)/2||0;if(!STG.mono)STG.pan[t]=Math.round(Math.max(-0.6,Math.min(0.6,p))*20)/20||0;}
-function stgCommit(){clearTimeout(stgAT);stgAT=setTimeout(stgApply,60);stgUi();}
+function ssHit(v,e){const an=SS.an;if(!an)return -1;const r=v.cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,G=stgGeom(v.W,v.H),V=ssVals();let best=-1,bd=1e9;
+  for(let i=0;i<4;i++){if(an.zones[i].none)continue;const P=ssPos(i,G,an,V),rx=P.r*(1+1.2*an.zones[i].width)+8,d=Math.hypot((x-P.x)/rx,(y-P.y)/(P.r+8));if(d<1.15&&d<bd){bd=d;best=i;}}
+  if(best<0&&an.stereo){const Wd=ssWide(G,an,V);for(const sg of [-1,1])if(Math.hypot((x-(G.cx+sg*Wd.dx))/18,(y-Wd.y)/30)<1.1)best=4;}return best;}
 function stgMount(root){
-  root.innerHTML="<div class='stgLead sub'>AI（HTDemucs）で曲を<b>ボーカル・ドラム・ベース・その他</b>に分け、それぞれが<b>左右のどこに・どれくらい前に</b>いるかを舞台の絵で見せます。玉をドラッグすると、前後（大きさ）と左右を少し動かせます。初回だけモデル（約 180 MB）をダウンロードします。音声はどこにも送信しません。</div>"
-    +"<div class='row' style='margin:6px 0'><button class='primary' data-a='run'>🎭 パートに分けて表示する</button><button data-a='stop' hidden>中止</button><span class='sub' data-msg></span></div>"
-    +"<div class='stgBody' hidden><canvas class='stgCv'></canvas>"
-    +"<div class='row stgBtns'><button data-a='vox'>🎤 ボーカルを前に</button><button data-a='low'>🔊 低音をはっきり</button><button data-a='drm'>🥁 ドラムにパンチ</button><button data-a='reset'>↺ 元の位置に戻す</button></div>"
-    +"<div class='stgTip' data-tip hidden></div><div class='sub' data-info style='margin-top:4px'></div><div class='note warn' data-warn hidden style='margin-top:4px'>±3 dB を超えて動かしています。分離は完全ではないので、大きく動かすほど、ほかのパートの音が混じって聞こえやすくなります。</div>"
-    +"<div class='note warn' data-clip hidden style='margin-top:4px'>パートを上げたぶん、ピークが大きくなっています（リミッターを使っていないので、このまま保存すると音割れすることがあります）。「おまかせ」を押すか、プロ画面でリミッターを使ってください。</div>"
-    +"<div class='legend'>上下にドラッグ＝前後（そのパートの音量、±6 dB まで・目安は ±3 dB）、左右にドラッグ＝左右の位置、ダブルクリック＝そのパートを元に戻す。離すと音に反映します。点線は元の位置です。"
-    +"「前後」は曲全体に対する大きさから求めた目安で、リバーブなどによる奥行きは測っていません。「その他」にはギター・鍵盤などがまとめて入ります。大きく動かした後は、もう一度「おまかせ」を押すと音量が合い直ります。</div></div>";
-  const v={root,cv:root.querySelector("canvas"),p:[0,0,0,0],W:300,H:300};STG.views.push(v);const cv=v.cv;
-  root.addEventListener("click",e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a)return;e.target.blur();
-    if(a==="run")stgRun(v);
-    else if(a==="stop"){stStopReq=true;stgMsg("止めています…");if(dmxWorker){dmxWorker.terminate();dmxWorker=null;dmxReady=null;if(dmxReject){dmxReject(new Error("中止しました"));dmxReject=null;}}}
-    else if(stgValid()){
-      if(a==="vox"){stgSet(3,STG.g[3]+1.5,STG.pan[3]);stgSet(2,STG.g[2]-0.5,STG.pan[2]);}
-      else if(a==="low"){stgSet(1,STG.g[1]+1.5,STG.pan[1]);stgSet(0,STG.g[0]+0.5,STG.pan[0]);}
-      else if(a==="drm"){stgSet(0,STG.g[0]+1.5,STG.pan[0]);}
-      else if(a==="reset"){STG.g=[0,0,0,0];STG.pan=[0,0,0,0];}
-      stgCommit();}});
-  cv.addEventListener("pointerdown",e=>{if(!stgValid())return;const t=stgHit(v,e);if(t<0)return;cv.setPointerCapture(e.pointerId);STG.drag={t,x:e.clientX,y:e.clientY,g:STG.g[t],p:STG.pan[t],moved:false};e.preventDefault();stgDraw();});
-  cv.addEventListener("pointermove",e=>{if(!stgValid())return;const D=STG.drag;if(!D){const h=stgHit(v,e);if(h!==STG.hover){STG.hover=h;cv.style.cursor=h>=0?"grab":"default";stgDraw();}return;}
-    const G=stgGeom(v.W,v.H),dx=e.clientX-D.x,dy=e.clientY-D.y;if(Math.abs(dx)+Math.abs(dy)>3)D.moved=true;if(!D.moved)return;
-    const sc=stgPos(D.t,G).sc;stgSet(D.t,D.g+dy/(G.yF-G.yB)*20,D.p+dx/(G.half*sc)/1.6);stgUi();});
-  const up=()=>{const D=STG.drag;if(!D)return;STG.drag=null;if(D.moved&&(STG.g[D.t]!==D.g||STG.pan[D.t]!==D.p))stgCommit();else stgDraw();};
-  cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);cv.addEventListener("pointerleave",()=>{if(!STG.drag&&STG.hover>=0){STG.hover=-1;stgDraw();}});
-  cv.addEventListener("dblclick",e=>{if(!stgValid())return;const t=stgHit(v,e);if(t<0||!(STG.g[t]||STG.pan[t]))return;STG.g[t]=0;STG.pan[t]=0;stgCommit();});
+  root.innerHTML="<div class='stgBody' hidden><canvas class='stgCv'></canvas>"
+    +"<div class='row stgBtns'><button data-a='vox'>🎤 ボーカルを前に</button><button data-a='low'>🔊 低音をはっきり</button><button data-a='mud'>🌫 こもりを取る</button><button data-a='air'>✨ きらめきを足す</button><button data-a='reset'>↺ 元の位置に戻す</button></div>"
+    +"<div class='stgTip' data-tip hidden></div><div class='sub' data-info style='margin-top:4px'></div>"
+    +"<div class='legend'>玉は<b>楽器ではなく帯域</b>です：低音（40〜120 Hz）・厚み（150〜400 Hz）・ボーカル帯（1〜4 kHz）・きらめき（8 kHz 以上）。左右の位置＝その帯域の左右の音量差、前後＝ジャンルの目安と比べた強さ、玉の横幅＝左右への広がり。"
+    +"玉を上下にドラッグ＝前後（±6 dB）、紫の ◀ ▶ を左右にドラッグ＝広がり（±4 dB）、ダブルクリック＝元に戻す。動かすとすぐ音が変わります。"
+    +"同じ帯域にいる他の楽器も一緒に動きます（たとえばボーカル帯を前に出すと、ギターやスネアの同じ高さの音も前に出ます）。左右の位置そのものは動かせません。</div></div>";
+  const v={root,cv:root.querySelector("canvas"),W:300,H:300};SS.views.push(v);const cv=v.cv;
+  root.addEventListener("click",async e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a)return;e.target.blur();if(!(await ssEnsure()))return;const V=ssVals();
+    if(a==="vox")ssSet("vox",V.vox+4,true);else if(a==="low"){ssSet("low",V.low+3,true);}else if(a==="mud")ssSet("body",V.body-3,true);else if(a==="air")ssSet("air",V.air+3,true);
+    else if(a==="reset"){MS.S.stage={low:0,body:0,vox:0,air:0,wide:0};msApplyS();if(typeof rkPush==="function")rkPush();stgUi();}
+    if(!player)playFrom(lastPos,"A");});
+  cv.addEventListener("pointerdown",async e=>{const i=ssHit(v,e);if(i<0)return;e.preventDefault();cv.setPointerCapture(e.pointerId);const d={i,x:e.clientX,y:e.clientY,moved:false,ready:false};SS.drag=d;stgDraw();
+    if(await ssEnsure()){const V=ssVals();d.v0=i===4?V.wide:V[SS_Z[i].k];d.ready=true;}else if(SS.drag===d)SS.drag=null;});
+  cv.addEventListener("pointermove",e=>{const D=SS.drag;if(!D){const h=ssHit(v,e);if(h!==SS.hover){SS.hover=h;cv.style.cursor=h<0?"default":h===4?"ew-resize":"ns-resize";stgDraw();}return;}
+    if(!D.ready)return;const G=stgGeom(v.W,v.H),dx=e.clientX-D.x,dy=e.clientY-D.y;if(Math.abs(dx)+Math.abs(dy)>3)D.moved=true;if(!D.moved)return;
+    if(D.i===4){const r=v.cv.getBoundingClientRect(),side=(D.x-r.left)<G.cx?-1:1;ssSet("wide",D.v0+side*dx/(0.72*G.half*0.75)*22);}else ssSet(SS_Z[D.i].k,D.v0+dy/(G.yF-G.yB)*14);});
+  const up=()=>{const D=SS.drag;if(!D)return;SS.drag=null;if(D.ready&&D.moved){const k=D.i===4?"wide":SS_Z[D.i].k;ssSet(k,ssVals()[k],true);}else stgDraw();};
+  cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);cv.addEventListener("pointerleave",()=>{if(!SS.drag&&SS.hover>=0){SS.hover=-1;stgDraw();}});
+  cv.addEventListener("dblclick",e=>{const i=ssHit(v,e);if(i<0||!MS||!MS.S)return;ssSet(i===4?"wide":SS_Z[i].k,0,true);});
 }
 stgMount($("stgPro"));stgMount($("stgEz"));
 $("stgProBox").addEventListener("toggle",()=>stgUi());$("stgEzBox").addEventListener("toggle",()=>stgUi());
-msHooks.push(t=>{if(t==="end"||t==="plan"||t==="metrics")stgUi();});
+msHooks.push(t=>{if(t==="end"||t==="plan"||t==="params")stgUi();});
+$("msPreset").addEventListener("change",()=>{if(current)stgUi();});
 window.addEventListener("resize",()=>stgDraw());
 /* ---------- かんたん画面：ジャンルのカード・つまみ・元の音を聴くボタン・準備度 ---------- */
 const EZ_EMOJI={stream:"🌐",pop:"🎤",rock:"🎸",edm:"🪩",hiphop:"🎧",rnb:"💜",acoustic:"🪕",jazz:"🎷",classical:"🎻"};
