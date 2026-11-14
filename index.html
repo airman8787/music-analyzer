@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-QPiQGDtCgBi27iu4U7eOSLFYtrnQJgfNHBLZ5EfdDZI=' 'sha256-NELQe7TyDMbIKkQnJaeUYGPfwowV4mhaxfNirXaZd6M=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-QPiQGDtCgBi27iu4U7eOSLFYtrnQJgfNHBLZ5EfdDZI=' 'sha256-pPK9LgQ0OCx81sHZ0/vBIRC5MqygaTP2wap0OI047go=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -5194,9 +5194,19 @@ function tonalOf(x){
 }
 // 汎用の目安：英米のヒット曲の平均（AES Paper 8960 / 9762）で 100 Hz〜4 kHz が 1 Hz あたり約 −5 dB/oct
 // （1/6 オクターブの帯域パワーでは約 −2 dB/oct）、それより上はさらに急（3 kHz 付近で約 −7.6 dB/oct）。低域は平らとし、許容範囲は広めにとる
+// ポピュラー音楽 12,345 曲の平均 LTAS（Elowsson & Friberg 2017, AES 142nd Convention, Paper 9762, 式 5・6）。
+// x：30 Hz から 1 オクターブを 60 等分した番号（x = 1 + 60·log2(f/30)。x=100 が 94 Hz。この定義で論文の表 1 の傾きが再現できる）。
+// 式 5 の p1 は紙面では正に見えるが、「2 つの式を x=100 で交わるように調整した」という記述を満たすのは −0.000907（正だと +1.7 dB、負だと −16.4 dB で式 6 の −16.4 dB と一致）。
+// 値は 1 Hz あたりの強さ（dB）。1/6 オクターブ帯のエネルギーに直すには帯域幅（周波数に比例）の分 10·log10(f) を足す
+function ltasEF(f){const x=1+60*Math.log2(f/30);return x<=100?-0.000907*x*x+0.256*x-32.942:-0.000183*x*x+0.0213*x-16.735;}
 function builtinTarget(){
   const med=new Float32Array(TB_N),tol=new Float32Array(TB_N);
-  const v=f=>f<45?v(45)-6*Math.log2(45/f):f<100?v(100):f<=4000?-2*Math.log2(f/1000):-4-4.6*Math.log2(f/4000);
+  // 100 Hz〜2 kHz：論文の平均の形を使う。論文 5 節（図 9）で、打楽器の量が近い曲だけで目安を作ると誤差が減ったのは
+  // 100 Hz より下と 2 kHz より上で、中域は全曲の平均でもほぼ同じ精度だったため。
+  // その外は打楽器の量（≒ジャンル）で大きく変わり、データもフォーク寄り（論文 2.1 節）なので、平均をそのまま使わず従来の形をつなぐ
+  const old=f=>f<45?old(45)-6*Math.log2(45/f):f<100?old(100):f<=4000?-2*Math.log2(f/1000):-4-4.6*Math.log2(f/4000);
+  const ef=f=>ltasEF(f)+10*Math.log10(f),A=100,Bf=2000;
+  const v=f=>f<A?old(f)-old(A)+ef(A):f>Bf?old(f)-old(Bf)+ef(Bf):ef(f);
   for(let j=0;j<TB_N;j++){const f=TB_F[j];med[j]=v(f);tol[j]=f<40||f>12000?6:f<150||f>5000?4:2.5;}
   let r=0,c=0;for(let j=0;j<TB_N;j++)if(TB_F[j]>=100&&TB_F[j]<=4000){r+=med[j];c++;}r/=c;
   return {kind:"builtin",name:"汎用の目安",med:med.map(x=>x-r),lo:med.map((x,j)=>x-r-tol[j]),hi:med.map((x,j)=>x-r+tol[j]),count:0,limit:20000};
