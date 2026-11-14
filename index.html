@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-0FS9KKl+6MZk5oKlngAf4hMy/HN/fYBUInF0NBnKQ0s=' 'sha256-mJunU1k8K7tPPqBKGBiE/nTteNdqP6vQlFuUv/qvr1s=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-cnr47npj05gOOXXGAdOQnH6QjVfvuhB74uit+Uuhn4A=' 'sha256-mJunU1k8K7tPPqBKGBiE/nTteNdqP6vQlFuUv/qvr1s=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -1095,7 +1095,10 @@ function estimateBpm(flux,fps){
   for(let bpm=60;bpm<=200;bpm+=0.5){
     const lag=60/bpm*fps;
     const raw=acf(lag)+0.5*acf(2*lag)+0.25*acf(4*lag);
-    const w=Math.exp(-0.5*Math.pow(Math.log2(bpm/120),2));
+    // 規則的な曲では「本来のテンポ」と「その半分・2 倍」の自己相関がほぼ同点になるので、どれを選ぶかはこの重みで決まる。
+    // 中心 125 BPM・幅 0.65 オクターブ：およそ 88〜177 BPM を優先する（幅 1 オクターブだと、キックとスネアが交互の曲で長さによって 60 と 120 に割れた）。
+    // 裏拍に音がない遅い曲（バラードなど）は、遅いテンポのまま残る
+    const w=Math.exp(-0.5*Math.pow(Math.log2(bpm/125)/0.65,2));
     all.push({bpm,sc:raw*w});
     if(all[all.length-1].sc>all[bi].sc)bi=all.length-1;
   }
