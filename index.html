@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-cnr47npj05gOOXXGAdOQnH6QjVfvuhB74uit+Uuhn4A=' 'sha256-mJunU1k8K7tPPqBKGBiE/nTteNdqP6vQlFuUv/qvr1s=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-cnr47npj05gOOXXGAdOQnH6QjVfvuhB74uit+Uuhn4A=' 'sha256-2ZaMVwHU7muAG4tYXQuVrPi3ad87R3SC+gBQfvCslHU=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -41,8 +41,13 @@ button.rec{background:#7a2530;border-color:#a8384a}
 #albumTable td,#albumTable th{white-space:nowrap}
 .delivT td,.delivT th{text-align:left;vertical-align:top}.delivT td.j{white-space:nowrap;font-weight:600}.delivT .ok{color:var(--ok)}.delivT .warn{color:var(--warn)}.delivT .bad{color:var(--bad)}.delivT .info{color:var(--acc)}
 body.simple .adv{display:none!important}
-.modeSw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.modeSw button{border:0;border-radius:0;padding:6px 12px;font-size:13px;background:var(--panel2)}
-.modeSw button.on{background:#2c4a86;color:#fff}
+.modeTop{display:inline-flex;border:1px solid var(--line);border-radius:18px;overflow:hidden;flex:0 0 auto}.modeTop button{border:0;border-radius:0;padding:5px 12px;font-size:13.5px;background:var(--panel2)}
+.modeTop button.on{background:linear-gradient(90deg,#2c4a86,#5b3a86);color:#fff}
+body:not(.simple) .ez{display:none!important}
+.ezStage{background:radial-gradient(120% 140% at 50% 0%,#1d2340 0%,#101219 70%);border:1px solid #2c3352;border-radius:14px;padding:10px 12px 12px;margin-bottom:12px}
+.ezLbl{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#c9cfe6;margin:2px 2px 4px}
+#cvEzGram,#cvEzWave{cursor:pointer;border-radius:8px}#cvEzFft{border-radius:10px}#cvEzWave{margin-top:6px}
+.tpane{margin-top:4px}
 #easyDiag{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-bottom:12px}
 .ed{border:1px solid var(--line);border-left-width:4px;border-radius:8px;padding:8px 10px;background:var(--panel2)}
 .ed .et{font-weight:600;font-size:14px}.ed .ex{font-size:12.5px;color:var(--sub);margin-top:2px}.ed .ea{font-size:12.5px;margin-top:4px}
@@ -122,7 +127,9 @@ input[type=number]{background:var(--panel2);border:1px solid var(--line);color:v
 #topbar{position:sticky;top:0;z-index:30;background:rgba(20,21,26,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
 .tb-in{max-width:1080px;margin:0 auto;padding:6px 16px;display:flex;align-items:center;gap:10px}
 .tb-title{font-size:15px;font-weight:700;margin:0;white-space:nowrap}
-#tbNav{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:thin}
+#tbNav{display:flex;gap:4px;overflow-x:auto;flex:1 1 100%;order:3;scrollbar-width:thin}
+.tb-in{flex-wrap:wrap;row-gap:4px}.tb-right{margin-left:auto}
+body.simple #tbNav{display:none}
 #tbNav a{white-space:nowrap;color:var(--sub);text-decoration:none;font-size:13px;padding:4px 10px;border-radius:14px;border:1px solid transparent}
 #tbNav a:hover{border-color:var(--line);color:var(--text)}
 #tbNav a.on{background:#2c4a86;color:#fff}
@@ -201,8 +208,9 @@ input[type=range]{accent-color:var(--acc)}
 <div id="topbar">
   <div class="tb-in">
     <h1 class="tb-title">楽曲アナライザ</h1>
+    <span class="modeTop" id="modeSw" role="group" aria-label="画面"><button data-m="simple" title="かんたん画面：すぐ音を良くする">🎮<span class="lbl"> かんたん</span></button><button data-m="full" title="プロ画面：EQ・コンプ・リミッターを細かく調整">🎛<span class="lbl"> プロ</span></button></span>
     <nav id="tbNav" aria-label="セクション"></nav>
-    <span class="tb-right"><span id="tbAB" hidden><button id="tbPlay" title="再生 / 停止（Space）">▶</button><button id="tbA" class="ab" title="A を聴く（X で切り替え）">A</button><button id="tbB" class="ab" title="B を聴く（X で切り替え）">B</button></span><label class="sub"><span class="lbl">再生機器 </span><select id="devSim" title="再生機器のシミュレーション（大まかな近似）"></select></label><label class="sub"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
+    <span class="tb-right"><span id="tbAB" hidden><button id="tbPlay" title="再生 / 停止（Space）">▶</button><button id="tbA" class="ab" title="A を聴く（X で切り替え）">A</button><button id="tbB" class="ab" title="B を聴く（X で切り替え）">B</button></span><label class="sub"><span class="lbl">再生機器 </span><select id="devSim" title="再生機器のシミュレーション（大まかな近似）"></select></label><label class="sub adv"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbTools" title="ツール（ピッチ・音符・コード・分離・音響解析など）">🧰<span class="lbl"> ツール</span></button><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
   </div>
   <div class="tb-in tb-status"><span id="tbStatus" class="sub" aria-live="polite"></span></div>
 </div>
@@ -226,7 +234,7 @@ input[type=range]{accent-color:var(--acc)}
   <div class="sub">自分の楽曲ファイルを読み込んで、ラウドネス・ピーク・周波数バランス・ステレオ・BPM・キー・構成を数値化します（音声はこのPC内で処理され、外部に送信されません）</div>
 </header>
 <main>
-<section class="panel">
+<section class="panel" data-nav="読込">
   <h2>1. 読み込み</h2>
   <label id="drop"><input type="file" id="file" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg,.opus" multiple>
     <span class="big">曲ファイルをここにドロップ</span>
@@ -234,7 +242,6 @@ input[type=range]{accent-color:var(--acc)}
     <br><span class="pick">ファイルを選ぶ（複数可）</span>
   </label>
   <div class="row" style="margin-top:8px">
-    <span class="modeSw" id="modeSw" role="group" aria-label="表示"><button data-m="simple">かんたん表示</button><button data-m="full">くわしい表示</button></span>
     <label class="sub"><input type="checkbox" id="optTrim" checked> 前後の無音をトリム</label>
     <span id="bInfo" class="sub"></span><button id="bClear" hidden>B を外す</button>
   </div>
@@ -302,9 +309,15 @@ input[type=range]{accent-color:var(--acc)}
 </section>
 
 <div id="result" hidden>
-  <section class="panel" id="easy">
-    <h2>おまかせで仕上げる</h2>
-    <div id="easyDiag"></div>
+  <section class="panel ez" id="easy" data-nav="かんたん">
+    <h2>🎮 音を良くする</h2>
+    <div class="ezStage" id="ezStage">
+      <div class="ezLbl"><span>いま鳴っている音</span><span class="sub" id="ezFftNote">左が低い音・右が高い音</span></div>
+      <canvas id="cvEzFft"></canvas>
+      <div class="ezLbl"><span>曲全体のスペクトログラム</span><span class="sub">明るいほど強い・下が低い音（クリックでその位置から再生）</span></div>
+      <canvas id="cvEzGram"></canvas>
+      <canvas id="cvEzWave"></canvas>
+    </div>
     <div class="easySeek"><button id="easyPlay" class="easyPlayBtn" title="再生 / 停止（Space）">▶</button>
       <input type="range" id="easySeek" min="0" max="1" step="0.01" value="0" aria-label="再生位置"><span id="easyTime" class="sub">0:00 / 0:00</span></div>
     <div class="easyRow">
@@ -321,6 +334,8 @@ input[type=range]{accent-color:var(--acc)}
       </div>
     </div>
     <div id="easyMsg" class="sub" style="margin-top:6px"></div>
+    <h3>診断</h3>
+    <div id="easyDiag"></div>
     <details class="sub" style="margin-top:8px"><summary>何をしているの？</summary>
       <ul>
         <li>選んだジャンルの大まかな目安に合わせて、<b>音色の整え（EQ）→ 音量の粒をそろえる（コンプ）→ 音割れしないように音量を上げる（リミッター）</b>を自動でかけます。</li>
@@ -328,7 +343,7 @@ input[type=range]{accent-color:var(--acc)}
         <li>元の曲より良くなったかは、必ず「仕上げた音」と「元の音」を聴き比べて決めてください。細かく調整したいときは「くわしい表示」の 10. で設定を変えられます。</li>
       </ul></details>
   </section>
-  <section class="panel adv"><h2>2. 概要</h2><div id="cards"></div>
+  <section class="panel adv" data-nav="概要"><h2>2. 概要</h2><div id="cards"></div>
     <h3>配信サービスでの再生音量（目安）</h3>
     <div id="platNote" class="note warn" hidden></div>
     <table id="platTable"></table>
@@ -342,7 +357,7 @@ input[type=range]{accent-color:var(--acc)}
       <table id="cdcBands" style="margin-top:6px"></table>
     </div>
   </section>
-  <section class="panel">
+  <section class="panel adv" data-nav="チェック">
     <h2>3. 公開前チェック</h2>
     <div class="diag-top">
       <div><canvas id="cvDynMap"></canvas><div id="dynMapInfo" class="sub" style="min-height:1.5em;font-size:12px"></div></div>
@@ -363,7 +378,7 @@ input[type=range]{accent-color:var(--acc)}
       Spotify：<a href="https://support.spotify.com/us/artists/article/loudness-normalization/" target="_blank" rel="noopener">Loudness normalization</a>・<a href="https://support.spotify.com/us/artists/article/audio-file-formats/" target="_blank" rel="noopener">Audio file formats</a>／
       Apple Digital Masters：<a href="https://help.apple.com/itc/videoaudioassetguide/en.lproj/static.html" target="_blank" rel="noopener">Apple Video and Audio Asset Guide</a>／CD：Red Book（IEC 60908）。</div>
   </section>
-  <section class="panel adv">
+  <section class="panel adv" data-nav="波形">
     <h2>4. 波形とラウドネスの推移</h2>
     <div class="row" style="margin-bottom:6px">
       <button id="btnPlay" disabled>▶ 再生</button><span id="playPos" class="sub"></span>
@@ -418,7 +433,7 @@ input[type=range]{accent-color:var(--acc)}
     <div class="legend"><i style="background:#5b6b95"></i>モーメンタリー(0.4秒)<i style="background:#8ab4ff"></i>ショートターム(3秒)<i style="background:#5ad19a"></i>統合ラウドネス<i style="background:#c58aff"></i>構成の境界<i style="background:#ff6b6b"></i>クリップ疑い　帯の色＝似た区間（★はサビ候補）<br>下段：スペクトログラム（明るいほど強い）／L/R相関の推移（緑＝同相・黄＝広い・赤＝逆相）／PSR の推移（3 秒窓のピークとショートタームの差。赤＝8 dB 未満で潰れ気味・黄＝8〜10・緑＝10 以上）</div>
     <table id="segTable" style="margin-top:10px"></table>
   </section>
-  <section class="panel adv">
+  <section class="panel adv" data-nav="周波数">
     <h2>5. 周波数バランス</h2>
     <div class="tabs" id="fbTabs"><button data-tab="spec" class="on">スペクトル</button><button data-tab="target">ターゲット比較・マッチ EQ</button><button data-tab="low">低域</button></div>
     <div class="fbpane" data-pane="spec">
@@ -455,7 +470,7 @@ input[type=range]{accent-color:var(--acc)}
       <div class="legend">低域のクレスト：120 Hz 以下だけを取り出した音の、曲の大きい区間でのピークと平均の差（3 秒ごとの中央値）。小さいほど低域が圧縮されて密、大きいほどキックのアタックが立っています。ジャンルで適正値が違うので、同じジャンルのリファレンスと比べてください。帯域のレベルは 100 Hz〜4 kHz の平均を 0 dB とした 1/6 オクターブの平均です。</div>
     </div>
   </section>
-  <section class="panel adv">
+  <section class="panel adv" data-nav="ステレオ">
     <h2>6. チャンネル・ステレオ</h2>
     <h3 style="margin-top:0">チャンネル別 <span id="chLayout" class="sub" style="font-weight:400"></span></h3>
     <table id="chTable"></table>
@@ -467,18 +482,7 @@ input[type=range]{accent-color:var(--acc)}
         <div class="legend">相関：+1＝同相（センター寄り）、0＝無相関（広い）、マイナス＝逆相。幅：サイド成分とセンター成分の比（大きいほど広い）</div></div>
     </div>
   </section>
-  <section class="panel adv">
-    <h2>7. ピッチ（基本周波数）</h2>
-    <div class="row"><label class="sub">対象<select id="pitchRange"><option value="voice">声・メロディ（70〜1000 Hz）</option><option value="bass">ベース（35〜300 Hz）</option><option value="wide">広め（50〜2000 Hz）</option></select></label>
-      <button id="btnPitch" class="primary" disabled>ピッチを解析</button><span id="pitchStatus" class="sub"></span></div>
-    <div class="sub" style="margin:6px 0">単音（歌・ソロ楽器・ベース）向けの解析です（YIN法）。伴奏のある曲では最も目立つ音を追うため、誤検出が混ざります。結果は 4. のスペクトログラムに水色の点で重ねて表示し、音程の分布から音階・チューニングを調べます。</div>
-    <div id="pitchResult" hidden>
-      <canvas id="cvPitchHist"></canvas>
-      <div id="pitchSummary" class="sub" style="white-space:pre-line;margin-top:6px"></div>
-      <table id="pitchPeaks" style="margin-top:8px"></table>
-    </div>
-  </section>
-  <section class="panel adv">
+  <section class="panel adv" data-nav="比較">
     <h2>8. 保存して比較</h2>
     <div class="row"><input type="text" id="saveName" placeholder="名前（例: 参考曲A / ライラ新曲 v2）" size="30"><button id="btnSave" class="primary">この結果を保存</button><label class="sub"><input type="checkbox" id="optSaveAudio" checked> 音声も保存（A/B試聴用・自分のファイルのみ）<span id="saveAudioNote"></span></label><button id="btnCopy">要約をコピー</button></div>
     <div id="savedList" style="margin-top:10px"></div>
@@ -487,110 +491,7 @@ input[type=range]{accent-color:var(--acc)}
     <details><summary>テキスト要約（Claudeに貼り付けてフィードバックを求める用）</summary><pre id="report"></pre></details>
   </section>
 </div>
-<div id="nvhOff" class="note adv" style="margin-bottom:14px" hidden>9. 音響・振動解析（騒音計・心理音響・次数解析・伝達関数・再生用フィルタなど、測定・工業向けの機能）は隠しています。どれも「計算」を押したときだけ動き、自動では解析しません。<span id="nvhFltNote"></span> <button id="nvhShow">9. を表示する</button></div>
-<section class="panel adv" id="nvh">
-  <h2>9. 音響・振動解析</h2>
-  <div class="row" style="margin-bottom:6px"><span class="sub">測定・工業向けの機能です。楽曲制作だけなら隠しておけます。</span><button id="nvhHide">9. を隠す</button></div>
-  <div class="row" style="gap:8px;margin-bottom:6px">
-    <span class="sub">校正：0 dBFS の正弦波 =</span><input type="number" id="calFs" step="0.1" value="100"><span class="sub">dB SPL</span>
-    <button id="calFromSel" title="4. のグラフで校正器の音の範囲を選んでから押してください">選択範囲を校正音にする</button>
-    <input type="number" id="calRef" step="0.1" value="94"><span class="sub">dB</span>
-    <span id="calState" class="tag"></span>
-  </div>
-  <div class="row" style="gap:8px;margin-bottom:4px">
-    <label class="sub">対象<select id="nvhScope"><option value="all">曲全体（トリム後）</option><option value="sel">4. の選択範囲</option></select></label>
-    <label class="sub">チャンネル<select id="nvhCh"></select></label>
-    <span id="nvhStatus" class="sub"></span>
-  </div>
-  <div id="nvhEmpty" class="note">解析する音声がまだありません。1. でファイルを読み込むか、「フィルタ・信号発生」タブで信号を作ってください（「一括処理」はそのまま使えます）。</div>
-  <div class="tabs" id="nvhTabs">
-    <button data-tab="slm" class="on">騒音計・オクターブ</button><button data-tab="psy">心理音響</button><button data-tab="edit">フィルタ・信号発生</button><button data-tab="order">次数解析</button><button data-tab="tf">伝達関数</button><button data-tab="batch">一括処理</button><button data-tab="view">3D・マーカー・レポート</button>
-  </div>
-
-  <div class="pane" data-pane="slm">
-    <div class="row"><button id="slmRun" class="primary">計算</button>
-      <label class="sub">オクターブ<select id="octB"><option value="3">1/3</option><option value="1">1/1</option></select></label>
-      <label class="sub">表示する特性<select id="octW"><option value="Z">Z（平坦）</option><option value="A">A</option><option value="C">C</option></select></label>
-      <button id="slmCsv" disabled>CSV保存</button></div>
-    <div id="slmOut" class="kv" style="margin-top:8px"></div>
-    <canvas id="cvSlm" style="margin-top:8px"></canvas>
-    <canvas id="cvOct" style="margin-top:8px"></canvas>
-    <table id="octTable" style="margin-top:8px"></table>
-    <div class="legend">騒音計：IEC 61672-1 の周波数重み付け（A / C / Z）と時間重み付け（Fast 125 ms / Slow 1 s）。オクターブ：IEC 61260-1（10進ベース）の 6 次バターワース帯域フィルタ。値は校正値に基づく dB SPL です。</div>
-  </div>
-
-  <div class="pane" data-pane="psy" hidden>
-    <div class="row"><button id="psyRun" class="primary">計算</button>
-      <label class="sub">音場<select id="psyField"><option value="free">自由音場</option><option value="diffuse">拡散音場</option></select></label>
-      <button id="psyCsv" disabled>CSV保存</button></div>
-    <div id="psyOut" class="kv" style="margin-top:8px"></div>
-    <canvas id="cvLoud" style="margin-top:8px"></canvas>
-    <canvas id="cvNs" style="margin-top:8px"></canvas>
-    <table id="toneTable" style="margin-top:8px"></table>
-    <div class="legend">ラウドネス：ISO 532-1:2017（Zwicker 法、定常・時間変動）。シャープネス：DIN 45692。トーナリティ：ECMA-74 附属書 D の TNR / PR。<b>ラフネス・変動強度は臨界帯域ごとの包絡の変調から求めるモデルの推定値で、規格の計算ではありません</b>（1 kHz・60 dB・100% 変調で、70 Hz → 1 asper、4 Hz → 1 vacil に校正）。心理音響の値は音の絶対的な大きさで変わるため、校正していないと参考になりません。</div>
-  </div>
-
-  <div class="pane" data-pane="edit" hidden>
-    <h3 style="margin-top:0">再生にかけるフィルタ（IIR、最大 3 段）</h3>
-    <div id="fltRows"></div>
-    <div class="row" style="margin-top:4px"><label class="sub"><input type="checkbox" id="fltLive"> 再生に適用</label><button id="fltApplyIIR">このフィルタで処理した音声を解析</button></div>
-    <canvas id="cvFlt" style="margin-top:6px"></canvas>
-    <h3>FIR フィルタ（直線位相）</h3>
-    <div class="row"><select id="firType"><option value="lowpass">ローパス</option><option value="highpass">ハイパス</option><option value="bandpass">バンドパス</option><option value="bandstop">バンドストップ</option></select>
-      <span class="sub">f1</span><input type="number" id="firF1" value="1000"><span class="sub">f2</span><input type="number" id="firF2" value="4000"><span class="sub">Hz　タップ数</span><input type="number" id="firTaps" value="1023" step="2">
-      <button id="firApplyBtn">FIR で処理した音声を解析</button></div>
-    <h3>信号発生</h3>
-    <div class="row"><select id="genType"><option value="sine">正弦波</option><option value="sweep">スイープ（対数）</option><option value="white">白色雑音</option><option value="pink">ピンク雑音</option><option value="am">振幅変調音</option><option value="square">矩形波</option><option value="multitone">倍音つき複合音</option></select>
-      <span class="sub">周波数</span><input type="number" id="genF" value="1000"><span class="sub">終了周波数</span><input type="number" id="genF2" value="10000">
-      <span class="sub">変調周波数</span><input type="number" id="genFm" value="70"><span class="sub">変調度</span><input type="number" id="genM" value="1" step="0.1"></div>
-    <div class="row" style="margin-top:4px"><span class="sub">レベル</span><input type="number" id="genLevel" value="-20"><span class="sub">dBFS　長さ</span><input type="number" id="genDur" value="10"><span class="sub">秒</span>
-      <select id="genFs"><option>44100</option><option selected>48000</option><option>96000</option></select><select id="genCh"><option value="1">モノラル</option><option value="2" selected>ステレオ</option></select>
-      <button id="genRun" class="primary">生成して解析</button></div>
-    <div class="legend">処理した音声・生成した音声は、新しい解析結果として 1.〜8. に表示されます（元の解析結果は置き換わります）。レベルは正弦波のピーク基準で、雑音は実効値を同じレベルの正弦波にそろえます。</div>
-  </div>
-
-  <div class="pane" data-pane="order" hidden>
-    <div class="row"><label class="sub">回転数の求め方<select id="ordMode"><option value="track">音から追跡</option><option value="tacho">タコ信号</option><option value="const">一定</option></select></label>
-      <span id="ordTrackBox" class="row" style="gap:6px"><span class="sub">次数</span><input type="number" id="ordOrder" value="2" step="0.5"><span class="sub">周波数範囲</span><input type="number" id="ordFmin" value="20"><span class="sub">〜</span><input type="number" id="ordFmax" value="200"><span class="sub">Hz</span></span>
-      <span id="ordTachoBox" class="row" style="gap:6px" hidden><span class="sub">タコのチャンネル</span><select id="ordTachCh"></select><span class="sub">パルス数/回転</span><input type="number" id="ordPpr" value="1"></span>
-      <span id="ordConstBox" class="row" style="gap:6px" hidden><span class="sub">回転数</span><input type="number" id="ordRpm" value="3000"><span class="sub">rpm</span></span></div>
-    <div class="row" style="margin-top:4px"><span class="sub">最大次数</span><input type="number" id="ordMax" value="20"><span class="sub">次数の刻み</span><input type="number" id="ordRes" value="0.25" step="0.05"><span class="sub">回転数の刻み</span><input type="number" id="ordStep" value="100"><span class="sub">rpm</span>
-      <button id="ordRun" class="primary">計算</button><span class="sub">切り出す次数</span><input type="text" id="ordCuts" value="1,2,4" size="10"><button id="ordCsv" disabled>CSV保存</button></div>
-    <canvas id="cvRpm" style="margin-top:8px"></canvas>
-    <canvas id="cvOrdMap" style="margin-top:8px"></canvas>
-    <canvas id="cvOrdCut" style="margin-top:8px"></canvas>
-    <div class="legend">次数 = 周波数 × 60 ÷ 回転数。次数マップは横軸が次数、縦軸が回転数で、明るいほど大きな成分です。「音から追跡」は、指定した次数の成分を周波数範囲の中で追いかけて回転数を推定します。</div>
-  </div>
-
-  <div class="pane" data-pane="tf" hidden>
-    <div class="row"><span class="sub">入力（基準）</span><select id="tfIn"></select><span class="sub">出力（応答）</span><select id="tfOut"></select>
-      <label class="sub">FFT<select id="tfN"><option>1024</option><option>2048</option><option selected>4096</option><option>8192</option><option>16384</option><option>32768</option></select></label>
-      <button id="tfRun" class="primary">計算</button><button id="tfCsv" disabled>CSV保存</button></div>
-    <canvas id="cvTfMag" style="margin-top:8px"></canvas>
-    <canvas id="cvTfPh" style="margin-top:8px"></canvas>
-    <canvas id="cvTfCoh" style="margin-top:8px"></canvas>
-    <div class="legend">Welch 法（ハン窓・50% 重なり）。H1 = Sxy / Sxx（出力側の雑音に強い）、H2 = Syy / Syx（入力側の雑音に強い）。コヒーレンスが 1 に近い周波数ほど、入力と出力の関係が確かです。</div>
-  </div>
-
-  <div class="pane" data-pane="batch" hidden>
-    <div class="row"><label class="file">ファイルを選ぶ（複数可）<input type="file" id="batchFiles" accept="audio/*" multiple></label><button id="batchRun" class="primary" disabled>実行</button><button id="batchCsv" disabled>CSV保存</button><span id="batchInfo" class="sub"></span></div>
-    <table id="batchTable" style="margin-top:8px"></table>
-    <div class="legend">各ファイルの全体を、1 つずつ順番に解析します（騒音計・ラウドネスは校正値に基づきます）。</div>
-  </div>
-
-  <div class="pane" data-pane="view" hidden>
-    <h3 style="margin-top:0">ウォーターフォール（3D）</h3>
-    <div class="row"><label class="sub">本数<select id="wfN"><option>32</option><option selected>64</option><option>96</option></select></label><button id="wfDraw">描画</button><button id="wfPng">画像を保存（PNG）</button></div>
-    <canvas id="cvWf" style="margin-top:6px"></canvas>
-    <h3>マーカー</h3>
-    <div class="row"><input type="text" id="mkLabel" placeholder="ラベル（例：異音）" size="20"><button id="mkAdd">再生位置に追加（M キー）</button><button id="mkSel">選択範囲の始めに追加</button></div>
-    <table id="mkTable" style="margin-top:6px"></table>
-    <h3>レポート</h3>
-    <div class="row"><button id="repOpen">レポートを開く（印刷して PDF 保存）</button><button id="repSave">HTML で保存</button></div>
-    <div class="legend">レポートには、概要・チェック結果・計算済みの騒音計 / 心理音響 / 次数解析 / 伝達関数の結果・マーカー・グラフの画像が入ります。開いたページでブラウザの「印刷」から「PDF に保存」を選んでください。</div>
-  </div>
-</section>
-<section class="panel adv" id="sep">
+<section class="panel adv" id="sep" data-nav="編集">
   <h2>10. 編集・書き出し</h2>
   <div class="row" style="gap:8px;margin-bottom:4px">
     <label class="sub">対象<select id="edScope"><option value="all">曲全体（トリム後）</option><option value="sel">4. の選択範囲</option></select></label>
@@ -598,58 +499,7 @@ input[type=range]{accent-color:var(--acc)}
     <span id="edStatus" class="sub"></span>
   </div>
   <div class="note">処理した音は新しい解析結果として 1.〜8. に表示され、そのまま再生・比較できます（「元の音に戻す」で処理前に戻せます）。編集した音は「書き出し・結合・分割」タブから WAV / FLAC で書き出せます。</div>
-  <div class="tabs" id="edTabs"><button data-tab="master" class="on">おまかせマスタリング</button><button data-tab="basic">基本編集</button><button data-tab="out">書き出し・結合・分割</button><button data-tab="sep">分離</button><button data-tab="notes">音符・MIDI</button><button data-tab="score">コード・TAB譜</button><button data-tab="fix">修復</button><button data-tab="pitch">ピッチ・時間</button><button data-tab="stems">パート別の音量（AI）</button></div>
-
-  <div class="pane" data-pane="sep" hidden>
-    <h3 style="margin-top:0">調波・打楽器</h3>
-    <div class="row"><select id="hpOut"><option value="harm">調波（持続音：歌・ベース・コード）</option><option value="perc">打楽器（アタック：ドラム・子音）</option></select><button id="hpRun" class="primary">分離して解析</button></div>
-    <h3>センター（ボーカル寄り）</h3>
-    <div class="row"><select id="ctOut"><option value="center">センターだけ（ボーカルなど）</option><option value="sides">センターを除く（カラオケ風）</option></select>
-      <span class="sub">強さ</span><input type="number" id="ctBeta" value="4" min="1" max="12" step="1">
-      <span class="sub">対象の帯域</span><input type="number" id="ctLo" value="120"><span class="sub">〜</span><input type="number" id="ctHi" value="8000"><span class="sub">Hz</span>
-      <button id="ctRun" class="primary">分離して解析</button></div>
-    <h3>帯域分割</h3>
-    <div class="row"><select id="bsOut"><option value="low">低域</option><option value="mid">中域</option><option value="high">高域</option></select>
-      <span class="sub">境界</span><input type="number" id="bsF1" value="200"><span class="sub">Hz /</span><input type="number" id="bsF2" value="2500"><span class="sub">Hz</span>
-      <button id="bsRun" class="primary">分割して解析</button></div>
-    <div class="legend">AI を使わない、信号処理による分離です（AI による楽器ごとの分離より精度は下がります）。調波・打楽器：時間方向に続く成分と周波数方向に広がる成分をメディアンフィルタで分けます（2 つを足すと元に戻ります）。センター：左右に同じ形で入っている成分を取り出します。「強さ」を上げるほど、左右に少しでも振られた音は除かれます。対象の帯域の外は、センターだけでは消え、センターを除くではそのまま残ります。帯域分割：直線位相 FIR で分け、3 つを足すと元に戻ります。</div>
-  </div>
-
-  <div class="pane" data-pane="notes" hidden>
-    <div class="row"><label class="sub">音域<select id="ntLo"></select></label><span class="sub">〜</span><select id="ntHi"></select>
-      <span class="sub">同時に鳴る音の上限</span><input type="number" id="ntPoly" value="6" min="1" max="10">
-      <label class="sub">感度<select id="ntSens"><option value="-30,0.3">低（大きい音だけ）</option><option value="-36,0.15" selected>標準</option><option value="-44,0.08">高（小さい音も）</option></select></label>
-      <label class="sub"><input type="checkbox" id="ntHarm" checked> 打楽器を除いてから検出</label>
-      <label class="sub">検出の方法<select id="ntMode"><option value="poly">和音を含む</option><option value="mono">単音（メロディー・ベース・リフ）</option></select></label>
-      <button id="ntRun" class="primary">音符を検出</button></div>
-    <div class="row" style="margin-top:4px"><button id="ntSynth" disabled>▶ 合成音で聴く</button>
-      <label class="sub">MIDI の時間<select id="ntGrid"><option value="4">拍に合わせ、16 分音符に揃える</option><option value="2">拍に合わせ、8 分音符に揃える</option><option value="3">拍に合わせ、3 連符に揃える</option><option value="0">拍に合わせる（揃えない）</option><option value="-1">秒のまま（一定のテンポ）</option></select></label>
-      <span class="sub">テンポ</span><input type="number" id="ntBpm" value="120" min="20" max="300" title="「秒のまま」のときの MIDI のテンポ"><span class="sub">BPM</span><button id="ntMidi" disabled>MIDI を保存</button><span id="ntInfo" class="sub"></span></div>
-    <canvas id="cvNotes" style="margin-top:8px;cursor:pointer"></canvas>
-    <div class="legend">倍音の強さの和でピッチの強さを求め、強い音から順に倍音を差し引いて、同時に鳴っている音を探します。ピアノロールをクリックすると、その位置から元の音を再生します。打楽器・ノイズの多い曲や、オクターブで重なった音、低すぎる音は取りこぼしや誤検出が出ます（目安としてお使いください）。「単音」は、立ち上がりごとに新しく鳴り始めた音を倍音の和で求め、YIN の基本周波数でオクターブを確かめます。前の音が鳴り残っていても拾えるので、メロディー・ベース・ギターのリフは「単音」の方が正確です。MIDI は拍を追跡して、拍ごとのテンポ（揺れも含む）と拍子（「コード・TAB譜」の拍子）を書き、音符を拍に合わせます。「秒のまま」は一定のテンポで、時間をそのまま書きます。</div>
-  </div>
-
-  <div class="pane" data-pane="score" hidden>
-    <h3 style="margin-top:0">コード譜</h3>
-    <div class="row"><label class="sub">拍子<select id="scMeter"><option value="4">4/4</option><option value="3">3/4</option></select></label>
-      <label class="sub">BPM<input type="number" id="scBpm" placeholder="自動" min="40" max="240" step="0.1" style="width:72px" title="空欄なら自動。倍・半分に取られたときなどに入れてください"></label>
-      <label class="sub">コードの種類<select id="scVocab"><option value="full">標準（7th・sus4・dim など）</option><option value="simple">メジャー・マイナーだけ（安定）</option></select></label>
-      <button id="scRun" class="primary">拍とコードを検出</button><button id="scReset" disabled title="手で直したコードを検出結果に戻します">編集を取り消す</button><button id="scSave" disabled>コード譜を保存</button><span id="scInfo" class="sub"></span></div>
-    <div class="sub" style="margin-top:6px">小節をクリックで再生、<b>ダブルクリックでコードを書き換え</b>できます（例: <code>Am7</code>、<code>C  G</code>、<code>C . . G</code>。空欄で「—」）。</div>
-    <div id="scChart" class="scChart"></div>
-    <div id="scShapes" class="sub" style="margin-top:6px"></div>
-    <h3>TAB 譜</h3>
-    <div class="row"><label class="sub">楽器<select id="tabInst"></select></label>
-      <span class="sub">カポ</span><input type="number" id="tabCapo" value="0" min="0" max="12" style="width:52px">
-      <span class="sub">最高フレット</span><input type="number" id="tabMax" value="22" min="5" max="24" style="width:52px">
-      <label class="sub">音の検出<select id="tabMode"><option value="mono">単音（メロディー・ベース・リフ）</option><option value="poly">和音を含む</option></select></label></div>
-    <div class="row" style="margin-top:4px"><label class="sub">細かさ<select id="tabGrid"><option value="4">16 分音符</option><option value="2">8 分音符</option><option value="3">3 連符</option></select></label>
-      <label class="sub">1 行の小節<select id="tabBars"><option>2</option><option selected>3</option><option>4</option></select></label>
-      <label class="sub"><input type="checkbox" id="tabChords" checked> コード名を入れる</label>
-      <button id="tabRun" class="primary">TAB 譜を作る</button><label class="sub"><input type="checkbox" id="tabEdit" disabled> 手で編集する</label><button id="tabSave" disabled>TAB 譜を保存</button><span id="tabInfo" class="sub"></span></div>
-    <pre id="tabOut" class="tabpre" hidden></pre>
-    <div class="legend">拍：立ち上がりの強さから動的計画法で拍の列を求め（Ellis 2007）、コードの変わり目と低音の立ち上がりから小節の頭を決めます。コード：拍ごとの 12 音の強さと低音を、倍音を含めたコードの型と比べ、隠れマルコフモデルでつなぎます。低音が根音以外の構成音なら「C/E」のように書きます。小節をクリックすると、その位置から再生します。TAB 譜：音符を拍の格子に合わせ、同時に鳴る音ごとに弦とフレットの候補を出し、指の広がりと手の移動が小さくなる組み合わせを選びます（弾けない音は省き、その数を表示します）。押さえ方は、標準チューニングの定番の形か、構成音と最低音から探した形です。コード譜・TAB 譜・MIDI は音の書き起こし（文字・音符のデータ）なので、タブ録音からも保存できます。いずれも自動推定です。テンションの多いコード、転調、テンポが大きく揺れる曲、打楽器や歌の大きい曲では誤りが増えます。</div>
-  </div>
+  <div class="tabs" id="edTabs"><button data-tab="master" class="on">おまかせマスタリング</button><button data-tab="basic">基本編集</button><button data-tab="out">書き出し・結合・分割</button><button data-tab="fix">修復</button><button data-tab="stems">パート別の音量（AI）</button></div>
 
   <div class="pane" data-pane="master">
     <div class="row"><label class="sub">ジャンル<select id="msPreset"></select></label><label class="sub">寄せる先<select id="msRef"></select></label><span id="msPresetNote" class="sub"></span></div>
@@ -792,7 +642,73 @@ input[type=range]{accent-color:var(--acc)}
       モデル：<a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noopener">HTDemucs</a>（Meta・MIT）を <a href="https://www.npmjs.com/package/demucs-web" target="_blank" rel="noopener">demucs-web</a>（MIT）が ONNX にしたもの（<a href="https://huggingface.co/ptasior/pizu-audio-models" target="_blank" rel="noopener">配布元</a>・SHA-256 で照合）。実行は <a href="https://onnxruntime.ai/" target="_blank" rel="noopener">ONNX Runtime Web</a>。</div>
   </div>
 
-  <div class="pane" data-pane="pitch" hidden>
+</section>
+<section class="panel tools" id="tools" data-nav="ツール" hidden>
+  <h2>🧰 ツール</h2>
+  <div class="row" style="margin-bottom:6px"><span class="sub">マスタリング以外の解析・編集です。どれもボタンを押したときだけ動きます。音を変えるツールは、処理した音を新しい解析結果にします（プロ画面の「元の音に戻す」で戻せます）。</span><button id="toolsClose">ツールを閉じる</button></div>
+  <div class="tabs" id="toolTabs"><button data-tab="pitchA" class="on">ピッチ解析</button><button data-tab="notes">音符・MIDI</button><button data-tab="score">コード・TAB譜</button><button data-tab="sep">分離（信号処理）</button><button data-tab="pitch">ピッチ補正・時間</button><button data-tab="nvh">音響・振動解析</button></div>
+  <div class="tpane" data-tp="pitchA">
+    <div class="row"><label class="sub">対象<select id="pitchRange"><option value="voice">声・メロディ（70〜1000 Hz）</option><option value="bass">ベース（35〜300 Hz）</option><option value="wide">広め（50〜2000 Hz）</option></select></label>
+      <button id="btnPitch" class="primary" disabled>ピッチを解析</button><span id="pitchStatus" class="sub"></span></div>
+    <div class="sub" style="margin:6px 0">単音（歌・ソロ楽器・ベース）向けの解析です（YIN法）。伴奏のある曲では最も目立つ音を追うため、誤検出が混ざります。結果は 4. のスペクトログラムに水色の点で重ねて表示し、音程の分布から音階・チューニングを調べます。</div>
+    <div id="pitchResult" hidden>
+      <canvas id="cvPitchHist"></canvas>
+      <div id="pitchSummary" class="sub" style="white-space:pre-line;margin-top:6px"></div>
+      <table id="pitchPeaks" style="margin-top:8px"></table>
+    </div>
+  </div>
+  <div class="tpane" data-tp="sep" hidden>
+    <h3 style="margin-top:0">調波・打楽器</h3>
+    <div class="row"><select id="hpOut"><option value="harm">調波（持続音：歌・ベース・コード）</option><option value="perc">打楽器（アタック：ドラム・子音）</option></select><button id="hpRun" class="primary">分離して解析</button></div>
+    <h3>センター（ボーカル寄り）</h3>
+    <div class="row"><select id="ctOut"><option value="center">センターだけ（ボーカルなど）</option><option value="sides">センターを除く（カラオケ風）</option></select>
+      <span class="sub">強さ</span><input type="number" id="ctBeta" value="4" min="1" max="12" step="1">
+      <span class="sub">対象の帯域</span><input type="number" id="ctLo" value="120"><span class="sub">〜</span><input type="number" id="ctHi" value="8000"><span class="sub">Hz</span>
+      <button id="ctRun" class="primary">分離して解析</button></div>
+    <h3>帯域分割</h3>
+    <div class="row"><select id="bsOut"><option value="low">低域</option><option value="mid">中域</option><option value="high">高域</option></select>
+      <span class="sub">境界</span><input type="number" id="bsF1" value="200"><span class="sub">Hz /</span><input type="number" id="bsF2" value="2500"><span class="sub">Hz</span>
+      <button id="bsRun" class="primary">分割して解析</button></div>
+    <div class="legend">AI を使わない、信号処理による分離です（AI による楽器ごとの分離より精度は下がります）。調波・打楽器：時間方向に続く成分と周波数方向に広がる成分をメディアンフィルタで分けます（2 つを足すと元に戻ります）。センター：左右に同じ形で入っている成分を取り出します。「強さ」を上げるほど、左右に少しでも振られた音は除かれます。対象の帯域の外は、センターだけでは消え、センターを除くではそのまま残ります。帯域分割：直線位相 FIR で分け、3 つを足すと元に戻ります。</div>
+  </div>
+
+  <div class="tpane" data-tp="notes" hidden>
+    <div class="row"><label class="sub">音域<select id="ntLo"></select></label><span class="sub">〜</span><select id="ntHi"></select>
+      <span class="sub">同時に鳴る音の上限</span><input type="number" id="ntPoly" value="6" min="1" max="10">
+      <label class="sub">感度<select id="ntSens"><option value="-30,0.3">低（大きい音だけ）</option><option value="-36,0.15" selected>標準</option><option value="-44,0.08">高（小さい音も）</option></select></label>
+      <label class="sub"><input type="checkbox" id="ntHarm" checked> 打楽器を除いてから検出</label>
+      <label class="sub">検出の方法<select id="ntMode"><option value="poly">和音を含む</option><option value="mono">単音（メロディー・ベース・リフ）</option></select></label>
+      <button id="ntRun" class="primary">音符を検出</button></div>
+    <div class="row" style="margin-top:4px"><button id="ntSynth" disabled>▶ 合成音で聴く</button>
+      <label class="sub">MIDI の時間<select id="ntGrid"><option value="4">拍に合わせ、16 分音符に揃える</option><option value="2">拍に合わせ、8 分音符に揃える</option><option value="3">拍に合わせ、3 連符に揃える</option><option value="0">拍に合わせる（揃えない）</option><option value="-1">秒のまま（一定のテンポ）</option></select></label>
+      <span class="sub">テンポ</span><input type="number" id="ntBpm" value="120" min="20" max="300" title="「秒のまま」のときの MIDI のテンポ"><span class="sub">BPM</span><button id="ntMidi" disabled>MIDI を保存</button><span id="ntInfo" class="sub"></span></div>
+    <canvas id="cvNotes" style="margin-top:8px;cursor:pointer"></canvas>
+    <div class="legend">倍音の強さの和でピッチの強さを求め、強い音から順に倍音を差し引いて、同時に鳴っている音を探します。ピアノロールをクリックすると、その位置から元の音を再生します。打楽器・ノイズの多い曲や、オクターブで重なった音、低すぎる音は取りこぼしや誤検出が出ます（目安としてお使いください）。「単音」は、立ち上がりごとに新しく鳴り始めた音を倍音の和で求め、YIN の基本周波数でオクターブを確かめます。前の音が鳴り残っていても拾えるので、メロディー・ベース・ギターのリフは「単音」の方が正確です。MIDI は拍を追跡して、拍ごとのテンポ（揺れも含む）と拍子（「コード・TAB譜」の拍子）を書き、音符を拍に合わせます。「秒のまま」は一定のテンポで、時間をそのまま書きます。</div>
+  </div>
+
+  <div class="tpane" data-tp="score" hidden>
+    <h3 style="margin-top:0">コード譜</h3>
+    <div class="row"><label class="sub">拍子<select id="scMeter"><option value="4">4/4</option><option value="3">3/4</option></select></label>
+      <label class="sub">BPM<input type="number" id="scBpm" placeholder="自動" min="40" max="240" step="0.1" style="width:72px" title="空欄なら自動。倍・半分に取られたときなどに入れてください"></label>
+      <label class="sub">コードの種類<select id="scVocab"><option value="full">標準（7th・sus4・dim など）</option><option value="simple">メジャー・マイナーだけ（安定）</option></select></label>
+      <button id="scRun" class="primary">拍とコードを検出</button><button id="scReset" disabled title="手で直したコードを検出結果に戻します">編集を取り消す</button><button id="scSave" disabled>コード譜を保存</button><span id="scInfo" class="sub"></span></div>
+    <div class="sub" style="margin-top:6px">小節をクリックで再生、<b>ダブルクリックでコードを書き換え</b>できます（例: <code>Am7</code>、<code>C  G</code>、<code>C . . G</code>。空欄で「—」）。</div>
+    <div id="scChart" class="scChart"></div>
+    <div id="scShapes" class="sub" style="margin-top:6px"></div>
+    <h3>TAB 譜</h3>
+    <div class="row"><label class="sub">楽器<select id="tabInst"></select></label>
+      <span class="sub">カポ</span><input type="number" id="tabCapo" value="0" min="0" max="12" style="width:52px">
+      <span class="sub">最高フレット</span><input type="number" id="tabMax" value="22" min="5" max="24" style="width:52px">
+      <label class="sub">音の検出<select id="tabMode"><option value="mono">単音（メロディー・ベース・リフ）</option><option value="poly">和音を含む</option></select></label></div>
+    <div class="row" style="margin-top:4px"><label class="sub">細かさ<select id="tabGrid"><option value="4">16 分音符</option><option value="2">8 分音符</option><option value="3">3 連符</option></select></label>
+      <label class="sub">1 行の小節<select id="tabBars"><option>2</option><option selected>3</option><option>4</option></select></label>
+      <label class="sub"><input type="checkbox" id="tabChords" checked> コード名を入れる</label>
+      <button id="tabRun" class="primary">TAB 譜を作る</button><label class="sub"><input type="checkbox" id="tabEdit" disabled> 手で編集する</label><button id="tabSave" disabled>TAB 譜を保存</button><span id="tabInfo" class="sub"></span></div>
+    <pre id="tabOut" class="tabpre" hidden></pre>
+    <div class="legend">拍：立ち上がりの強さから動的計画法で拍の列を求め（Ellis 2007）、コードの変わり目と低音の立ち上がりから小節の頭を決めます。コード：拍ごとの 12 音の強さと低音を、倍音を含めたコードの型と比べ、隠れマルコフモデルでつなぎます。低音が根音以外の構成音なら「C/E」のように書きます。小節をクリックすると、その位置から再生します。TAB 譜：音符を拍の格子に合わせ、同時に鳴る音ごとに弦とフレットの候補を出し、指の広がりと手の移動が小さくなる組み合わせを選びます（弾けない音は省き、その数を表示します）。押さえ方は、標準チューニングの定番の形か、構成音と最低音から探した形です。コード譜・TAB 譜・MIDI は音の書き起こし（文字・音符のデータ）なので、タブ録音からも保存できます。いずれも自動推定です。テンションの多いコード、転調、テンポが大きく揺れる曲、打楽器や歌の大きい曲では誤りが増えます。</div>
+  </div>
+
+  <div class="tpane" data-tp="pitch" hidden>
     <h3 style="margin-top:0">音階への補正（単音向け）</h3>
     <div class="row"><label class="sub">音階<select id="tnScale"><option value="chrom">半音（すべての音）</option><option value="key">曲のキー（推定）</option><option value="maj">メジャー</option><option value="min">マイナー</option></select></label>
       <label class="sub">主音<select id="tnRoot"></select></label>
@@ -807,6 +723,107 @@ input[type=range]{accent-color:var(--acc)}
     <div class="row"><span class="sub">速さ</span><input type="number" id="tsPct" value="80" min="25" max="400"><span class="sub">%（100 = 元の速さ、50 = 半分の速さ）</span>
       <button id="tsRun" class="primary">伸縮して解析</button></div>
     <div class="legend">音階への補正：YIN 法で求めた基本周波数を、選んだ音階の一番近い音（A4 = 440 Hz）へ寄せ、TD-PSOLA で波形を並べ直します。「速さ」は目標の音へ寄せるまでの時間で、0 ms にするとケロケロした機械的な音、大きくするとビブラートが残る自然な補正になります。歌・単音の楽器向けで、和音や伴奏の入った音では正しく動きません。グラフは元のピッチ（青）と補正後のピッチ（橙）で、縦軸は MIDI のノート番号（60 = C4、1 = 半音）です。ピッチシフト・タイムストレッチ：位相ボコーダー（ピーク周辺の位相をロック）。シフトはフォルマントも一緒に動くため、大きくずらすと声の性質が変わります。</div>
+  </div>
+  <div class="tpane" id="nvh" data-tp="nvh" hidden>
+  <div class="sub" style="margin-bottom:6px">測定・工業向けの機能です（騒音計・心理音響・次数解析・伝達関数・再生用フィルタなど）。</div>
+  <div class="row" style="gap:8px;margin-bottom:6px">
+    <span class="sub">校正：0 dBFS の正弦波 =</span><input type="number" id="calFs" step="0.1" value="100"><span class="sub">dB SPL</span>
+    <button id="calFromSel" title="4. のグラフで校正器の音の範囲を選んでから押してください">選択範囲を校正音にする</button>
+    <input type="number" id="calRef" step="0.1" value="94"><span class="sub">dB</span>
+    <span id="calState" class="tag"></span>
+  </div>
+  <div class="row" style="gap:8px;margin-bottom:4px">
+    <label class="sub">対象<select id="nvhScope"><option value="all">曲全体（トリム後）</option><option value="sel">4. の選択範囲</option></select></label>
+    <label class="sub">チャンネル<select id="nvhCh"></select></label>
+    <span id="nvhStatus" class="sub"></span>
+  </div>
+  <div id="nvhEmpty" class="note">解析する音声がまだありません。1. でファイルを読み込むか、「フィルタ・信号発生」タブで信号を作ってください（「一括処理」はそのまま使えます）。</div>
+  <div class="tabs" id="nvhTabs">
+    <button data-tab="slm" class="on">騒音計・オクターブ</button><button data-tab="psy">心理音響</button><button data-tab="edit">フィルタ・信号発生</button><button data-tab="order">次数解析</button><button data-tab="tf">伝達関数</button><button data-tab="batch">一括処理</button><button data-tab="view">3D・マーカー・レポート</button>
+  </div>
+
+  <div class="pane" data-pane="slm">
+    <div class="row"><button id="slmRun" class="primary">計算</button>
+      <label class="sub">オクターブ<select id="octB"><option value="3">1/3</option><option value="1">1/1</option></select></label>
+      <label class="sub">表示する特性<select id="octW"><option value="Z">Z（平坦）</option><option value="A">A</option><option value="C">C</option></select></label>
+      <button id="slmCsv" disabled>CSV保存</button></div>
+    <div id="slmOut" class="kv" style="margin-top:8px"></div>
+    <canvas id="cvSlm" style="margin-top:8px"></canvas>
+    <canvas id="cvOct" style="margin-top:8px"></canvas>
+    <table id="octTable" style="margin-top:8px"></table>
+    <div class="legend">騒音計：IEC 61672-1 の周波数重み付け（A / C / Z）と時間重み付け（Fast 125 ms / Slow 1 s）。オクターブ：IEC 61260-1（10進ベース）の 6 次バターワース帯域フィルタ。値は校正値に基づく dB SPL です。</div>
+  </div>
+
+  <div class="pane" data-pane="psy" hidden>
+    <div class="row"><button id="psyRun" class="primary">計算</button>
+      <label class="sub">音場<select id="psyField"><option value="free">自由音場</option><option value="diffuse">拡散音場</option></select></label>
+      <button id="psyCsv" disabled>CSV保存</button></div>
+    <div id="psyOut" class="kv" style="margin-top:8px"></div>
+    <canvas id="cvLoud" style="margin-top:8px"></canvas>
+    <canvas id="cvNs" style="margin-top:8px"></canvas>
+    <table id="toneTable" style="margin-top:8px"></table>
+    <div class="legend">ラウドネス：ISO 532-1:2017（Zwicker 法、定常・時間変動）。シャープネス：DIN 45692。トーナリティ：ECMA-74 附属書 D の TNR / PR。<b>ラフネス・変動強度は臨界帯域ごとの包絡の変調から求めるモデルの推定値で、規格の計算ではありません</b>（1 kHz・60 dB・100% 変調で、70 Hz → 1 asper、4 Hz → 1 vacil に校正）。心理音響の値は音の絶対的な大きさで変わるため、校正していないと参考になりません。</div>
+  </div>
+
+  <div class="pane" data-pane="edit" hidden>
+    <h3 style="margin-top:0">再生にかけるフィルタ（IIR、最大 3 段）</h3>
+    <div id="fltRows"></div>
+    <div class="row" style="margin-top:4px"><label class="sub"><input type="checkbox" id="fltLive"> 再生に適用</label><button id="fltApplyIIR">このフィルタで処理した音声を解析</button></div>
+    <canvas id="cvFlt" style="margin-top:6px"></canvas>
+    <h3>FIR フィルタ（直線位相）</h3>
+    <div class="row"><select id="firType"><option value="lowpass">ローパス</option><option value="highpass">ハイパス</option><option value="bandpass">バンドパス</option><option value="bandstop">バンドストップ</option></select>
+      <span class="sub">f1</span><input type="number" id="firF1" value="1000"><span class="sub">f2</span><input type="number" id="firF2" value="4000"><span class="sub">Hz　タップ数</span><input type="number" id="firTaps" value="1023" step="2">
+      <button id="firApplyBtn">FIR で処理した音声を解析</button></div>
+    <h3>信号発生</h3>
+    <div class="row"><select id="genType"><option value="sine">正弦波</option><option value="sweep">スイープ（対数）</option><option value="white">白色雑音</option><option value="pink">ピンク雑音</option><option value="am">振幅変調音</option><option value="square">矩形波</option><option value="multitone">倍音つき複合音</option></select>
+      <span class="sub">周波数</span><input type="number" id="genF" value="1000"><span class="sub">終了周波数</span><input type="number" id="genF2" value="10000">
+      <span class="sub">変調周波数</span><input type="number" id="genFm" value="70"><span class="sub">変調度</span><input type="number" id="genM" value="1" step="0.1"></div>
+    <div class="row" style="margin-top:4px"><span class="sub">レベル</span><input type="number" id="genLevel" value="-20"><span class="sub">dBFS　長さ</span><input type="number" id="genDur" value="10"><span class="sub">秒</span>
+      <select id="genFs"><option>44100</option><option selected>48000</option><option>96000</option></select><select id="genCh"><option value="1">モノラル</option><option value="2" selected>ステレオ</option></select>
+      <button id="genRun" class="primary">生成して解析</button></div>
+    <div class="legend">処理した音声・生成した音声は、新しい解析結果として 1.〜8. に表示されます（元の解析結果は置き換わります）。レベルは正弦波のピーク基準で、雑音は実効値を同じレベルの正弦波にそろえます。</div>
+  </div>
+
+  <div class="pane" data-pane="order" hidden>
+    <div class="row"><label class="sub">回転数の求め方<select id="ordMode"><option value="track">音から追跡</option><option value="tacho">タコ信号</option><option value="const">一定</option></select></label>
+      <span id="ordTrackBox" class="row" style="gap:6px"><span class="sub">次数</span><input type="number" id="ordOrder" value="2" step="0.5"><span class="sub">周波数範囲</span><input type="number" id="ordFmin" value="20"><span class="sub">〜</span><input type="number" id="ordFmax" value="200"><span class="sub">Hz</span></span>
+      <span id="ordTachoBox" class="row" style="gap:6px" hidden><span class="sub">タコのチャンネル</span><select id="ordTachCh"></select><span class="sub">パルス数/回転</span><input type="number" id="ordPpr" value="1"></span>
+      <span id="ordConstBox" class="row" style="gap:6px" hidden><span class="sub">回転数</span><input type="number" id="ordRpm" value="3000"><span class="sub">rpm</span></span></div>
+    <div class="row" style="margin-top:4px"><span class="sub">最大次数</span><input type="number" id="ordMax" value="20"><span class="sub">次数の刻み</span><input type="number" id="ordRes" value="0.25" step="0.05"><span class="sub">回転数の刻み</span><input type="number" id="ordStep" value="100"><span class="sub">rpm</span>
+      <button id="ordRun" class="primary">計算</button><span class="sub">切り出す次数</span><input type="text" id="ordCuts" value="1,2,4" size="10"><button id="ordCsv" disabled>CSV保存</button></div>
+    <canvas id="cvRpm" style="margin-top:8px"></canvas>
+    <canvas id="cvOrdMap" style="margin-top:8px"></canvas>
+    <canvas id="cvOrdCut" style="margin-top:8px"></canvas>
+    <div class="legend">次数 = 周波数 × 60 ÷ 回転数。次数マップは横軸が次数、縦軸が回転数で、明るいほど大きな成分です。「音から追跡」は、指定した次数の成分を周波数範囲の中で追いかけて回転数を推定します。</div>
+  </div>
+
+  <div class="pane" data-pane="tf" hidden>
+    <div class="row"><span class="sub">入力（基準）</span><select id="tfIn"></select><span class="sub">出力（応答）</span><select id="tfOut"></select>
+      <label class="sub">FFT<select id="tfN"><option>1024</option><option>2048</option><option selected>4096</option><option>8192</option><option>16384</option><option>32768</option></select></label>
+      <button id="tfRun" class="primary">計算</button><button id="tfCsv" disabled>CSV保存</button></div>
+    <canvas id="cvTfMag" style="margin-top:8px"></canvas>
+    <canvas id="cvTfPh" style="margin-top:8px"></canvas>
+    <canvas id="cvTfCoh" style="margin-top:8px"></canvas>
+    <div class="legend">Welch 法（ハン窓・50% 重なり）。H1 = Sxy / Sxx（出力側の雑音に強い）、H2 = Syy / Syx（入力側の雑音に強い）。コヒーレンスが 1 に近い周波数ほど、入力と出力の関係が確かです。</div>
+  </div>
+
+  <div class="pane" data-pane="batch" hidden>
+    <div class="row"><label class="file">ファイルを選ぶ（複数可）<input type="file" id="batchFiles" accept="audio/*" multiple></label><button id="batchRun" class="primary" disabled>実行</button><button id="batchCsv" disabled>CSV保存</button><span id="batchInfo" class="sub"></span></div>
+    <table id="batchTable" style="margin-top:8px"></table>
+    <div class="legend">各ファイルの全体を、1 つずつ順番に解析します（騒音計・ラウドネスは校正値に基づきます）。</div>
+  </div>
+
+  <div class="pane" data-pane="view" hidden>
+    <h3 style="margin-top:0">ウォーターフォール（3D）</h3>
+    <div class="row"><label class="sub">本数<select id="wfN"><option>32</option><option selected>64</option><option>96</option></select></label><button id="wfDraw">描画</button><button id="wfPng">画像を保存（PNG）</button></div>
+    <canvas id="cvWf" style="margin-top:6px"></canvas>
+    <h3>マーカー</h3>
+    <div class="row"><input type="text" id="mkLabel" placeholder="ラベル（例：異音）" size="20"><button id="mkAdd">再生位置に追加（M キー）</button><button id="mkSel">選択範囲の始めに追加</button></div>
+    <table id="mkTable" style="margin-top:6px"></table>
+    <h3>レポート</h3>
+    <div class="row"><button id="repOpen">レポートを開く（印刷して PDF 保存）</button><button id="repSave">HTML で保存</button></div>
+    <div class="legend">レポートには、概要・チェック結果・計算済みの騒音計 / 心理音響 / 次数解析 / 伝達関数の結果・マーカー・グラフの画像が入ります。開いたページでブラウザの「印刷」から「PDF に保存」を選んでください。</div>
+  </div>
   </div>
 </section>
 </main>
@@ -4019,6 +4036,7 @@ function easySeekUi(pos){
   el.max=String(Math.max(0.01,d));if(!easySeeking)el.value=String(Math.max(0,Math.min(d,pos)));
   $("easyTime").textContent=(refAudio&&abSide==="B"?"元の音 ":"")+fmtT(easySeeking?+el.value:pos)+" / "+fmtT(d);
   $("easyPlay").textContent=player?"■":"▶";
+  if(!player)ezStatic();
 }
 function stopPlay(){
   if(player){lastPos=playPosNow();for(const x of player.srcs){try{x.stop();}catch(e){}}player=null;}
@@ -4386,8 +4404,8 @@ function gonioFrame(g,S){
   g.fillStyle="#9aa0b4";g.font="10px sans-serif";g.fillText("M",S/2+4,11);g.fillText("L",5,13);g.fillText("R",S-12,13);
 }
 function liveLoop(){
-  if(!player){liveRaf=0;return;}
-  drawLive();liveRaf=requestAnimationFrame(liveLoop);
+  if(!player){liveRaf=0;ezStatic();return;}
+  if(!document.body.classList.contains("simple"))drawLive();else ezFrame();liveRaf=requestAnimationFrame(liveLoop);
 }
 function drawLive(){
   const GS=150,W=Math.max(200,($("live").clientWidth||600)-GS-12),fs=playCtx.sampleRate;
@@ -5701,8 +5719,19 @@ const diffOn=()=>$("fixDiff").checked,diffLbl=()=>diffOn()?"・取り除いた�
 $("edUndo").onclick=edUndo;
 $("edTabs").onclick=e=>{const t=e.target.getAttribute("data-tab");if(!t)return;
   for(const b of $("edTabs").children)b.classList.toggle("on",b===e.target);
-  for(const p of document.querySelectorAll("#sep .pane"))p.hidden=p.getAttribute("data-pane")!==t;
-  if(t==="notes"&&ntRes)drawNotes();if(t==="pitch"&&tnRes)drawTune();};
+  for(const p of document.querySelectorAll("#sep .pane"))p.hidden=p.getAttribute("data-pane")!==t;};
+// ツール（マスタリング以外の解析・編集）：上のバーの 🧰 から開く
+function showTools(t){
+  const box=$("tools");box.hidden=false;box.classList.remove("collapsed");
+  if(t){for(const b of $("toolTabs").children)b.classList.toggle("on",b.dataset.tab===t);
+    for(const p of box.querySelectorAll(".tpane"))p.hidden=p.dataset.tp!==t;}
+  const on=[...$("toolTabs").children].find(b=>b.classList.contains("on"));const k=on?on.dataset.tab:"";
+  if(k==="notes"&&ntRes)drawNotes();if(k==="pitch"&&tnRes)drawTune();if(k==="nvh"){const nb=[...$("nvhTabs").children].find(b=>b.classList.contains("on"));if(nb&&nb.dataset.tab==="edit")drawFltResp();}
+  updateNav();setTimeout(()=>window.dispatchEvent(new Event("resize")),30);
+}
+$("tbTools").onclick=e=>{e.currentTarget.blur();showTools();$("tools").scrollIntoView({behavior:"smooth",block:"start"});};
+$("toolsClose").onclick=()=>{$("tools").hidden=true;updateNav();};
+$("toolTabs").onclick=e=>{const t=e.target.getAttribute("data-tab");if(t)showTools(t);};
 // 分離
 $("hpRun").onclick=()=>edApply("hpss",{out:$("hpOut").value},$("hpOut").value==="harm"?"調波":"打楽器");
 $("ctRun").onclick=()=>{const lo=Math.max(0,+$("ctLo").value||0),hi=Math.max(lo+10,+$("ctHi").value||24000);edApply("center",{out:$("ctOut").value,beta:Math.min(12,Math.max(1,+$("ctBeta").value||4)),lo,hi},$("ctOut").value==="center"?"センター":"センター除去");};
@@ -6434,7 +6463,7 @@ let msLast=null;
 function setMode(m){
   document.body.classList.toggle("simple",m==="simple");pref.set("tabAnalyzerMode",m);
   for(const b of $("modeSw").children)b.classList.toggle("on",b.dataset.m===m);
-  updateNav();if(current&&m==="full")setTimeout(()=>window.dispatchEvent(new Event("resize")),30);
+  updateNav();if(current)setTimeout(()=>window.dispatchEvent(new Event("resize")),30);
 }
 $("modeSw").onclick=e=>{const b=e.target.closest("button");if(b)setMode(b.dataset.m);};
 // 専門用語を使わない診断（各項目：lv=ok/warn/bad/info、t=見出し、x=説明、a=おまかせで何をするか）
@@ -6524,6 +6553,80 @@ $("easySeek").addEventListener("change",e=>{const t=+e.target.value;easySeeking=
 $("easyStop").onclick=e=>{e.currentTarget.blur();stopPlay();setTimeout(easyAbUi,50);};
 $("easySave").onclick=()=>{const f=$("easyFmt").value;$("exFmt").value=f;$("exRange").value="all";$("exRate").value=f==="wav16"?"44100":"";$("exRun").click();};
 $("easyUndo").onclick=async()=>{if(editOrig&&!busy){await edUndo();msLast=null;renderEasy();}};
+
+/* ---------- かんたん画面の「動く絵」：いま鳴っている音（FFT）・曲全体のスペクトログラム・波形 ---------- */
+const EZ={pk:null,lv:null,gram:null,wave:null,key:"",raf:0,ghost:null};
+const ezOn=()=>document.body.classList.contains("simple")&&!$("result").hidden&&!!current;
+const ezW=()=>Math.max(240,($("ezStage").clientWidth||600)-26);
+const ezDur=()=>current&&lastRaw?(current.trimEnd-current.trimStart)/lastRaw.fs:current?current.dur:0;
+const EZ_NB=64,EZ_F0=30,EZ_F1=18000,ezF=i=>EZ_F0*Math.pow(EZ_F1/EZ_F0,i/EZ_NB),ezHue=i=>300-i*210/EZ_NB;
+// 1/6 オクターブの曲線（相対 dB）を、バーの位置の値に直す
+function ezCurveAt(curve,f){if(!curve||!curve.length)return NaN;let j=0;while(j<curve.length-1&&curve[j+1].f<f)j++;const a=curve[j],b=curve[Math.min(curve.length-1,j+1)];
+  if(!(b.f>a.f))return a.db;const r=Math.max(0,Math.min(1,Math.log(f/a.f)/Math.log(b.f/a.f)));return a.db+(b.db-a.db)*r;}
+function drawEzFft(live){
+  const W=ezW(),H=150,g=fitCanvas($("cvEzFft"),W,H),nb=EZ_NB,bw=W/nb;
+  g.fillStyle="#090b14";g.fillRect(0,0,W,H);
+  g.strokeStyle="rgba(255,255,255,.06)";g.lineWidth=1;g.font="10px sans-serif";g.fillStyle="#7f86a3";
+  const X=f=>Math.log(f/EZ_F0)/Math.log(EZ_F1/EZ_F0)*W;
+  for(const [f,t] of [[50,"50"],[100,"100"],[300,"300"],[1000,"1k"],[3000,"3k"],[10000,"10k"]]){g.beginPath();g.moveTo(X(f),0);g.lineTo(X(f),H);g.stroke();g.fillText(t,X(f)+3,H-4);}
+  if(!EZ.pk||EZ.pk.length!==nb){EZ.pk=new Float32Array(nb);EZ.lv=new Float32Array(nb);}
+  const lv=new Float32Array(nb);
+  if(live&&anMix&&playCtx){
+    if(!liveSpec||liveSpec.length!==anMix.frequencyBinCount)liveSpec=new Float32Array(anMix.frequencyBinCount);
+    anMix.getFloatFrequencyData(liveSpec);const bh=playCtx.sampleRate/anMix.fftSize;
+    for(let i=0;i<nb;i++){const k0=Math.max(1,Math.floor(ezF(i)/bh)),k1=Math.max(k0+1,Math.ceil(ezF(i+1)/bh));let v=-200;for(let k=k0;k<k1&&k<liveSpec.length;k++)if(liveSpec[k]>v)v=liveSpec[k];
+      lv[i]=Math.max(0,Math.min(1,(v+95)/80));}
+  }else if(current&&current.curve){
+    let mx=-200;for(const c of current.curve)if(Number.isFinite(c.db)&&c.db>mx)mx=c.db;
+    for(let i=0;i<nb;i++){const v=ezCurveAt(current.curve,Math.sqrt(ezF(i)*ezF(i+1)));lv[i]=Number.isFinite(v)?Math.max(0,Math.min(1,(v-(mx-50))/52)):0;}
+  }
+  for(let i=0;i<nb;i++){
+    // なめらかに動かす（上がるときは速く、下がるときはゆっくり）
+    const cur=EZ.lv[i],tg=lv[i];EZ.lv[i]=tg>cur?cur+(tg-cur)*0.6:cur+(tg-cur)*(live?0.25:1);
+    EZ.pk[i]=Math.max(EZ.lv[i],EZ.pk[i]-(live?0.006:1));
+    const v=EZ.lv[i],h=v*(H-18),x=i*bw+1,hue=ezHue(i);
+    const gr=g.createLinearGradient(0,H-h,0,H);gr.addColorStop(0,"hsla("+hue+",95%,70%,.95)");gr.addColorStop(1,"hsla("+hue+",90%,40%,.35)");
+    g.fillStyle=gr;g.fillRect(x,H-h,Math.max(1,bw-2),h);
+    if(live){g.fillStyle="hsla("+hue+",100%,85%,.9)";g.fillRect(x,H-EZ.pk[i]*(H-18)-2,Math.max(1,bw-2),2);}
+  }
+  // 比べる線（段階 3 で「仕上げる前」の形を重ねる）
+  if(EZ.ghost){g.strokeStyle="rgba(255,255,255,.55)";g.setLineDash([4,3]);g.lineWidth=1.4;g.beginPath();
+    for(let i=0;i<nb;i++){const y=H-EZ.ghost[i]*(H-18),x=(i+0.5)*bw;i?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();g.setLineDash([]);}
+  if(!live){g.fillStyle="#c9cfe6";g.font="11px sans-serif";g.fillText(current?"曲全体の平均（▶ で再生すると動きます）":"曲を読み込むと表示します",8,14);}
+}
+// スペクトログラムと波形は、曲ごと・幅ごとに一度だけ描いておき、再生位置だけを重ねる
+function ezBase(){
+  const W=ezW(),key=(current?current.label+"/"+current.dur+"/"+current.trimStart:"")+"/"+W;if(EZ.key===key&&EZ.gram)return;
+  EZ.key=key;const dpr=window.devicePixelRatio||1,mk=(h)=>{const c=document.createElement("canvas");c.width=Math.round(W*dpr);c.height=Math.round(h*dpr);const g=c.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);return {c,g};};
+  const G=mk(130);G.g.fillStyle="#000";G.g.fillRect(0,0,W,130);
+  if(current&&current.specgram){const gr=sgDefault(current);G.g.imageSmoothingEnabled=true;G.g.drawImage(sgImage(gr,sgTop(current),90),0,0,W,130);}
+  const A=mk(56),B=mk(56);
+  for(const [o,col] of [[A,"#3a4466"],[B,"#8ab4ff"]]){o.g.fillStyle="#0b0d16";o.g.fillRect(0,0,W,56);
+    if(current&&current.env){const env=current.env,cols=env.length/2,mid=28;o.g.fillStyle=col;
+      for(let x=0;x<W;x++){const a=Math.floor(x/W*cols),b=Math.max(a+1,Math.floor((x+1)/W*cols));let mn=0,mx=0;for(let i=a;i<b&&i<cols;i++){if(env[2*i]<mn)mn=env[2*i];if(env[2*i+1]>mx)mx=env[2*i+1];}o.g.fillRect(x,mid-mx*mid,1,Math.max(1,(mx-mn)*mid));}}}
+  EZ.gram=G.c;EZ.wave=A.c;EZ.waveOn=B.c;
+}
+function drawEzPos(pos){
+  const W=ezW(),d=ezDur(),x=d>0?Math.max(0,Math.min(1,pos/d))*W:0;ezBase();
+  const g=fitCanvas($("cvEzGram"),W,130);g.drawImage(EZ.gram,0,0,W,130);
+  g.fillStyle="rgba(0,0,0,.25)";g.fillRect(0,0,x,130);
+  g.fillStyle="rgba(255,255,255,.9)";g.fillRect(x-1,0,2,130);g.fillStyle="rgba(255,255,255,.18)";g.fillRect(x-5,0,10,130);
+  g.font="10px sans-serif";g.fillStyle="#c9cfe6";for(const [f,t] of [[100,"100"],[1000,"1k"],[10000,"10k"]]){const gr=current&&current.specgram?sgDefault(current):null;if(!gr)break;const y=yOfF(f,gr,130);if(y>10&&y<126)g.fillText(t,4,y+3);}
+  const w=fitCanvas($("cvEzWave"),W,56);w.drawImage(EZ.wave,0,0,W,56);
+  if(x>0)w.drawImage(EZ.waveOn,0,0,Math.round(x*(window.devicePixelRatio||1)),EZ.waveOn.height,0,0,x,56);
+  w.fillStyle="#fff";w.fillRect(x-1,0,2,56);
+  w.fillStyle="#c9cfe6";w.font="11px sans-serif";w.fillText(fmtT(pos)+" / "+fmtT(d),6,13);
+}
+function ezPosA(){const pos=player?playPosNow():lastPos;return abSide==="A"?pos:mapPos(pos,abSide,"A");}
+function ezFrame(){if(!ezOn())return;drawEzFft(true);drawEzPos(ezPosA());}
+function ezStatic(){
+  if(EZ.raf)return;
+  EZ.raf=requestAnimationFrame(()=>{EZ.raf=0;if(!ezOn()||player)return;drawEzFft(false);drawEzPos(ezPosA());});
+}
+const ezSeekAt=e=>{if(!current)return;const r=e.currentTarget.getBoundingClientRect(),t=Math.max(0,Math.min(ezDur()-0.05,(e.clientX-r.left)/r.width*ezDur()));
+  if(player)playFrom(abSide==="A"?t:mapPos(t,"A",abSide),abSide,null);else{lastPos=abSide==="A"?t:mapPos(t,"A",abSide);showPos(lastPos);ezStatic();}};
+$("cvEzGram").addEventListener("click",ezSeekAt);$("cvEzWave").addEventListener("click",ezSeekAt);
+window.addEventListener("resize",()=>{EZ.key="";ezStatic();});
 $("outMeq").onclick=()=>{
   if(!meqFit||!meqFit.bands.length){edMsg("適用できるマッチ EQ がありません（5. でターゲットか比較対象を選んでください）",true);return;}
   const a=+$("meqAmt").value/100;applySosEdit("マッチ EQ "+Math.round(a*100)+"%",fs=>meqFit.bands.map(b=>rbjBiquad(b.type,b.f,b.Q,b.g*a,fs)));
@@ -6762,12 +6865,12 @@ $("tabEdit").onchange=()=>{
 };
 $("tabOut").addEventListener("input",()=>{if(!tabRes)return;tabRes.text=$("tabOut").innerText.replace(/\n$/,"");tabRes.edited=true;});
 
-const NAV=["読込","おまかせ","概要","チェック","波形","周波数","ステレオ","ピッチ","比較","音響解析","編集"],PANELS=[...document.querySelectorAll("main section.panel")];
+const PANELS=[...document.querySelectorAll("main section.panel")];
 PANELS.forEach((p,i)=>{p.id=p.id||("sec"+(i+1));});
-$("tbNav").innerHTML=PANELS.map((p,i)=>"<a href='#"+p.id+"' data-i='"+i+"'>"+(NAV[i]||p.querySelector("h2").textContent)+"</a>").join("");
+$("tbNav").innerHTML=PANELS.map((p,i)=>"<a href='#"+p.id+"' data-i='"+i+"'>"+esc(p.dataset.nav||p.querySelector("h2").textContent)+"</a>").join("");
 function updateNav(){
   const links=[...$("tbNav").children];
-  links.forEach((a,i)=>{a.hidden=PANELS[i].hidden||(document.body.classList.contains("simple")&&PANELS[i].classList.contains("adv"));a.classList.toggle("off",!PANELS[i].offsetParent);});
+  const simple=document.body.classList.contains("simple");links.forEach((a,i)=>{a.hidden=PANELS[i].hidden||(simple&&PANELS[i].classList.contains("adv"))||(!simple&&PANELS[i].classList.contains("ez"));a.classList.toggle("off",!PANELS[i].offsetParent);});
   let cur=0;PANELS.forEach((p,i)=>{if(p.offsetParent&&p.getBoundingClientRect().top<=120)cur=i;});
   links.forEach((a,i)=>a.classList.toggle("on",i===cur));
 }
@@ -6858,16 +6961,9 @@ $("cdcRun").onclick=runCodec;
 $("cdcAuto").checked=pref.get("tabAnalyzerCdcAuto","1")==="1";
 $("cdcAuto").onchange=e=>pref.set("tabAnalyzerCdcAuto",e.target.checked?"1":"0");
 // 9. 音響・振動解析（測定・工業向け）は既定で隠す
-function setNvhShown(on){
-  $("nvh").hidden=!on;$("nvhOff").hidden=on;pref.set("tabAnalyzerShowNvh",on?"1":"0");
-  const st=fltStages();$("nvhFltNote").textContent=!on&&st.length?"（9. の再生用フィルタが "+st.length+" 段オンになっています）":"";
-  updateNav();
-}
-$("nvhShow").onclick=()=>{setNvhShown(true);$("nvh").scrollIntoView({behavior:"smooth"});};
-$("nvhHide").onclick=e=>{e.stopPropagation();setNvhShown(false);};
 $("cdcListen").onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v)setVariant(v);};
 renderTargetSel();initCodecs().then(updateButtons);
-setNvhShown(pref.get("tabAnalyzerShowNvh","0")==="1");
+
 setMode(pref.get("tabAnalyzerMode","simple")==="full"?"full":"simple");
 // AI のパート分離を複数スレッドで動かすため、Service Worker（coi-sw.js）で COOP / COEP を付けてクロスオリジン分離にする。
 // https か localhost で開いたときだけ（ファイルを直接開いたときは Service Worker が使えないので 1 スレッドのまま）。
