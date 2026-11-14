@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wD5R7wC1ojJ/Wbk3NFZVOnuKrNJueJ5Dsli+8Cx62JQ=' 'sha256-ImmWPhpGfdcAK05WUdtt3/YL4uTXTNkmX4toNZsOwVs=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wD5R7wC1ojJ/Wbk3NFZVOnuKrNJueJ5Dsli+8Cx62JQ=' 'sha256-bt0YCc+pFztPzrLPfEsdWgzJb0my96MZ6DaU1mvHoHc=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ — マスタリングスタジオ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -6281,7 +6281,7 @@ function buildMasterOpts(m,fs,key,ov){
 }
 async function masterRun(){
   if(!current||!rawOK()){edMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return;}
-  const out=await msPlan();if(!out)return;
+  const out=await msPlan({noRough:true});if(!out)return;
   await msCommit();
 }
 function renderMaster(r,eqBands,notes,before){
@@ -6752,7 +6752,7 @@ function msFlush(force){
   if(player&&player.src.kind==="ms"&&MS.wet)msRetarget();
 }
 function msEnd(){
-  if(!MS)return;const was=player&&player.src.kind==="ms";MS=null;if(was)stopPlay();pvReq.clear();
+  if(!MS)return;const was=player&&player.src.kind==="ms";msPlanCancel();MS=null;if(was)stopPlay();pvReq.clear();
   if(pvFullWait){pvFullWait.reject(new Error("中止しました"));pvFullWait=null;}
   if(pvW){try{pvW.terminate();}catch(e){}pvW=null;}
   msEmit("end");
@@ -6858,6 +6858,32 @@ function msCompile(S,fs){
 }
 function msApplyS(){if(MS&&MS.S)msSetP(msCompile(MS.S,MS.fs));}
 // おまかせ：元の音を分析して数値を決める（曲全体を何度か処理して音量を合わせるので、数秒〜十数秒かかる）
+// おまかせの計算用の Worker：まず曲の一部（segs）だけで数値を決めて返し（rough）、続けて曲全体で決めて返す（full）。
+// 専用の Worker なので、別のジャンルを選んだり曲を替えたりしたら、途中でも止められる
+const PLAN_WORKER=`
+self.onmessage=e=>{const d=e.data,fs=d.fs;try{
+  if(d.segs&&d.segs.length){
+    const F=Math.round(fs*0.005),len=d.segs.reduce((a,x)=>a+x[1]-x[0],0),ex=d.chs.map(()=>new Float32Array(len));let o=0;
+    for(const [a,b] of d.segs){const n=b-a;for(let c=0;c<ex.length;c++){const y=ex[c].subarray(o,o+n);y.set(d.chs[c].subarray(a,b));
+      for(let i=0;i<F&&i<n;i++){const k=i/F;y[i]*=k;y[n-1-i]*=k;}}o+=n;} // つなぎ目は 5 ms ずつフェード
+    const r=masterProcess(ex,fs,d.o);self.postMessage({type:"rough",info:r.info});
+  }
+  const r=masterProcess(d.chs,fs,d.o,st=>self.postMessage({type:"progress",step:st}));self.postMessage({type:"full",info:r.info});
+}catch(err){self.postMessage({type:"error",message:String(err&&err.message||err)});}};`;
+let msPlanTok=0,msPlanW=null,msPlanEnd=null;
+function msPlanCancel(){if(msPlanW){try{msPlanW.terminate();}catch(e){}msPlanW=null;}if(msPlanEnd){const f=msPlanEnd;msPlanEnd=null;f(false);}}
+// 先に鳴らすための抜き出し：いちばん大きい所 3 か所（前後 3 秒ずつ）と、均等に取った 5 か所（3 秒ずつ）
+function msRoughSegs(m,fs,len){
+  const dur=len/fs;if(dur<50||!m.stSeries||m.stSeries.length<10)return null;
+  const pts=[],st=m.stSeries.filter(x=>Number.isFinite(x.v)).slice().sort((a,b)=>b.v-a.v);
+  for(const x of st){if(pts.length>=3)break;if(pts.every(t=>Math.abs(t-x.t)>=8))pts.push(x.t);}
+  const seg=pts.map(t=>[t-3,t+3]);for(let k=0;k<5;k++){const t=dur*(k+0.5)/5;seg.push([t-1.5,t+1.5]);}
+  seg.sort((a,b)=>a[0]-b[0]);const out=[];
+  for(const [a,b] of seg){const s0=Math.max(0,Math.round(a*fs)),s1=Math.min(len,Math.round(b*fs));if(s1-s0<fs)continue;const L=out[out.length-1];if(L&&s0<=L[1])L[1]=Math.max(L[1],s1);else out.push([s0,s1]);}
+  return out;
+}
+// おまかせ：元の音を分析して数値を決める。長い曲では、先に曲の一部だけで決めた「近い設定」で鳴らし（数秒）、
+// 裏で曲全体の計算を続けて、終わったら差し替える。戻り値は、最初の設定ができた時点で true。曲全体の計算の完了は MS.planDone で待てる
 async function msPlan(opt){
   opt=opt||{};
   if(busy){edMsg("他の処理が終わるまでお待ちください",true);msMsg("他の処理が終わるまでお待ちください",true);return null;}
@@ -6871,24 +6897,38 @@ async function msPlan(opt){
   // 直流（DC）を除いた音の大きさ（RMS）が −70 dBFS 未満なら、仕上げられる音が無い（無音・直流だけのファイルなど。ラウドネスは低域フィルタの立ち上がりで値が出てしまうことがある）
   {let e=0,n=0;for(const c of MS.src.chs){let mu=0;for(let i=0;i<c.length;i++)mu+=c[i];mu/=Math.max(1,c.length);for(let i=0;i<c.length;i++){const v=c[i]-mu;e+=v*v;}n+=c.length;}
    if(!(e/Math.max(1,n)>1e-7)){const t="処理できませんでした: 音がほとんどありません（無音か、直流（DC）成分だけの音です）";edMsg(t,true);msMsg(t,true);return null;}}
-  const chs=MS.src.chs.map(c=>c.slice());
-  const was=player?{pos:playPosNow(),side:player.side}:null;
-  stopPlay();busy=true;updateButtons();$("msOut").hidden=true;edMsg("おまかせマスタリング…");msEmit("planstart");let out;
-  try{out=await runJob({cmd:"edit",chs,fs,op:"master",o},chs.map(c=>c.buffer),st=>{edMsg("おまかせマスタリング："+st);MS&&(MS.planStep=st);msEmit("planprog");},()=>editProcess({chs,fs,op:"master",o}));}
-  catch(e){console.error(e);edMsg("処理できませんでした: "+e.message,true);msMsg("処理できませんでした: "+e.message,true);msEmit("planfail");return null;}
-  finally{busy=false;updateButtons();}
-  edMsg("");if(!MS)return null;
-  const info=out.master;
-  MS.plan={key,name:P.name,info,eqBands,notes,T:usedT||genreTarget(key),lin,ref};MS.planLufs=info.lim?info.lim.lufs:NaN;
-  MS.S=msSettingsFromPlan(info.P,eqBands,lin);MS.P0=info.P;MS.wet=true;
-  msSetP(msCompile(MS.S,fs));msUpdateDry();msMsg("");msEmit("plan");
-  if(opt.play||was)playFrom(was&&was.side==="A"?was.pos:lastPos,"A");
-  return out;
+  msPlanCancel();const tok=++msPlanTok,ms=MS,chs=MS.src.chs.map(c=>c.slice()),segs=opt.noRough?null:msRoughSegs(m,fs,MS.len);
+  $("msOut").hidden=true;edMsg("おまかせマスタリング…");ms.planning=true;ms.planStep="";msEmit("planstart");
+  const w=new Worker(URL.createObjectURL(new Blob([$("dsp").textContent,PLAN_WORKER],{type:"text/javascript"})));msPlanW=w;
+  let first=null,done=null,gotFirst=false;const pFirst=new Promise(r=>first=r);ms.planDone=new Promise(r=>done=r);msPlanEnd=v=>{first(null);done(v);};
+  const alive=()=>MS===ms&&msPlanTok===tok;
+  const apply=(info,rough)=>{
+    const knobs=gotFirst&&ms.S?ms.S.knobs:null; // 先に鳴らしている間に動かしたつまみは、差し替えの後も残す
+    ms.plan={key,name:P.name,info,eqBands,notes,T:usedT||genreTarget(key),lin,ref};ms.planLufs=info.lim?info.lim.lufs:NaN;
+    ms.S=msSettingsFromPlan(info.P,eqBands,lin);if(knobs)ms.S.knobs=knobs;ms.P0=info.P;ms.rough=rough;if(!gotFirst)ms.wet=true;
+    msSetP(msCompile(ms.S,fs));msUpdateDry();
+    if(!gotFirst){gotFirst=true;const wasPos=player&&player.side==="A"?playPosNow():null;
+      if(opt.play||wasPos!=null){if(player)stopPlay();playFrom(wasPos!=null?wasPos:lastPos,"A");}first(true);}
+    if(!rough){ms.planning=false;edMsg("");msMsg("");}
+    msEmit("plan");
+  };
+  w.onmessage=e=>{const d=e.data;if(!alive())return;
+    if(d.type==="progress"){ms.planStep=d.step;edMsg("おまかせマスタリング："+d.step);msEmit("planprog");}
+    else if(d.type==="rough")apply(d.info,true);
+    else if(d.type==="full"){apply(d.info,false);msPlanW=null;msPlanEnd=null;try{w.terminate();}catch(_){}done(true);}
+    else if(d.type==="error"){console.error(d.message);ms.planning=false;const keep=gotFirst; // 先の設定で鳴っていれば、その設定を正式なものとして残す
+      if(keep){ms.rough=false;msEmit("plan");}else{edMsg("処理できませんでした: "+d.message,true);msMsg("処理できませんでした: "+d.message,true);msEmit("planfail");}
+      msPlanW=null;msPlanEnd=null;try{w.terminate();}catch(_){}first(keep?true:null);done(keep);}
+  };
+  w.onerror=e=>{if(e.preventDefault)e.preventDefault();if(!alive())return;ms.planning=false;const t="おまかせの計算が異常終了しました（メモリ不足の可能性があります）";edMsg(t,true);msMsg(t,true);if(gotFirst){ms.rough=false;msEmit("plan");}else msEmit("planfail");msPlanW=null;msPlanEnd=null;first(gotFirst?true:null);done(gotFirst);};
+  w.postMessage({chs,fs,o,segs},chs.map(c=>c.buffer));
+  return pFirst;
 }
 // 仕上がりを解析する（プロ画面）：仕上げた音を全部処理して、2.〜7. を解析し直す。元の音は B に入れて聴き比べられる
 async function msCommit(){
   if(!MS||!MS.P)return false;
   if(busy){edMsg("他の処理が終わるまでお待ちください",true);return false;}
+  if(MS.planning){edMsg("おまかせの計算が終わるのを待っています…");await MS.planDone;if(!MS||!MS.P||busy)return false;}
   const before=MS.m0,beforeChs=MS.src.chs,fs=MS.fs,plan=MS.plan,base=(MS.label||"音声").replace(/（おまかせ：[^）]*）$/,"");
   stopPlay();busy=true;updateButtons();edMsg("仕上げた音を最後まで処理しています…");let chs;
   try{chs=await msFull();}catch(e){edMsg("処理できませんでした: "+e.message,true);return false;}finally{busy=false;updateButtons();}
@@ -6909,6 +6949,7 @@ async function msCommit(){
 async function msExport(fmt,rate){
   if(!MS||!MS.P)return false;
   if(busy){msMsg("他の処理が終わるまでお待ちください",true);return false;}
+  if(MS.planning){msMsg("仕上げの計算が終わるのを待っています（終わったら、そのまま保存します）…");await MS.planDone;if(!MS||!MS.P||busy)return false;}
   const fm=SAVE_FORMATS[fmt];busy=true;updateButtons();msMsg("書き出しの準備中（仕上げた音を最後まで処理しています）…");
   try{
     const chs=await msFull(),raw={chs,fs:MS.fs},enc=await encodeAt(raw,0,chs[0].length,fmt,rate),buf=addTags(enc.buf,fmt,tagsNow());
@@ -7001,7 +7042,7 @@ $("easyRun").onclick=async e=>{
   $("easyMsg").textContent="";
   const st=setInterval(()=>{$("easyMsg").textContent=$("edStatus").textContent||"";},300);
   let ok=null;try{ok=await msPlan({play:true});}finally{clearInterval(st);}
-  $("easyMsg").textContent=ok?"できました。「仕上げた音」と「元の音」を聴き比べてください（2 つは音量をそろえています）。":($("edStatus").textContent||$("tbStatus").textContent||"");
+  $("easyMsg").textContent=ok?(MS&&MS.rough?"":"できました。「仕上げた音」と「元の音」を聴き比べてください（2 つは音量をそろえています）。"):($("edStatus").textContent||$("tbStatus").textContent||"");
   renderEasy();
 };
 const easyPlay=wet=>{if(!current||!MS||!MS.on){return;}msSetWet(wet);if(!player)playFrom(lastPos,"A");else if(player.side!=="A")playFrom(playPosNow(),"A");setTimeout(easyAbUi,80);};
@@ -7018,7 +7059,7 @@ $("easyUndo").onclick=async e=>{e.currentTarget.blur();if(busy)return;if(editOri
 
 /* ---------- プロ画面：マスタリングのラック（モジュール・つかめる EQ・常時メーター・スナップショット・履歴・プリセット） ---------- */
 const RK={sel:-1,drag:null,hist:[],hi:-1,snaps:[null,null,null,null],snapOn:-1,ht:0,mom:[],at:0};
-const rkOn=()=>!!(MS&&MS.S);
+const rkOn=()=>!!(MS&&MS.S&&!MS.rough);
 function rkFlatS(){const m=MS.m0;return {eqBands:[],lin:false,hp:false,side:0,bassMono:0,declip:null,deharsh:null,
   comp:{on:false,ratio:2,attack:30,release:150,gr:2.5,thr:Math.round((Number.isFinite(m.lufs)?m.lufs:-20)-2),L90:Number.isFinite(m.lufs)?m.lufs+1:-19},
   lim:{on:false,gain:0,ceil:-1,opt:{la:4,hold:20,relMin:30,relMax:150}},post:0,knobs:{low:0,high:0,width:0,drive:0}};}
@@ -7038,7 +7079,8 @@ function rkRow(id,label,get,set,min,max,step,unit){
 const RK_P={};
 function rkDef(id,label,get,set,min,max,step,unit){RK_P[id]={label,get,set,min,max,step,unit};return rkRow(id,label,get,set,min,max,step,unit);}
 function rkRender(){
-  const on=rkOn();$("rkEmpty").hidden=on;$("rkMods").hidden=!on;rkBarUi();if(!on)return;
+  const on=rkOn();$("rkEmpty").hidden=on;$("rkMods").hidden=!on;rkBarUi();
+  if(!on){if(MS&&MS.rough)$("rkMsg").textContent="✨ おまかせの数値を計算中…（いまは、曲の一部から決めた近い設定で再生しています。終わると自動で差し替わり、ここで調整できます）";return;}
   const S=MS.S,st=MS.src.chs.length===2;
   $("rkLin").checked=!!S.lin;$("rkHp").checked=!!S.hp;$("rkCompOn").checked=!!S.comp.on;$("rkLimOn").checked=!!S.lim.on;
   $("rkStereo").innerHTML=(st?rkDef("side","サイド",()=>S.side,v=>S.side=v,-6,6,0.1,"dB"):"<div class='sub'>モノラルの曲です</div>")
@@ -7138,7 +7180,7 @@ function rkMeter(){
 $("rkPreset").innerHTML=$("msPreset").innerHTML;$("rkPreset").value=$("msPreset").value;
 $("rkPreset").onchange=e=>{$("msPreset").value=e.target.value;$("msPreset").dispatchEvent(new Event("change"));if(typeof msApplyPreset==="function")msApplyPreset();};
 $("msPreset").addEventListener("change",()=>{$("rkPreset").value=$("msPreset").value;});
-$("rkAuto").onclick=async e=>{e.currentTarget.blur();const ok=await msPlan({play:!!player});if(ok){rkReset();rkRender();const li=MS.plan.info.lim;$("rkTarget").value=li?li.target:-14;}};
+$("rkAuto").onclick=async e=>{e.currentTarget.blur();await msPlan({play:!!player});rkRender();};
 $("rkFlat").onclick=async e=>{e.currentTarget.blur();if(busy||!current||!rawOK())return;
   if(!MS&&editOrig&&msLast&&msLast.after===current){await edUndo();if(busy||!current||!rawOK())return;}
   if(!msBegin())return;MS.S=rkFlatS();MS.P0=null;MS.plan=null;MS.wet=true;msSetP(msCompile(MS.S,MS.fs));rkReset();rkRender();};
@@ -7185,7 +7227,7 @@ document.addEventListener("keydown",e=>{
   else if(e.code==="Delete"&&RK.sel>=0&&document.activeElement===$("cvRkEq")){e.preventDefault();MS.S.eqBands.splice(RK.sel,1);RK.sel=-1;rkChanged();}
 });
 $("cvRkEq").tabIndex=0;
-msHooks.push(t=>{if(t==="end"){RK.hist=[];RK.hi=-1;rkRender();}else if(t==="plan"&&!document.body.classList.contains("simple")){rkReset();rkRender();}else if(t==="metrics"){rkBarUi();rkDrawEq();rkMeter();}else if(t==="progress"||t==="params"||t==="wet"||t==="commit")rkBarUi();});
+msHooks.push(t=>{if(t==="end"){RK.hist=[];RK.hi=-1;rkRender();}else if(t==="plan"){if(MS&&!MS.rough){rkReset();const li=MS.plan&&MS.plan.info.lim;$("rkTarget").value=li?li.target:-14;}if(!document.body.classList.contains("simple"))rkRender();}else if(t==="metrics"){rkBarUi();rkDrawEq();rkMeter();}else if(t==="progress"||t==="params"||t==="wet"||t==="commit")rkBarUi();});
 const rkTbh=()=>document.documentElement.style.setProperty("--tbh",$("topbar").offsetHeight+"px");rkTbh();
 window.addEventListener("resize",()=>{rkTbh();if(rkOn()&&!document.body.classList.contains("simple"))rkDrawEq();});
 new ResizeObserver(rkTbh).observe($("topbar"));
@@ -7263,10 +7305,11 @@ function ezCount(to){
 function ezRenderScore(){
   if(!current)return;const key=$("easyGenre").value,ms=!!(MS&&MS.on&&MS.P),b=ezScoreOf(ezStateBefore(key));
   let sc=b,head="いまの状態（仕上げる前）";
-  if(ms&&MS.metrics){sc=ezScoreOf(ezStateAfter());head="仕上げ前 "+b.tot+" 点 → 仕上げ後 "+sc.tot+" 点";}
-  else if(ms)head="仕上げた音を測っています… "+Math.round((MS.prog||0)*100)+"%（仕上げ前は "+b.tot+" 点）";
-  const wait0=ms&&!MS.metrics,g=$("ezGauge");g.style.setProperty("--v",String(sc.tot));g.style.setProperty("--c",wait0?"#5a6080":sc.tot>=80?"#4fe3a6":sc.tot>=65?"#ffc857":"#ff6b7d");
-  const wait=ms&&!MS.metrics;$("ezRank").textContent=wait?"":sc.tot>=90?"RANK S":sc.tot>=80?"RANK A":sc.tot>=65?"RANK B":"RANK C";
+  const fin=ms&&MS.metrics&&!MS.rough;
+  if(fin){sc=ezScoreOf(ezStateAfter());head="仕上げ前 "+b.tot+" 点 → 仕上げ後 "+sc.tot+" 点";}
+  else if(ms)head=(MS.rough?"曲全体の仕上げを計算中…":"仕上げた音を測っています… "+Math.round((MS.prog||0)*100)+"%")+"（仕上げ前は "+b.tot+" 点）";
+  const wait0=ms&&!fin,g=$("ezGauge");g.style.setProperty("--v",String(sc.tot));g.style.setProperty("--c",wait0?"#5a6080":sc.tot>=80?"#4fe3a6":sc.tot>=65?"#ffc857":"#ff6b7d");
+  const wait=ms&&!fin;$("ezRank").textContent=wait?"":sc.tot>=90?"RANK S":sc.tot>=80?"RANK A":sc.tot>=65?"RANK B":"RANK C";
   if(wait){$("ezScore").textContent="…";EZ.sc=null;}else ezCount(sc.tot);$("ezScoreHead").textContent="配信の準備度（目安）："+head;
   $("ezTips").innerHTML=sc.it.map(x=>"<li class='"+x.lv+"'>"+esc(x.t)+"</li>").join("");
 }
@@ -7280,8 +7323,9 @@ function ezUpdate(){
 msHooks.push(t=>{
   if(t==="planstart"||t==="plan"||t==="planfail"||t==="end")$("ezStage").classList.toggle("magic",t==="planstart");
   if(t==="planstart"){$("ezMagic").hidden=false;$("ezMagicTxt").textContent="魔法をかけています…";ezUpdate();}
-  else if(t==="planprog"){$("ezMagicTxt").textContent="魔法をかけています…（"+(MS&&MS.planStep||"")+"）";}
-  else if(t==="plan"||t==="planfail"||t==="end"){$("ezMagic").hidden=true;ezUpdate();}
+  else if(t==="planprog"){if(MS&&!MS.rough)$("ezMagicTxt").textContent="魔法をかけています…（"+(MS&&MS.planStep||"")+"）";}
+  else if(t==="plan"&&MS&&MS.rough){$("ezMagicTxt").textContent="まず近い設定で再生しています。裏で曲全体の仕上げを計算中…（終わると自動で差し替わります）";ezUpdate();}
+  else if(t==="plan"||t==="planfail"||t==="end"){$("ezMagic").hidden=true;if(t==="plan"&&document.body.classList.contains("simple"))$("easyMsg").textContent="できました。「仕上げた音」と「元の音」を聴き比べてください（2 つは音量をそろえています）。";ezUpdate();}
   else if(t==="metrics"||t==="params"){ezRenderScore();if(!player)ezStatic();}
   else if(t==="progress"){if(MS&&!MS.metrics&&((MS.prog*20)|0)!==((MS._pp||0)|0)){MS._pp=MS.prog*20;ezRenderScore();}}
   else if(t==="wet"){$("ezFftTitle").textContent=MS&&!MS.wet?"いま鳴っている音：元の音":"いま鳴っている音"+(MS&&MS.on?"：仕上げた音":"");easyAbUi();}
