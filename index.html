@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-cnr47npj05gOOXXGAdOQnH6QjVfvuhB74uit+Uuhn4A=' 'sha256-2ZaMVwHU7muAG4tYXQuVrPi3ad87R3SC+gBQfvCslHU=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-QPiQGDtCgBi27iu4U7eOSLFYtrnQJgfNHBLZ5EfdDZI=' 'sha256-Ng0Cn1tJO/9QhyniVIzdTAwOZAvDWMVD1Qvn3qKQwgM=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -2600,7 +2600,8 @@ function lsarSet(y,U,a,p){
 // 本当の値はクリップの高さ以上・同じ符号のはずなので、補間がそれを満たさないサンプルはクリップの高さに固定して既知に移し、
 // 残りを解き直す（最大 o.iter 回）。間が AR の次数以内の区間はまとめて扱う。長すぎる区間（o.maxMs 超）は直さない
 function declipCh(x,fs,o){
-  o=o||{};const n=x.length,p=o.p||32;let sp=0;for(let i=0;i<n;i++){const a=Math.abs(x[i]);if(a>sp)sp=a;}
+  // sp：クリップの高さの基準（そのチャンネルの曲全体のピーク）。区切って処理するときは曲全体の値を外から渡す
+  o=o||{};const n=x.length,p=o.p||32;let sp=0;if(Number.isFinite(o.sp))sp=o.sp;else for(let i=0;i<n;i++){const a=Math.abs(x[i]);if(a>sp)sp=a;}
   const th=sp*(o.th||0.999),maxL=Math.max(8,Math.round(fs*(o.maxMs||5)/1000));
   if(sp===0)return {y:x,count:0,samples:0,skipped:0};
   const runs=[];
@@ -2855,10 +2856,15 @@ function msCompress(chs,fs,o){
   const cum=new Float64Array(n+1);for(let i=0;i<n;i++){let x=0;for(let c=0;c<nc;c++){const v=chs[c][i];x+=v*v;}cum[i+1]=cum[i]+x/nc;}
   const c2=new Float64Array(n+1);for(let i=0;i<n;i++){const a=i-W+1>0?i-W+1:0;c2[i+1]=c2[i]+(cum[i+1]-cum[a])/(i+1-a);}
   const levAt=i=>{const a=i-W+1>0?i-W+1:0,v=(c2[i+1]-c2[a])/(i+1-a);return v>1e-12?10*Math.log10(v):-120;};
-  const smp=[];for(let i=0;i<n;i+=64){const v=levAt(i);if(v>-60)smp.push(v);}
-  if(smp.length<100)return {chs,info:null};
-  smp.sort((a,b)=>a-b);
-  const L90=smp[Math.floor(0.9*(smp.length-1))],R=o.ratio,Wk=6,T=L90-o.gr/(1-1/R);
+  const R=o.ratio,Wk=6;let L90,T;
+  // しきい値を数値で指定したとき（区切って処理する試聴・プロ画面）は、曲全体の統計を使わない
+  if(Number.isFinite(o.thr)){T=o.thr;L90=Number.isFinite(o.L90)?o.L90:T+(o.gr||0)/(1-1/R);}
+  else{
+    const smp=[];for(let i=0;i<n;i+=64){const v=levAt(i);if(v>-60)smp.push(v);}
+    if(smp.length<100)return {chs,info:null};
+    smp.sort((a,b)=>a-b);
+    L90=smp[Math.floor(0.9*(smp.length-1))];T=L90-o.gr/(1-1/R);
+  }
   const gc=l=>{const ov=l-T;return 2*ov>Wk?(1/R-1)*ov:2*ov>-Wk?(1/R-1)*(ov+Wk/2)*(ov+Wk/2)/(2*Wk):0;};
   const aA=Math.exp(-D/(fs*o.attack/1000)),aR=Math.exp(-D/(fs*o.release/1000));
   const out=chs.map(()=>new Float32Array(n));let gs=0,kPrev=1,grSum=0,grCnt=0,grMax=0;
@@ -2870,7 +2876,7 @@ function msCompress(chs,fs,o){
     for(let i=s0;i<s1;i++){const k=kPrev+(kNext-kPrev)*(i-s0+1)/len;for(let c=0;c<nc;c++)out[c][i]=chs[c][i]*k;}
     kPrev=kNext;if(lv>=L90-3){grSum-=gs;grCnt++;}if(-gs>grMax)grMax=-gs;
   }
-  return {chs:out,info:{thr:T,ratio:R,attack:o.attack,release:o.release,grLoud:grCnt?grSum/grCnt:0,grMax,grT}};
+  return {chs:out,info:{thr:T,L90,ratio:R,attack:o.attack,release:o.release,grLoud:grCnt?grSum/grCnt:0,grMax,grT}};
 }
 // リミッター用のピーク検出：各サンプル位置の、左右の |x| と BS.1770 の 4 倍オーバーサンプリング値の最大（ゲインに依存しないので 1 回だけ計算する）。
 // 例示フィルタは少し読み過ぎる（最大 +0.2 dB 程度）ので、上限を守る側にずれる
@@ -2942,8 +2948,9 @@ function msDeharsh(chs,fs,o){
   for(let i=0;i<n;i++){let a=0,b=0;for(let c=0;c<nc;c++){a+=rf[c][i]*rf[c][i];b+=bp[c][i]*bp[c][i];}ca[i+1]=ca[i]+a;cb[i+1]=cb[i]+b;}
   const act=[];
   for(let k=0;k<nb;k++){const i=Math.min(n-1,k*D+D-1),a0=i-W+1>0?i-W+1:0,A=ca[i+1]-ca[a0],B=cb[i+1]-cb[a0];rel[k]=A>1e-12&&B>1e-14?10*Math.log10(B/A):-99;if(B/(i+1-a0)>1e-7)act.push(rel[k]);}
-  if(act.length<50)return {chs,info:null};
-  const srt=Float32Array.from(act).sort(),med=srt[Math.floor(srt.length/2)],thr=med+(o.thrDb!=null?o.thrDb:4);
+  let thr;
+  if(Number.isFinite(o.thrAbs))thr=o.thrAbs; // 区切って処理するときは、曲全体で決めた基準を使う
+  else{if(act.length<50)return {chs,info:null};const srt=Float32Array.from(act).sort(),med=srt[Math.floor(srt.length/2)];thr=med+(o.thrDb!=null?o.thrDb:4);}
   const aA=Math.exp(-D/(fs*0.005)),aR=Math.exp(-D/(fs*0.08));let gs=0,gPrev=1,cnt=0,grMax=0;
   const out=chs.map(()=>new Float32Array(n));
   for(let k=0;k<nb;k++){
@@ -2973,7 +2980,9 @@ function masterProcess(chs,fs,o,prog){
   prog=prog||(()=>{});const info={};let x=chs;
   const lufs=y=>analyzeLoudness(y,fs,o.weights).integrated;
   // 音割れの修復は最初に：フィルタを通すと平らに切れた頭の形が崩れ、見つけられなくなる
-  if(o.declip){prog("音割れの修復");let c=0,sm=0;x=x.map(ch=>{const r=declipCh(ch,fs,o.declip);c+=r.count;sm+=r.samples;return r.y;});info.declip={count:c,samples:sm};}
+  let sps=null;
+  if(o.declip){prog("音割れの修復");sps=x.map(ch=>{let sp=0;for(let i=0;i<ch.length;i++){const a=Math.abs(ch[i]);if(a>sp)sp=a;}return sp;});
+    let c=0,sm=0;x=x.map((ch,ci)=>{const r=declipCh(ch,fs,Object.assign({},o.declip,{sp:sps[ci]}));c+=r.count;sm+=r.samples;return r.y;});info.declip={count:c,samples:sm};}
   if(o.sos&&o.sos.length){prog("EQ");x=x.map(c=>sosRun(c,o.sos));}
   if(o.eq&&o.eq.length){prog("EQ");x=msEqApply(x,o.eq,!!o.eqZero);}
   if(o.side&&x.length===2&&o.side.db){prog("ステレオの広さ");const g=Math.pow(10,o.side.db/20),[L,R]=x,n=L.length,oL=new Float32Array(n),oR=new Float32Array(n);
@@ -3015,10 +3024,30 @@ function masterProcess(chs,fs,o,prog){
       const over=toDb(tp)-o.lim.ceil;if(over<=0)break;
       if(tpRounds===0){tpRounds++;ceil-=over+0.2;continue;} // 下げた後に音量を上げ直すとサンプル間のピークも少し増えるので、余裕を持たせる
       const k=Math.pow(10,-(over+0.02)/20);for(const c of best.chs)for(let i=0;i<c.length;i++)c[i]*=k;
-      best.gain-=over+0.02;best.lufs-=over+0.02;break;
+      best.post=-(over+0.02);best.gain-=over+0.02;best.lufs-=over+0.02;break;
     }
-    x=best.chs;info.lim={gain:best.gain,ceil:best.ceil,grMax:best.grMax,target:o.lim.lufs,ceilTarget:o.lim.ceil,lufs:best.lufs,psrGuard:!!info.psrGuard,guardBy:info.guardBy||"",minPsr:o.lim.minPsr||0,maxSt:o.lim.maxSt,grT:best.grT};
+    x=best.chs;info.lim={gain:best.gain,ceil:best.ceil,grMax:best.grMax,target:o.lim.lufs,ceilTarget:o.lim.ceil,lufs:best.lufs,psrGuard:!!info.psrGuard,guardBy:info.guardBy||"",minPsr:o.lim.minPsr||0,maxSt:o.lim.maxSt,grT:best.grT,post:best.post||0};
   }
+  // 決まった数値だけで同じ音を作り直せるように（masterRender に渡す）
+  info.P={declip:o.declip?Object.assign({},o.declip,{sps}):null,sos:o.sos||[],eq:o.eq||[],eqZero:!!o.eqZero,side:o.side&&o.side.db&&chs.length===2?{db:o.side.db}:null,
+    bassMono:o.bassMono?{f:o.bassMono.f}:null,deharsh:o.deharsh&&info.deharsh?Object.assign({},o.deharsh,{thrAbs:info.deharsh.thr}):null,
+    comp:o.comp&&info.comp?{ratio:o.comp.ratio,attack:o.comp.attack,release:o.comp.release,gr:o.comp.gr,thr:info.comp.thr,L90:info.comp.L90}:null,
+    lim:o.lim&&info.lim?{gain:info.lim.gain-info.lim.post,ceil:info.lim.ceil,opt:o.lim.opt||{}}:null,post:info.lim?info.lim.post:0};
+  return {chs:x,info};
+}
+// 明示した数値 P だけで仕上げる（曲全体の統計は使わない）。試聴（区切って処理）と書き出しで同じ関数を使う
+function masterRender(chs,fs,P){
+  let x=chs;const info={};
+  if(P.declip){x=x.map((ch,ci)=>declipCh(ch,fs,Object.assign({},P.declip,{sp:P.declip.sps?P.declip.sps[ci]:undefined})).y);}
+  if(P.sos&&P.sos.length)x=x.map(c=>sosRun(c,P.sos));
+  if(P.eq&&P.eq.length)x=msEqApply(x,P.eq,!!P.eqZero);
+  if(P.side&&x.length===2&&P.side.db){const g=Math.pow(10,P.side.db/20),[L,R]=x,n=L.length,oL=new Float32Array(n),oR=new Float32Array(n);
+    for(let i=0;i<n;i++){const m=(L[i]+R[i])*0.5,sd=(L[i]-R[i])*0.5*g;oL[i]=m+sd;oR[i]=m-sd;}x=[oL,oR];}
+  if(P.bassMono)x=msBassMono(x,fs,P.bassMono.f).chs;
+  if(P.deharsh&&Number.isFinite(P.deharsh.thrAbs))x=msDeharsh(x,fs,P.deharsh).chs;
+  if(P.comp&&Number.isFinite(P.comp.thr)){const r=msCompress(x,fs,P.comp);x=r.chs;info.grC=r.info?r.info.grT:null;}
+  if(P.lim){const pk=msPeak4(x),r=msLimit(x,pk,fs,P.lim.gain,P.lim.ceil,P.lim.opt);x=r.chs;info.grL=r.grT;}
+  if(P.post){const k=Math.pow(10,P.post/20);x=x.map(c=>{const y=new Float32Array(c.length);for(let i=0;i<c.length;i++)y[i]=c[i]*k;return y;});}
   return {chs:x,info};
 }
 /* ---- 楽器パートの分離（HTDemucs・ONNX）の前後処理 ----
@@ -3735,6 +3764,7 @@ async function run(chs,fs,info){
   if(busy)return;
   stopPlay();lastPos=0;abSide="A";$("playhead").style.display="none";$("playPos").textContent="";
   if(!info.keepOrig)editOrig=null;
+  if(!info.msCommit)msEnd();
   busy=true;lastRaw=null;updateButtons();
   try{
     setStatus("解析中…");await tick();
@@ -3958,9 +3988,12 @@ function drawSegTable(m){
 // 音声を20秒ずつAudioBufferにして途切れなく予約再生する（全体を一度にコピーしないためメモリを使いすぎない）
 // A=現在の曲（トリム後の範囲）、B=リファレンス（保存した音声）。出力は試聴音量のゲインを通り、メーター用アナライザへ
 const CHUNK=20;let playCtx=null,fltIn=null,outGain=null,anMix=null,anL=null,anR=null,player=null,playTimer=0,lastPos=0,abSide="A",refAudio=null,refAudioErr=null,liveRaf=0,tempRef=null,tempAudio=null,abSwitching=false;
-function ensureCtx(){
+// 再生は曲と同じサンプルレートで行う（違うと、区間ごとにブラウザが変換し、つなぎ目がわずかに乱れることがある）
+function ensureCtx(rate){
+  if(playCtx&&rate&&playCtx.sampleRate!==rate&&!player){try{playCtx.close();}catch(e){}playCtx=null;fltNodes=[];}
   if(!playCtx){
-    playCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const AC=window.AudioContext||window.webkitAudioContext;
+    try{playCtx=rate?new AC({sampleRate:rate}):new AC();}catch(e){playCtx=new AC();}
     outGain=playCtx.createGain();outGain.channelCount=2;outGain.channelCountMode="explicit";outGain.channelInterpretation="speakers";
     fltIn=playCtx.createGain();fltIn.channelCount=2;fltIn.channelCountMode="explicit";fltIn.channelInterpretation="speakers";
     anMix=playCtx.createAnalyser();anMix.fftSize=8192;anMix.smoothingTimeConstant=0.7;anMix.minDecibels=-110;anMix.maxDecibels=-10;
@@ -3971,6 +4004,7 @@ function ensureCtx(){
   playCtx.resume();
 }
 function sideSrc(side){
+  if(side==="A"&&MS&&MS.on&&MS.P)return {kind:"ms",fs:MS.fs,off:0,len:MS.len};
   if(side==="B")return refAudio?{chs:refAudio.chs,fs:refAudio.fs,off:0,len:refAudio.chs[0].length}:null;
   // 配信コーデックの試聴：変換後の音・差分に差し替える（トリム後の範囲と同じ時間軸）
   if(aVariant!=="orig"&&cdc&&cdc.cur===current&&rawOK()){const chs=aVariant==="codec"?cdc.b:cdc.diff;return {chs,fs:cdc.fs,off:0,len:chs[0].length};}
@@ -3979,6 +4013,7 @@ function sideSrc(side){
 function sideDur(side){const S=sideSrc(side);return S?S.len/S.fs:0;}
 // 予約した区間 {t:開始時刻, pos:曲内の位置, d:長さ} を記録し、ループ中も再生位置を正しく求める
 function scheduleChunk(p){
+  if(p.src.kind==="ms")return msSchedule(p);
   const S=p.src,end=p.loop?p.loop.b:S.len/S.fs;
   if(p.nextPos>=end-0.005){if(!p.loop)return;p.nextPos=p.loop.a;}
   const s0=S.off+Math.floor(p.nextPos*S.fs),s1=S.off+Math.min(S.len,Math.floor(Math.min(end,p.nextPos+CHUNK)*S.fs));
@@ -4008,7 +4043,7 @@ function showPos(pos){
 function playFrom(t,side,loop){
   side=side||abSide;
   const S=sideSrc(side);if(!S||rec||busy)return;
-  stopPlay();ensureCtx();
+  stopPlay();ensureCtx(S.fs);
   abSide=side;rebuildPlaybackFilter(side);
   const dur=S.len/S.fs;
   if(loop){loop={a:Math.max(0,loop.a),b:Math.min(dur,loop.b)};if(loop.b-loop.a<0.02)loop=null;}
@@ -4020,7 +4055,7 @@ function playFrom(t,side,loop){
   playTimer=setInterval(()=>{
     if(player!==p)return;
     const pos=playPosNow();
-    if(!p.loop&&(pos>=dur-0.005||playCtx.currentTime>=p.nextTime)){stopPlay();lastPos=0;showPos(dur);return;}
+    if(!p.loop&&(pos>=dur-0.005||playCtx.currentTime>=p.nextTime&&!p.msPending)){stopPlay();lastPos=0;showPos(dur);return;}
     if(p.nextTime-playCtx.currentTime<5)scheduleChunk(p);
     showPos(pos);
     // 拡大表示中は再生位置に合わせて表示範囲を送る
@@ -6071,31 +6106,8 @@ function buildMasterOpts(m,fs,key,ov){
 }
 async function masterRun(){
   if(!current||!rawOK()){edMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return;}
-  const key=$("msPreset").value,m=current,fs=lastRaw.fs;
-  const B=buildMasterOpts(m,fs,key);if(B.err){edMsg(B.err,true);return;}
-  const {o,eqBands,notes,usedT,lin,P,ref}=B;
-  const s0=m.trimStart,s1=m.trimEnd,chs=lastRaw.chs.map(c=>c.slice(s0,s1)),info={source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout};
-  const orig=editOrig||{chs:lastRaw.chs.map(c=>c.slice()),fs,info:Object.assign({label:m.label},info)};
-  const before=m,beforeChs=lastRaw.chs.map(c=>c.subarray(s0,s1)),base=m.label||"音声";
-  // 直流（DC）を除いた音の大きさ（RMS）が −70 dBFS 未満なら、仕上げられる音が無い（無音・直流だけのファイルなど。ラウドネスは低域フィルタの立ち上がりで値が出てしまうことがある）
-  {let e=0,n=0;for(const c of beforeChs){let mu=0;for(let i=0;i<c.length;i++)mu+=c[i];mu/=Math.max(1,c.length);for(let i=0;i<c.length;i++){const v=c[i]-mu;e+=v*v;}n+=c.length;}
-   if(!(e/Math.max(1,n)>1e-7)){edMsg("処理できませんでした: 音がほとんどありません（無音か、直流（DC）成分だけの音です）",true);return;}}
-  stopPlay();busy=true;updateButtons();$("msOut").hidden=true;edMsg("おまかせマスタリング…");let out;
-  try{out=await runJob({cmd:"edit",chs,fs,op:"master",o},chs.map(c=>c.buffer),st=>edMsg("おまかせマスタリング："+st),()=>editProcess({chs,fs,op:"master",o}));}
-  catch(e){console.error(e);edMsg("処理できませんでした: "+e.message,true);return;}
-  finally{busy=false;updateButtons();}
-  editOrig=orig;edMsg("");
-  await run(out.chs,fs,Object.assign({label:base.replace(/（おまかせ：[^）]*）$/,"")+"（おまかせ："+P.name+"）",keepOrig:true,noScroll:true},info));
-  // 処理前の音を B に入れて、ラウドネスをそろえて聴き比べる
-  if($("msAB").checked&&current){
-    const r=snapshot(before,"処理前の音");r.hasAudio=true;r.auto=true;
-    tempRef=r;tempAudio={id:r.id,chs:beforeChs,fs};refId=r.id;bSongId=null;
-    $("listenMode").value="match";pref.set("tabAnalyzerListen","match");
-    showBInfo();renderSongs();refresh();
-  }
-  msLast={before,after:current,info:out.master,eqBands,notes,T:usedT||genreTarget(key),lin,ref};
-  renderMaster(out.master,eqBands,notes,before);renderEasy();
-  maybeAutoCodec();
+  const out=await msPlan();if(!out)return;
+  await msCommit();
 }
 function renderMaster(r,eqBands,notes,before){
   const box=$("msOut");if(!r){box.hidden=true;return;}box.hidden=false;
@@ -6460,6 +6472,266 @@ $("albumRun").onclick=async()=>{
 $("albumDl").onclick=()=>{if(albumZip)download(albumZip,"album_master.zip");};
 /* ---------- かんたん表示・おまかせ ---------- */
 let msLast=null;
+/* ---------- リアルタイム試聴（仕上げのセッション） ----------
+   おまかせで決めた数値 P（曲全体の統計で決まる値も含めて確定したもの）を、つまみ・モジュールの変更で書き換えると、
+   曲を約 2.4 秒の区間に区切って専用の Worker で処理し直し、再生中の音を短いクロスフェードで差し替える。
+   書き出しも同じ区切り・同じ関数（masterRender）で処理するので、試聴した音と書き出した音は同じになる */
+let MS=null,pvW=null,pvReq=new Map(),pvFullWait=null;
+const PV_WORKER=`
+let S=null,P=null,ver=-1,out=null,done=null,order=[],want=[],sendSet=new Set(),grC=null,grL=null,timer=0,metricsVer=-1,fullVer=-1,mstep=null;
+const nChunks=()=>Math.ceil(S.len/S.C);
+function margins(){const rel=Math.max(P.comp?P.comp.release||0:0,P.lim&&P.lim.opt?P.lim.opt.relMax||150:0),sec=Math.min(12,Math.max(3,5*rel/1000));return {mL:64*Math.ceil(sec*S.fs/64),mR:Math.round(0.5*S.fs)};}
+function render(k){
+  const {mL,mR}=margins(),s0=k*S.C,s1=Math.min(S.len,s0+S.C),a=Math.max(0,s0-mL),b=Math.min(S.len,s1+mR);
+  const r=masterRender(S.chs.map(c=>c.subarray(a,b)),S.fs,P);
+  for(let c=0;c<out.length;c++)out[c].set(r.chs[c].subarray(s0-a,s1-a),s0);
+  grC[k]=r.info.grC?{off:s0-a,g:r.info.grC}:null;grL[k]=r.info.grL?{off:s0-a,g:r.info.grL}:null;done[k]=1;
+}
+function send(k){const s0=k*S.C,s1=Math.min(S.len,s0+S.C),chs=out.map(c=>c.slice(s0,s1));
+  self.postMessage({type:"chunk",idx:k,ver,chs,grC:grC[k],grL:grL[k],GB:Math.round(S.fs*0.05)},chs.map(c=>c.buffer));}
+function pump(){
+  timer=0;if(!P||!S)return;
+  let k=-1;
+  while(want.length){const j=want.shift();if(!done[j]){k=j;break;}if(sendSet.has(j)){sendSet.delete(j);send(j);}}
+  if(k<0)while(order.length){const j=order.shift();if(!done[j]){k=j;break;}}
+  if(k>=0){
+    try{render(k);}catch(e){self.postMessage({type:"error",message:String(e&&e.message||e)});return;}
+    if(sendSet.has(k)){sendSet.delete(k);send(k);}
+    let n=0;for(let i=0;i<done.length;i++)n+=done[i];self.postMessage({type:"progress",ver,done:n,total:done.length});
+    timer=setTimeout(pump,0);return;
+  }
+  // すべて処理し終えたら、仕上がりの数値（統合ラウドネス・トゥルーピーク・PSR・平均スペクトル）を、少しずつ求める
+  if(metricsVer!==ver){metrics();return;}
+  if(fullVer===ver){fullVer=-1;const chs=out.map(c=>c.slice());self.postMessage({type:"full",ver,chs},chs.map(c=>c.buffer));}
+}
+function metrics(){
+  if(!mstep||mstep.ver!==ver)mstep={ver,i:0,r:{}};
+  const m=mstep,v=ver;
+  try{
+    if(m.i===0){const ld=analyzeLoudness(out,S.fs,S.weights);m.ld=ld;m.r.lufs=ld.integrated;m.r.stMax=ld.stMax;m.r.lra=ld.lra;}
+    else if(m.i<=out.length){const t=truePeak(out[m.i-1]);m.r.tp=Math.max(m.r.tp==null?-Infinity:m.r.tp,toDb(t.tp));m.r.sp=Math.max(m.r.sp==null?-Infinity:m.r.sp,toDb(t.sp));}
+    else if(m.i===out.length+1){m.r.psr=psrAnalysis(out,S.fs,m.ld).loud;}
+    else{const n=S.len,mono=new Float32Array(n),nc=Math.min(2,out.length);for(let c=0;c<nc;c++)for(let i=0;i<n;i++)mono[i]+=out[c][i]/nc;
+      m.r.curve=spectrumStats(avgSpectrum(mono,S.fs)).curve;metricsVer=v;self.postMessage({type:"metrics",ver:v,m:m.r});timer=setTimeout(pump,0);return;}
+  }catch(e){self.postMessage({type:"error",message:String(e&&e.message||e)});metricsVer=v;return;}
+  m.i++;timer=setTimeout(()=>{if(ver===v)metrics();else pump();},0);
+}
+self.onmessage=e=>{const d=e.data;
+  if(d.cmd==="src"){S={chs:d.chs,fs:d.fs,weights:d.weights,len:d.chs[0].length,C:d.C};P=null;ver=-1;out=null;return;}
+  if(d.cmd==="params"){
+    P=d.P;ver=d.ver;out=S.chs.map(()=>new Float32Array(S.len));done=new Uint8Array(nChunks());grC=[];grL=[];metricsVer=-1;mstep=null;sendSet.clear();want=[];
+    const n=nChunks(),k0=Math.max(0,Math.min(n-1,d.at|0));order=[];for(let i=0;i<n;i++)order.push((k0+i)%n);
+    if(!timer)timer=setTimeout(pump,0);return;
+  }
+  if(d.cmd==="get"){if(d.ver!==ver)return;if(done&&done[d.idx]){send(d.idx);return;}sendSet.add(d.idx);want.unshift(d.idx);if(!timer)timer=setTimeout(pump,0);return;}
+  if(d.cmd==="full"){if(d.ver!==ver)return;fullVer=ver;if(!timer)timer=setTimeout(pump,0);return;}
+};`;
+const pvGrid=fs=>64*Math.max(1,Math.round(2.4*fs/64));
+function pvEnsure(){
+  if(pvW)return pvW;
+  const url=URL.createObjectURL(new Blob([$("dsp").textContent,PV_WORKER],{type:"text/javascript"}));pvW=new Worker(url);
+  pvW.onmessage=pvOnMsg;
+  pvW.onerror=e=>{if(e.preventDefault)e.preventDefault();console.error(e);msMsg("試聴の処理が止まりました（メモリ不足の可能性があります）",true);try{pvW.terminate();}catch(_){}pvW=null;if(MS)MS.srcSent=false;};
+  return pvW;
+}
+function pvOnMsg(e){
+  const d=e.data;if(!MS)return;
+  if(d.type==="chunk"){const key=d.ver+":"+d.idx;MS.cache.set(key,d);if(MS.cache.size>24)for(const k of [...MS.cache.keys()]){if(MS.cache.size<=16)break;if(k!==key)MS.cache.delete(k);}
+    const w=pvReq.get(key);if(w){pvReq.delete(key);for(const f of w)f(d);}return;}
+  if(d.type==="progress"){if(d.ver===MS.ver){MS.prog=d.done/d.total;msEmit("progress");}return;}
+  if(d.type==="metrics"){if(d.ver===MS.ver){MS.metrics=d.m;msUpdateDry();msEmit("metrics");}return;}
+  if(d.type==="full"){if(pvFullWait&&pvFullWait.ver===d.ver){const f=pvFullWait;pvFullWait=null;f.resolve(d.chs);}return;}
+  if(d.type==="error"){console.error(d.message);msMsg("試聴の処理でエラー："+d.message,true);}
+}
+// セッションの変化を画面に知らせる（かんたん画面・プロ画面がそれぞれ登録する）
+const msHooks=[];const msEmit=t=>{for(const f of msHooks)try{f(t);}catch(e){console.error(e);}};
+function msMsg(t,err){const b=$("tbStatus");b.textContent=t;b.className="sub"+(err?" err":"");}
+// セッションを始める：元の音（トリム後）を試聴用の Worker に渡す
+function msBegin(){
+  if(!current||!rawOK())return null;
+  if(MS)return MS; // セッションは、別の曲を読み込むか別の編集をするまで続く（仕上がりを解析しても元の音は変わらない）
+  const fs=lastRaw.fs,s0=current.trimStart,s1=current.trimEnd,chs=lastRaw.chs.map(c=>c.slice(s0,s1));
+  MS={m0:current,fs,len:s1-s0,C:pvGrid(fs),src:{chs},weights:current.layout.map(chWeight),
+    orig:editOrig||{chs:lastRaw.chs.map(c=>c.slice()),fs,info:Object.assign({label:current.label},{source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout})},
+    info:{source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout},label:current.label,
+    P:null,S:null,ver:0,cache:new Map(),wet:true,dryDb:0,metrics:null,prog:0,on:false,srcSent:false};
+  return MS;
+}
+function msSendSrc(){
+  if(!MS||MS.srcSent)return;const w=pvEnsure(),copy=MS.src.chs.map(c=>c.slice());
+  w.postMessage({cmd:"src",chs:copy,fs:MS.fs,weights:MS.weights,C:MS.C},copy.map(c=>c.buffer));MS.srcSent=true;
+}
+// 新しい数値で処理し直す（再生中なら、いまの位置の区間から先に処理して差し替える）
+function msSetP(P){
+  if(!MS)return;msSendSrc();
+  MS.P=P;MS.ver++;MS.metrics=null;MS.prog=0;MS.on=true;
+  const pos=player&&player.src.kind==="ms"?playPosNow():lastPos,at=Math.floor(Math.max(0,pos)*MS.fs/MS.C);
+  pvW.postMessage({cmd:"params",P,ver:MS.ver,at});
+  for(const k of [...MS.cache.keys()])if(!k.startsWith(MS.ver+":"))MS.cache.delete(k);
+  for(const k of [...pvReq.keys()])if(!k.startsWith(MS.ver+":"))pvReq.delete(k);
+  msEmit("params");
+  if(player&&player.src.kind==="ms"&&MS.wet)msRetarget();
+}
+function msEnd(){
+  if(!MS)return;const was=player&&player.src.kind==="ms";MS=null;if(was)stopPlay();pvReq.clear();
+  if(pvFullWait){pvFullWait.reject(new Error("中止しました"));pvFullWait=null;}
+  if(pvW){try{pvW.terminate();}catch(e){}pvW=null;}
+  msEmit("end");
+}
+// 区間 idx の音を返す（仕上げた音は Worker から、元の音はその場で切り出す）
+function msChunk(idx,wet,ver){
+  if(!wet){const s0=idx*MS.C,s1=Math.min(MS.len,s0+MS.C);return Promise.resolve({idx,chs:MS.src.chs.map(c=>c.subarray(s0,s1)),dry:true});}
+  const key=ver+":"+idx,hit=MS.cache.get(key);if(hit)return Promise.resolve(hit);
+  return new Promise(res=>{const w=pvReq.get(key);if(w)w.push(res);else{pvReq.set(key,[res]);pvW.postMessage({cmd:"get",idx,ver});}});
+}
+// 元の音は、仕上げた音と統合ラウドネスをそろえて聴かせる（大きい方が良く聞こえる錯覚を防ぐ）
+function msUpdateDry(){
+  if(!MS)return;const a=MS.metrics&&Number.isFinite(MS.metrics.lufs)?MS.metrics.lufs:MS.planLufs,b=MS.m0.lufs;
+  const was=MS.dryDb;MS.dryDb=Number.isFinite(a)&&Number.isFinite(b)?Math.max(-24,Math.min(24,a-b)):0;
+  if(player&&player.src.kind==="ms"&&!MS.wet&&Math.abs(was-MS.dryDb)>0.05)for(const s of player.srcs)if(s._gn&&s._dry)s._gn.gain.setTargetAtTime(Math.pow(10,MS.dryDb/20),playCtx.currentTime,0.05);
+}
+function msSchedule(p){
+  if(p.msPending)return;
+  const fs=MS.fs,end=p.loop?p.loop.b:MS.len/fs;
+  if(p.nextPos>=end-0.005){if(!p.loop)return;p.nextPos=p.loop.a;}
+  const pos=p.nextPos,idx=Math.min(Math.ceil(MS.len/MS.C)-1,Math.floor(pos*fs/MS.C+1e-9)),gen=p.msGen||0,wet=MS.wet,ver=MS.ver;
+  p.msPending=true;
+  msChunk(idx,wet,ver).then(d=>{if(player!==p||(p.msGen||0)!==gen)return;p.msPending=false;msPlace(p,d,idx,pos,end,wet);});
+}
+// 区間の音を予約する（区間の途中からでも始められる）。gn：区間ごとの音量（元の音のラウドネス合わせ・差し替えのフェード）
+function msPlace(p,d,idx,pos,end,wet){
+  const fs=MS.fs,c0=idx*MS.C,n=d.chs[0].length,off=Math.max(0,Math.round(pos*fs)-c0),stop=Math.min(end,(c0+n)/fs);
+  if(stop-pos<=1e-4){p.nextPos=(c0+n)/fs;if(!p.loop&&p.nextPos>=MS.len/fs-0.005)return;msSchedule(p);return;}
+  if(!d.buf||d.buf.sampleRate!==fs){d.buf=playCtx.createBuffer(d.chs.length,n,fs);d.chs.forEach((c,i)=>d.buf.copyToChannel(c,i));}
+  const now=playCtx.currentTime;let when=p.nextTime;if(when<now+0.02){when=now+0.02;}
+  const src=playCtx.createBufferSource(),gn=playCtx.createGain(),g=wet?1:Math.pow(10,MS.dryDb/20);src.buffer=d.buf;
+  if(p.fadeIn){gn.gain.setValueAtTime(0,when);gn.gain.linearRampToValueAtTime(g,when+0.025);p.fadeIn=false;}else gn.gain.value=g;
+  src.connect(gn);gn.connect(fltIn);const dur=stop-pos;src.start(when,off/fs,dur);
+  src._gn=gn;src._g=g;src._t0=when;src._t1=when+dur;src._dry=!wet;src._idx=idx;src._pos=pos;src._d=d;
+  p.srcs.push(src);if(p.srcs.length>8)p.srcs.shift();
+  p.segs.push({t:when,pos,d:dur});if(p.segs.length>12)p.segs.shift();
+  p.nextTime=when+dur;p.nextPos=pos+dur;
+  if(p.nextTime-now<1.5)msSchedule(p);
+}
+// 再生中に音を差し替える（数値を変えたとき・仕上げた音と元の音を切り替えたとき）。
+// 新しい区間が届いてから、少し先の時刻で古い音をフェードアウトし、同じ位置から新しい音をフェードインする
+function msRetarget(){
+  const p=player;if(!p||p.src.kind!=="ms"||!MS)return;
+  const gen=(p.msGen||0)+1;p.msGen=gen;p.msPending=false;
+  const wet=MS.wet,ver=MS.ver,lead=wet?0.12:0.04,est=playPosNow()+lead,end=p.loop?p.loop.b:MS.len/MS.fs;
+  const idx=Math.min(Math.ceil(MS.len/MS.C)-1,Math.floor(Math.max(0,est)*MS.fs/MS.C));
+  msChunk(idx,wet,ver).then(d=>{
+    if(player!==p||p.msGen!==gen)return;
+    const now=playCtx.currentTime,tSw=now+0.03;let posSw=null;
+    for(const sg of p.segs)if(sg.t<=tSw&&tSw<sg.t+sg.d)posSw=sg.pos+(tSw-sg.t);
+    if(posSw==null)posSw=playPosNow();
+    const c0=idx*MS.C/MS.fs,c1=(idx*MS.C+d.chs[0].length)/MS.fs;
+    if(posSw<c0||posSw>=c1-0.01){if(posSw<end-0.05)msRetarget();return;}
+    for(const s of p.srcs){
+      if(s._t0>=tSw){try{s.stop();}catch(e){}continue;}
+      if(s._t1>tSw){s._gn.gain.cancelScheduledValues(tSw);s._gn.gain.setValueAtTime(s._g,tSw);s._gn.gain.linearRampToValueAtTime(0,tSw+0.025);try{s.stop(tSw+0.03);}catch(e){}}
+    }
+    p.segs=p.segs.filter(sg=>sg.t<tSw).map(sg=>Object.assign({},sg,{d:Math.min(sg.d,tSw-sg.t)}));
+    p.nextPos=posSw;p.nextTime=tSw;p.fadeIn=true;
+    msPlace(p,d,idx,posSw,end,wet);
+  });
+}
+// 仕上げた音と元の音を切り替える
+function msSetWet(wet){if(!MS||MS.wet===wet)return;MS.wet=wet;msEmit("wet");if(player&&player.src.kind==="ms")msRetarget();}
+// 書き出し・解析用に、仕上げた音を全部受け取る（まだの区間は処理してから）
+function msFull(){
+  if(!MS||!MS.P)return Promise.reject(new Error("仕上げの設定がありません"));msSendSrc();
+  if(pvFullWait&&pvFullWait.ver===MS.ver)return pvFullWait.p;
+  let resolve,reject;const p=new Promise((a,b)=>{resolve=a;reject=b;});pvFullWait={ver:MS.ver,resolve,reject,p};
+  pvW.postMessage({cmd:"full",ver:MS.ver});return p;
+}
+// いまの再生位置での圧縮量（コンプ・リミッター、dB）。メーター用
+function msGrAt(pos){
+  if(!MS)return null;const idx=Math.floor(pos*MS.fs/MS.C),d=MS.cache.get(MS.ver+":"+idx);if(!d)return null;
+  const at=s=>{if(!s)return 0;const i=Math.floor((Math.round(pos*MS.fs)-idx*MS.C+s.off)/d.GB);return i>=0&&i<s.g.length?s.g[i]:0;};
+  return {c:at(d.grC),l:at(d.grL)};
+}
+
+// 仕上げの数値（画面で触る単位）。おまかせの結果から作り、つまみ・モジュールで書き換えて msCompile で P にする
+function msSettingsFromPlan(P0,eqBands,lin){
+  return {eqBands:eqBands.map(b=>({type:b.type,f:b.f,Q:b.Q,g:b.g,t:b.t||"st",on:true})),lin:!!lin,hp:!!(P0.sos&&P0.sos.length),side:P0.side?P0.side.db:0,
+    bassMono:P0.bassMono?P0.bassMono.f:0,declip:P0.declip,deharsh:P0.deharsh,
+    comp:P0.comp?Object.assign({on:true},P0.comp):{on:false,ratio:2,attack:30,release:150,gr:2.5,thr:-24,L90:-19},
+    lim:P0.lim?Object.assign({on:true},P0.lim,{opt:Object.assign({},P0.lim.opt)}):{on:false,gain:0,ceil:-1,opt:{la:4,hold:20,relMin:30,relMax:150}},
+    post:P0.post||0,knobs:{low:0,high:0,width:0,drive:0}};
+}
+function msCompile(S,fs){
+  const lin=!!S.lin,eqG=(type,g)=>lin&&!/pass$/.test(type)?g/2:g,groups={st:[],m:[],s:[]};
+  for(const b of S.eqBands)if(b.on!==false&&b.f>0)groups[b.t||"st"].push(rbjBiquad(b.type,b.f,b.Q,eqG(b.type,b.g),fs));
+  const K=S.knobs||{};
+  // かんたん画面のつまみ：迫力（100 Hz 以下のシェルフ）・明るさ（8 kHz 以上のシェルフ）・広がり（サイド）・音圧（リミッターへの入力）
+  if(K.low)groups.st.push(rbjBiquad("lowshelf",100,0.7,eqG("lowshelf",K.low),fs));
+  if(K.high)groups.st.push(rbjBiquad("highshelf",8000,0.7,eqG("highshelf",K.high),fs));
+  const side=Math.round(((S.side||0)+(K.width||0))*10)/10,c=S.comp,l=S.lim;
+  return {declip:S.declip||null,sos:S.hp?[rbjBiquad("highpass",20,0.707,0,fs)]:[],eq:["st","m","s"].map(t=>({target:t,sos:groups[t]})).filter(g=>g.sos.length),eqZero:lin,
+    side:side&&MS&&MS.src.chs.length===2?{db:side}:null,bassMono:S.bassMono?{f:S.bassMono}:null,deharsh:S.deharsh||null,
+    comp:c&&c.on?{ratio:c.ratio,attack:c.attack,release:c.release,gr:c.gr,thr:c.thr,L90:c.L90}:null,
+    lim:l&&l.on?{gain:l.gain+(K.drive||0),ceil:l.ceil,opt:Object.assign({},l.opt)}:null,post:S.post||0};
+}
+function msApplyS(){if(MS&&MS.S)msSetP(msCompile(MS.S,MS.fs));}
+// おまかせ：元の音を分析して数値を決める（曲全体を何度か処理して音量を合わせるので、数秒〜十数秒かかる）
+async function msPlan(opt){
+  opt=opt||{};
+  if(busy){edMsg("他の処理が終わるまでお待ちください",true);msMsg("他の処理が終わるまでお待ちください",true);return null;}
+  if(!current||!rawOK()){edMsg("先に 1. でファイルを読み込んでください",true);return null;}
+  if(!msBegin())return null;
+  const key=$("msPreset").value,m=MS.m0,fs=MS.fs;
+  const B=buildMasterOpts(m,fs,key);if(B.err){edMsg(B.err,true);msMsg(B.err,true);return null;}
+  const {o,eqBands,notes,usedT,lin,P,ref}=B;
+  // 直流（DC）を除いた音の大きさ（RMS）が −70 dBFS 未満なら、仕上げられる音が無い（無音・直流だけのファイルなど。ラウドネスは低域フィルタの立ち上がりで値が出てしまうことがある）
+  {let e=0,n=0;for(const c of MS.src.chs){let mu=0;for(let i=0;i<c.length;i++)mu+=c[i];mu/=Math.max(1,c.length);for(let i=0;i<c.length;i++){const v=c[i]-mu;e+=v*v;}n+=c.length;}
+   if(!(e/Math.max(1,n)>1e-7)){const t="処理できませんでした: 音がほとんどありません（無音か、直流（DC）成分だけの音です）";edMsg(t,true);msMsg(t,true);return null;}}
+  const chs=MS.src.chs.map(c=>c.slice());
+  const was=player?{pos:playPosNow(),side:player.side}:null;
+  stopPlay();busy=true;updateButtons();$("msOut").hidden=true;edMsg("おまかせマスタリング…");msEmit("planstart");let out;
+  try{out=await runJob({cmd:"edit",chs,fs,op:"master",o},chs.map(c=>c.buffer),st=>{edMsg("おまかせマスタリング："+st);MS&&(MS.planStep=st);msEmit("planprog");},()=>editProcess({chs,fs,op:"master",o}));}
+  catch(e){console.error(e);edMsg("処理できませんでした: "+e.message,true);msMsg("処理できませんでした: "+e.message,true);msEmit("planfail");return null;}
+  finally{busy=false;updateButtons();}
+  edMsg("");if(!MS)return null;
+  const info=out.master;
+  MS.plan={key,name:P.name,info,eqBands,notes,T:usedT||genreTarget(key),lin,ref};MS.planLufs=info.lim?info.lim.lufs:NaN;
+  MS.S=msSettingsFromPlan(info.P,eqBands,lin);MS.P0=info.P;MS.wet=true;
+  msSetP(msCompile(MS.S,fs));msUpdateDry();msEmit("plan");
+  if(opt.play||was)playFrom(was&&was.side==="A"?was.pos:lastPos,"A");
+  return out;
+}
+// 仕上がりを解析する（プロ画面）：仕上げた音を全部処理して、2.〜8. を解析し直す。元の音は B に入れて聴き比べられる
+async function msCommit(){
+  if(!MS||!MS.P)return false;
+  if(busy){edMsg("他の処理が終わるまでお待ちください",true);return false;}
+  const before=MS.m0,beforeChs=MS.src.chs,fs=MS.fs,plan=MS.plan,base=(MS.label||"音声").replace(/（おまかせ：[^）]*）$/,"");
+  stopPlay();busy=true;updateButtons();edMsg("仕上げた音を最後まで処理しています…");let chs;
+  try{chs=await msFull();}catch(e){edMsg("処理できませんでした: "+e.message,true);return false;}finally{busy=false;updateButtons();}
+  editOrig=MS.orig;
+  await run(chs,fs,Object.assign({label:base+"（おまかせ："+(plan?plan.name:"手動")+"）",keepOrig:true,noScroll:true,msCommit:true},MS.info));
+  if($("msAB").checked&&current){
+    const r=snapshot(before,"処理前の音");r.hasAudio=true;r.auto=true;
+    tempRef=r;tempAudio={id:r.id,chs:beforeChs,fs};refId=r.id;bSongId=null;
+    $("listenMode").value="match";pref.set("tabAnalyzerListen","match");
+    showBInfo();renderSongs();refresh();
+  }
+  if(plan){msLast={before,after:current,info:plan.info,eqBands:MS.S.eqBands,notes:plan.notes,T:plan.T,lin:MS.S.lin,ref:plan.ref};
+    renderMaster(plan.info,MS.S.eqBands,plan.notes,before);}
+  MS.committedVer=MS.ver;renderEasy();maybeAutoCodec();msEmit("commit");return true;
+}
+// 書き出し：試聴と同じ区切り・同じ処理で、仕上げた音を最後まで作ってから保存する
+async function msExport(fmt,rate){
+  if(!MS||!MS.P)return false;
+  if(busy){msMsg("他の処理が終わるまでお待ちください",true);return false;}
+  const fm=SAVE_FORMATS[fmt];busy=true;updateButtons();msMsg("書き出しの準備中（仕上げた音を最後まで処理しています）…");
+  try{
+    const chs=await msFull(),raw={chs,fs:MS.fs},enc=await encodeAt(raw,0,chs[0].length,fmt,rate),buf=addTags(enc.buf,fmt,tagsNow());
+    download(new Blob([buf],{type:fm.mime}),outBase()+"_master."+fm.ext);
+    msMsg(fm.name+" / "+(enc.fs/1000)+" kHz / "+fmtT(chs[0].length/MS.fs)+" / "+(buf.byteLength/1048576).toFixed(1)+" MB を保存しました");return true;
+  }catch(e){console.error(e);msMsg("書き出せませんでした: "+e.message,true);return false;}
+  finally{busy=false;updateButtons();}
+}
+
 function setMode(m){
   document.body.classList.toggle("simple",m==="simple");pref.set("tabAnalyzerMode",m);
   for(const b of $("modeSw").children)b.classList.toggle("on",b.dataset.m===m);
@@ -6499,8 +6771,10 @@ function easyDiag(m,key){
 }
 function renderEasy(){
   if(!current){return;}
-  const key=$("easyGenre").value,done=msLast&&msLast.after===current;
-  let items=easyDiag(current,key),h="";
+  const key=$("easyGenre").value,ms=!!(MS&&MS.on&&MS.P),done=!ms&&msLast&&msLast.after===current;
+  let items=easyDiag(ms?MS.m0:current,key),h="";
+  if(ms){const M=MS.metrics,b=MS.m0;
+    h="<div class='ed info' style='grid-column:1/-1'><div class='et'>"+(M?"仕上げました：音量 "+f1(b.lufs)+" → "+f1(M.lufs)+" LUFS・ピーク "+f1(b.tp)+" → "+f1(M.tp)+" dBTP・PSR "+f1(b.psr?b.psr.loud:NaN)+" → "+f1(M.psr)+" dB":"仕上げた音を準備中… "+Math.round((MS.prog||0)*100)+"%")+"</div><div class='ex'>下は仕上げる前の状態の診断です。</div></div>";}
   if(done){
     const bi=easyDiag(msLast.before,key);
     h="<div class='ed info' style='grid-column:1/-1'><div class='et'>仕上げました：音量 "+f1(msLast.before.lufs)+" → "+f1(current.lufs)+" LUFS・ピーク "+f1(msLast.before.tp)+" → "+f1(current.tp)+" dBTP</div><div class='ex'>下は仕上げた後の状態です（左の色：緑＝問題なし・黄＝注意・赤＝要対応）。</div></div>";
@@ -6517,15 +6791,15 @@ function renderEasy(){
   }
   h+=items.map(x=>"<div class='ed "+x.lv+"'><div class='et'>"+esc(x.t)+"</div>"+(x.x?"<div class='ex'>"+esc(x.x)+"</div>":"")+(x.a?"<div class='ea'>→ "+esc(x.a)+"</div>":"")+"</div>").join("");
   $("easyDiag").innerHTML=h;easySeekUi(player?playPosNow():lastPos);
-  $("easyAfter").hidden=!done;$("easyRun").textContent=done?"✨ もう一度仕上げる（元の音から）":"✨ 音を良くする";
+  $("easyAfter").hidden=!(done||ms);$("easyRun").textContent=done||ms?"✨ もう一度おまかせ（元の音から）":"✨ 音を良くする";
   easyAbUi();
 }
 function easyAbUi(){
   if(!$("easyA"))return;
-  const ready=!!(refAudio&&tempRef&&refAudio.id===tempRef.id);
-  $("easyB").disabled=!ready;
-  $("easyA").classList.toggle("on",!!player&&abSide==="A");$("easyB").classList.toggle("on",!!player&&abSide==="B");
+  const ms=!!(MS&&MS.on);$("easyB").disabled=!ms;$("easyA").disabled=!ms;
+  $("easyA").classList.toggle("on",ms&&MS.wet);$("easyB").classList.toggle("on",ms&&!MS.wet);
 }
+msHooks.push(t=>{if(t==="metrics"||t==="end"||t==="wet"||t==="plan"){if(current)renderEasy();}});
 $("easyGenre").innerHTML=$("msPreset").innerHTML;$("easyGenre").value=$("msPreset").value;
 $("easyGenre").onchange=e=>{
   $("msPreset").value=e.target.value;msApplyPreset();
@@ -6533,26 +6807,26 @@ $("easyGenre").onchange=e=>{
   if(current)refresh();
 };
 $("msPreset").addEventListener("change",()=>{$("easyGenre").value=$("msPreset").value;if(current)renderEasy();});
-// おまかせ：処理済みなら元の音に戻してからかける（重ねがけしない）
-$("easyRun").onclick=async()=>{
+// おまかせ：元の音から数値を決めて、すぐ試聴する（解析し直さないので、つまみを動かすとその場で音が変わる）
+$("easyRun").onclick=async e=>{
+  e.currentTarget.blur();
   if(busy){$("easyMsg").textContent="他の処理が終わるまでお待ちください";return;}
   $("easyMsg").textContent="";
-  if(msLast&&msLast.after===current&&editOrig){await edUndo();}
-  $("msAB").checked=true;
   const st=setInterval(()=>{$("easyMsg").textContent=$("edStatus").textContent||"";},300);
-  try{await masterRun();}finally{clearInterval(st);$("easyMsg").textContent=msLast&&msLast.after===current?"できました。「仕上げた音」と「元の音」を聴き比べてください。":($("edStatus").textContent||"");}
-  if(msLast&&msLast.after===current)$("easy").scrollIntoView({behavior:"smooth"});
+  let ok=null;try{ok=await msPlan({play:true});}finally{clearInterval(st);}
+  $("easyMsg").textContent=ok?"できました。「仕上げた音」と「元の音」を聴き比べてください（2 つは音量をそろえています）。":($("edStatus").textContent||$("tbStatus").textContent||"");
+  renderEasy();
 };
-const easyPlay=side=>{if(!current||!lastRaw)return;if(!player){if(side!==abSide)switchAB(side);playFrom(lastPos,abSide);}else switchAB(side);setTimeout(easyAbUi,80);};
-$("easyA").onclick=e=>{e.currentTarget.blur();easyPlay("A");};
-$("easyB").onclick=e=>{e.currentTarget.blur();easyPlay("B");};
-$("easyPlay").onclick=e=>{e.currentTarget.blur();if(!current||!lastRaw)return;if(player)stopPlay();else playFrom(lastPos,abSide);easySeekUi(player?playPosNow():lastPos);};
+const easyPlay=wet=>{if(!current||!MS||!MS.on){return;}msSetWet(wet);if(!player)playFrom(lastPos,"A");else if(player.side!=="A")playFrom(playPosNow(),"A");setTimeout(easyAbUi,80);};
+$("easyA").onclick=e=>{e.currentTarget.blur();easyPlay(true);};
+$("easyB").onclick=e=>{e.currentTarget.blur();easyPlay(false);};
+$("easyPlay").onclick=e=>{e.currentTarget.blur();if(!current||!lastRaw&&!(MS&&MS.on))return;if(player)stopPlay();else playFrom(lastPos,MS&&MS.on?"A":abSide);easySeekUi(player?playPosNow():lastPos);};
 $("easySeek").addEventListener("input",e=>{easySeeking=true;$("easyTime").textContent=fmtT(+e.target.value)+" / "+fmtT(sideDur(abSide));});
 $("easySeek").addEventListener("change",e=>{const t=+e.target.value;easySeeking=false;e.target.blur();
   if(player)playFrom(t,abSide,null);else{lastPos=t;showPos(t);}});
 $("easyStop").onclick=e=>{e.currentTarget.blur();stopPlay();setTimeout(easyAbUi,50);};
-$("easySave").onclick=()=>{const f=$("easyFmt").value;$("exFmt").value=f;$("exRange").value="all";$("exRate").value=f==="wav16"?"44100":"";$("exRun").click();};
-$("easyUndo").onclick=async()=>{if(editOrig&&!busy){await edUndo();msLast=null;renderEasy();}};
+$("easySave").onclick=e=>{e.currentTarget.blur();const f=$("easyFmt").value;msExport(f,f==="wav16"?44100:0).then(ok=>{if(ok)$("easyMsg").textContent=$("tbStatus").textContent;});};
+$("easyUndo").onclick=e=>{e.currentTarget.blur();if(busy)return;msEnd();$("easyMsg").textContent="元の音に戻しました";renderEasy();};
 
 /* ---------- かんたん画面の「動く絵」：いま鳴っている音（FFT）・曲全体のスペクトログラム・波形 ---------- */
 const EZ={pk:null,lv:null,gram:null,wave:null,key:"",raf:0,ghost:null};
