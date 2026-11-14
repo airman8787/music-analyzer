@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-QPiQGDtCgBi27iu4U7eOSLFYtrnQJgfNHBLZ5EfdDZI=' 'sha256-/tYezNxosdIYZJ8WREJQbI2rdbU2z5ql3JkWryt7QG0=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>楽曲アナライザ</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wD5R7wC1ojJ/Wbk3NFZVOnuKrNJueJ5Dsli+8Cx62JQ=' 'sha256-ImmWPhpGfdcAK05WUdtt3/YL4uTXTNkmX4toNZsOwVs=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>楽曲アナライザ — マスタリングスタジオ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
 *{box-sizing:border-box}
@@ -234,12 +234,104 @@ input[type=range]{accent-color:var(--acc)}
 .tabpre[contenteditable]{outline:1px solid var(--acc2)}
 .pill{display:inline-block;font-size:11.5px;padding:0 7px;border-radius:9px;border:1px solid var(--line);color:var(--sub);margin-left:6px;vertical-align:middle}
 .pill.new{border-color:var(--acc2);color:var(--acc2)}
+
+/* ===================== リデザイン（テーマ） ===================== */
+@property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
+:root{--bg:#05060c;--panel:#0f111c;--panel2:#171a29;--line:#272c45;--text:#eef0fb;--sub:#959dbf;--acc:#6fd6ff;--acc2:#b18cff;--acc3:#ff6ad5;--ok:#4fe3a6;--warn:#ffc857;--bad:#ff6b7d;
+  --grad:linear-gradient(120deg,#35c8ff 0%,#6e7bff 45%,#c264ff 100%);--glow:0 0 0 1px rgba(111,214,255,.28),0 0 22px rgba(111,160,255,.22)}
+html{scrollbar-color:#2a3050 transparent;scrollbar-width:thin}
+body{background:var(--bg);font-family:"Segoe UI Variable Text","Segoe UI",-apple-system,"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:-20%;z-index:-2;pointer-events:none;background:
+  radial-gradient(38% 32% at 18% 12%,rgba(70,120,255,.26),transparent 70%),radial-gradient(34% 30% at 86% 18%,rgba(190,90,255,.20),transparent 70%),radial-gradient(46% 40% at 60% 96%,rgba(0,200,255,.13),transparent 70%);
+  animation:auroraDrift 46s ease-in-out infinite alternate}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;background-image:linear-gradient(rgba(140,160,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(140,160,255,.045) 1px,transparent 1px);background-size:44px 44px;
+  -webkit-mask-image:radial-gradient(90% 70% at 50% 0%,#000 0%,transparent 75%);mask-image:radial-gradient(90% 70% at 50% 0%,#000 0%,transparent 75%)}
+@keyframes auroraDrift{0%{transform:translate3d(-2%,-1%,0) rotate(0deg) scale(1)}100%{transform:translate3d(3%,2%,0) rotate(6deg) scale(1.08)}}
+@media (prefers-reduced-motion:reduce){body::before,.logo,#drop,.ezSpark,.ezStage.magic::after{animation:none!important}}
+main{display:flex;flex-direction:column}
+body.simple.loaded #result{order:-1}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0) 120px),var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px 16px 18px;box-shadow:0 14px 44px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.05)}
+h2{font-size:16px;letter-spacing:.02em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;width:fit-content}
+.panel>h2{width:auto}.panel>h2::before{color:var(--acc)}
+h3{color:#dfe4ff}
+button,.file{background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:10px;transition:border-color .15s,box-shadow .15s,background .15s,transform .1s}
+button:hover:not(:disabled),.file:hover{border-color:var(--acc);box-shadow:var(--glow)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:focus-visible,select:focus-visible,input:focus-visible,.ezKnob:focus-visible,#cvRkEq:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.primary,#drop .pick,button.easyBig{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 6px 22px rgba(90,110,255,.38);text-shadow:0 1px 0 rgba(0,0,0,.25)}
+button.primary:hover:not(:disabled),button.easyBig:hover:not(:disabled){box-shadow:0 8px 30px rgba(110,130,255,.6);border-color:transparent;filter:brightness(1.08)}
+button.rec{background:#7a2530;border-color:#a8384a}
+select,input[type=text],input[type=number],input:not([type]){background:#0b0d17;border:1px solid var(--line);border-radius:8px;color:var(--text)}
+.modeTop{border-color:var(--line);background:#0b0d17;padding:2px;gap:2px}.modeTop button{border-radius:16px;background:transparent}
+.modeTop button.on,.seg button.on,.tabs button.on,#tbNav a.on,button.ab.on,.easyAbBtn.on,#rkSnap button.on{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 0 18px rgba(110,130,255,.45)}
+#songTable .role.a{background:#2f6bff}#songTable .role.b{background:#8a5cff}
+#topbar{background:rgba(6,7,13,.78);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);border-bottom:0}
+#topbar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(111,214,255,.6),rgba(194,100,255,.6),transparent)}
+.tb-title{display:flex;align-items:center;gap:8px}.tb-name{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:.04em}
+.logo{width:20px;height:20px;border-radius:50%;background:conic-gradient(from var(--ang),#35c8ff,#6e7bff,#c264ff,#ff6ad5,#35c8ff);box-shadow:0 0 14px rgba(120,150,255,.8);animation:spinAng 6s linear infinite;-webkit-mask:radial-gradient(circle,transparent 5px,#000 5.5px);mask:radial-gradient(circle,transparent 5px,#000 5.5px)}
+@keyframes spinAng{to{--ang:360deg}}
+#tbNav a{border-radius:14px}#tbNav a:hover{border-color:var(--line);box-shadow:var(--glow)}
+.note{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px}
+.card,.kpi,.ed,.msItem,.bcell,.albumBox,.rkMod{background:linear-gradient(180deg,rgba(255,255,255,.035),transparent),var(--panel2);border-color:var(--line);border-radius:12px}
+kbd{background:#0b0d17;border-color:var(--line)}
+th{font-weight:600;font-size:12.5px;letter-spacing:.03em}tr:hover td{background:rgba(255,255,255,.015)}
+a{color:var(--acc)}
+dialog#helpDlg{border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.6),var(--glow)}
+/* 入口（曲を入れる前） */
+header{padding-bottom:4px}
+.heroTitle{display:none;font-size:clamp(26px,5vw,44px);font-weight:800;letter-spacing:.02em;line-height:1.25;margin:26px 0 10px;text-align:center}
+.heroTitle span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(110,140,255,.45))}
+body:not(.loaded) .heroTitle{display:block}body:not(.loaded) #tagline{text-align:center;font-size:14px}body.loaded header{display:none}
+#drop{border:2px solid transparent;border-radius:18px;background:linear-gradient(#0c0e19,#0c0e19) padding-box,conic-gradient(from var(--ang),#35c8ff,#6e7bff,#c264ff,#ff6ad5,#35c8ff) border-box;animation:spinAng 9s linear infinite;color:var(--sub);transition:box-shadow .2s,transform .2s}
+#drop:hover,#drop.over{box-shadow:0 0 44px rgba(110,140,255,.38);border-color:transparent;background:linear-gradient(#10132a,#10132a) padding-box,conic-gradient(from var(--ang),#35c8ff,#6e7bff,#c264ff,#ff6ad5,#35c8ff) border-box}
+#drop.over{transform:scale(1.01)}
+body:not(.loaded) #drop{padding:54px 16px 46px}body:not(.loaded) #drop .big{font-size:24px;margin-bottom:10px}
+body:not(.loaded) #drop .big::before{content:"🎵";display:block;font-size:44px;margin-bottom:8px;filter:drop-shadow(0 0 16px rgba(120,150,255,.9))}
+body.loaded #drop{padding:14px}
+/* かんたん画面 */
+.ezStage{position:relative;overflow:hidden;border:1px solid rgba(120,150,255,.28);border-radius:18px;background:radial-gradient(120% 140% at 50% 0%,#141a3c 0%,#070913 72%);
+  box-shadow:0 0 calc(12px + var(--lv,0)*60px) rgba(100,140,255,calc(.12 + var(--lv,0)*.4)),inset 0 0 70px rgba(60,80,220,.14);transition:box-shadow .08s linear}
+.ezStage.magic::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 35%,rgba(170,210,255,.28) 50%,transparent 65%);background-size:260% 100%;animation:ezSweep 1.15s linear infinite}
+@keyframes ezSweep{from{background-position:130% 0}to{background-position:-130% 0}}
+.ezLbl{color:#cdd5f7;letter-spacing:.03em}
+.ezNum{background:var(--grad);box-shadow:0 0 14px rgba(110,130,255,.6)}
+.ezCard{border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.05),transparent),var(--panel2);padding:12px 6px 10px}
+.ezCard .em{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;font-size:24px;background:radial-gradient(circle,rgba(120,150,255,.28),transparent 70%);margin-bottom:2px}
+.ezCard:hover:not(:disabled){transform:translateY(-3px);box-shadow:var(--glow)}
+.ezCard.on{background:linear-gradient(#131838,#131838) padding-box,var(--grad) border-box;border:1.5px solid transparent;box-shadow:0 0 26px rgba(110,130,255,.5)}
+.ezCard.on .em{background:radial-gradient(circle,rgba(160,190,255,.55),transparent 70%)}
+.ezKnob{border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.05),transparent),var(--panel2)}
+.ezKnob svg{filter:drop-shadow(0 0 7px rgba(120,160,255,.45))}.ezKnob.dis svg{filter:none}
+.ezKnob .kv{font-family:ui-monospace,Consolas,monospace;color:#dfe7ff;font-size:13px}
+.ezHold{background:linear-gradient(120deg,#3a2466,#5a2a7a);border-color:#8a5cff;box-shadow:0 0 16px rgba(160,100,255,.3)}
+.ezHold.on{background:linear-gradient(120deg,#c264ff,#ff6ad5);color:#fff;box-shadow:0 0 30px rgba(220,110,255,.7)}
+.ezScoreBox{border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.045),transparent),var(--panel2)}
+.ezGauge{background:conic-gradient(var(--c) calc(var(--v)*1%),#20243a 0);box-shadow:0 0 26px color-mix(in srgb,var(--c) 45%,transparent)}
+.ezGIn{flex-direction:column;align-items:center;justify-content:center;padding-top:0;background:#0d0f1a}
+.ezGIn .rk{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--c)}
+.ezGIn .num{display:flex;align-items:baseline}.ezGIn .num b{font-size:30px;font-variant-numeric:tabular-nums}
+.easyAbBtn{border-radius:24px}
+.easySeek input[type=range]{accent-color:#8a9bff}
+/* プロ画面 */
+.rkBar{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:6px}
+.rkSticky{background:var(--panel)}
+.rkMod{border-top:2px solid #6e7bff}.rkMod.rkWide{border-top-color:#35c8ff}
+.rkHd b{color:#dfe7ff;letter-spacing:.04em}
+#cvRkMeter{border-radius:10px}
+.rkBar{row-gap:8px;column-gap:14px}.rkG{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}.rkOut{margin-left:auto}#rkFmt{max-width:170px}
+.ezCards{grid-template-columns:repeat(9,minmax(0,1fr))}.ezCard .nm{font-size:12.5px;white-space:nowrap}
+@media (max-width:1000px){.ezCards{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (max-width:560px){.ezCards{grid-template-columns:repeat(3,minmax(0,1fr))}.easySeek{flex-wrap:wrap}.ezHold{margin:0;flex:1 1 100%}.ezLbl .sub{display:none}}
+@media (max-width:640px){.tb-name{display:none}.tb-title{display:flex}}
+@media (max-width:640px){.modeTop button{padding:5px 7px;font-size:12.5px}.tb-right select{max-width:70px}.tb-right button{padding:6px 9px}.tb-in{gap:5px;padding:6px 8px}}
+.ezKnob .kv{width:100%;text-align:center}.ezGIn .num b{color:#fff}
+body:not(.loaded) main>section.panel:first-child>h2{display:none}
 </style>
 </head>
 <body>
 <div id="topbar">
   <div class="tb-in">
-    <h1 class="tb-title">楽曲アナライザ</h1>
+    <h1 class="tb-title"><span class="logo" aria-hidden="true"></span><span class="tb-name">楽曲アナライザ</span></h1>
     <span class="modeTop" id="modeSw" role="group" aria-label="画面"><button data-m="simple" title="かんたん画面：すぐ音を良くする">🎮<span class="lbl"> かんたん</span></button><button data-m="full" title="プロ画面：EQ・コンプ・リミッターを細かく調整">🎛<span class="lbl"> プロ</span></button></span>
     <nav id="tbNav" aria-label="セクション"></nav>
     <span class="tb-right"><span id="tbAB" hidden><button id="tbPlay" title="再生 / 停止（Space）">▶</button><button id="tbA" class="ab" title="A を聴く（X で切り替え）">A</button><button id="tbB" class="ab" title="B を聴く（X で切り替え）">B</button></span><label class="sub"><span class="lbl">再生機器 </span><select id="devSim" title="再生機器のシミュレーション（大まかな近似）"></select></label><label class="sub adv"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbTools" title="ツール（ピッチ・音符・コード・分離・音響解析など）">🧰<span class="lbl"> ツール</span></button><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
@@ -268,7 +360,8 @@ input[type=range]{accent-color:var(--acc)}
   <form method="dialog" style="text-align:right"><button class="primary">閉じる</button></form>
 </dialog>
 <header>
-  <div class="sub">自分の楽曲ファイルを読み込んで、ラウドネス・ピーク・周波数バランス・ステレオ・BPM・キー・構成を数値化します（音声はこのPC内で処理され、外部に送信されません）</div>
+  <div class="heroTitle" aria-hidden="true">曲を入れるだけで、<span>音が良くなる。</span></div>
+  <div class="sub" id="tagline">ジャンルを選ぶだけの「かんたん」と、EQ・コンプ・リミッターを自分で追い込める「プロ」。聴きながら仕上げて、そのまま書き出せます。<br>🔒 音声はこの PC の中だけで処理され、外部には送信されません</div>
 </header>
 <main>
 <section class="panel" data-nav="読込">
@@ -288,7 +381,7 @@ input[type=range]{accent-color:var(--acc)}
     <div class="songWrap"><table id="songTable" style="margin-top:6px"></table></div>
     <div class="row" style="margin-top:8px">
       <button id="songRunAll" class="primary">まだの曲をまとめて解析</button><button id="songStop" hidden>中止</button>
-      <label class="sub"><input type="checkbox" id="optSongSave"> 解析した曲を 8. に保存（音声つき）</label>
+      <label class="sub"><input type="checkbox" id="optSongSave"> 解析した曲を 7. に保存（音声つき）</label>
       <button id="songCsv" disabled>一覧を CSV 保存</button><button id="songClear">リストを空にする</button>
     </div>
     <details id="albumBox" class="albumBox"><summary><b>アルバムとしてまとめて仕上げる</b>（リストの全曲に同じ仕上げをかけ、ZIP で保存）</summary>
@@ -299,23 +392,23 @@ input[type=range]{accent-color:var(--acc)}
       </div>
       <div class="row" style="margin-top:8px"><button id="albumRun" class="primary">まとめて仕上げる</button><button id="albumStop" hidden>中止</button><button id="albumDl" hidden>💾 ZIP で保存</button><span id="albumMsg" class="sub"></span></div>
       <div class="songWrap"><table id="albumTable" style="margin-top:6px"></table></div>
-      <div class="legend">各曲に、10. の「おまかせマスタリング」の設定（EQ・コンプ・リミッター・音質優先など）をそのままかけます。前後の無音はトリムします。
+      <div class="legend">各曲に、8. の「おまかせマスタリング」の設定（EQ・コンプ・リミッター・音質優先など）をそのままかけます。前後の無音はトリムします。
         「全曲の音量をそろえる」では、まず各曲を仕上げ、いちばん小さく仕上がった曲（音質優先で止まった曲を含む）の音量に、ほかの曲を合わせて仕上げ直します（後から音量を下げるより、リミッターのかかりが浅くなるため）。曲の数だけ時間がかかります（3 分の曲で 1 曲 30 秒前後）。</div>
     </details>
-    <div class="sub" style="margin-top:6px"><b>A で表示</b>：2.〜10. に詳しい結果を出し、編集もできる曲（1 曲）。<b>B で比べる</b>：A と聴き比べる曲（上のバーの A / B か <kbd>X</kbd> キーで切り替え）。曲名をクリックしても A で表示します。</div>
+    <div class="sub" style="margin-top:6px"><b>A で表示</b>：2.〜8. に詳しい結果を出し、編集もできる曲（1 曲）。<b>B で比べる</b>：A と聴き比べる曲（上のバーの A / B か <kbd>X</kbd> キーで切り替え）。曲名をクリックしても A で表示します。</div>
   </div>
   <div class="sub" style="margin-top:8px">🔒 読み込んだ自分の楽曲ファイルはこのPC内だけで処理され、外部には送信されません。</div>
   <div id="quick" class="note" style="margin-top:10px"><b>はじめかた</b>
     <ol>
-      <li><b>曲ファイル</b>を上の枠にドロップするか「ファイルを選ぶ」で選ぶ（複数まとめて OK。1 曲目が A として表示され、残りも自動で解析されて曲リストに並びます）</li>
-      <li>結果は <b>2. 概要</b> と <b>3. 公開前チェック</b> から（対処のしかたと、該当箇所の再生ボタンつき）。好きな曲を <b>8. 保存</b> しておくと、上のバーの「比較対象」で比べられ、<b>5. のターゲット</b>も作れます</li>
-      <li>仕上げは <b>10. のおまかせマスタリング</b>：ジャンルを選んでボタンを押すと、EQ・コンプ・リミッターを自動でかけ、処理前と音量をそろえて聴き比べられます</li>
+      <li><b>曲ファイル</b>を上の枠にドロップ（複数まとめて OK。1 曲目が表示され、残りも自動で解析されて曲リストに並びます）</li>
+      <li><b>🎮 かんたん</b>：ジャンルのカードを押すと自動で仕上がり、すぐ聴けます。つまみで好みに寄せて「💾 仕上げた音を保存」</li>
+      <li><b>🎛 プロ</b>：EQ・コンプ・リミッターを自分で調整。メーターを見ながら、スナップショットで聴き比べて書き出し。解析の詳しい結果（2.〜7.）もこちら</li>
     </ol></div>
   <details>
     <summary>使い方と注意点（テーマ別）</summary>
     <details class="help"><summary>見る・聴く・比べる</summary><ul>
       <li>4. のグラフはクリックで再生、ドラッグで範囲選択（範囲のスペクトラム・ループ再生・書き出し）。拡大するとスペクトログラムをその範囲で計算し直します。操作の一覧は上のバーの「?」から。</li>
-      <li>構成は似た区間に A / B / C… を付け、繰り返す区間のうち最も大きいものを「サビ候補」とします。5. と 8. の「比較範囲」でサビだけを比べられます。</li>
+      <li>構成は似た区間に A / B / C… を付け、繰り返す区間のうち最も大きいものを「サビ候補」とします。5. と 7. の「比較範囲」でサビだけを比べられます。</li>
       <li>「試聴音量」で、原音・ラウドネス一致・各配信サービスの音量を切り替えて聴けます。<b>1. の曲リストの「B で比べる」</b>を押すか、音声つきで保存した曲を比較対象にすると、上のバーの A / B ボタンや <kbd>X</kbd> キーで、同じ位置のまま聴き比べられます（「位置：サビ同士」でサビの頭をそろえます。範囲選択のループ再生中も切り替えられます）。B のファイルは保存されず、ページを閉じると消えます。</li>
       <li>チェック結果の基準は「ジャンル」で切り替えられます（目安です）。比較対象を選ぶと、リファレンスとの差もチェックします。</li>
       <li><b>PSR</b>（3 秒ごとのピークとショートタームラウドネスの差）は潰れ具合の目安です。曲の一番大きい区間で 8 dB を下回ると潰れて聞こえやすいとされます（Ian Shepherd の目安）。<b>DR 値</b>は TT DR Meter と同じ計算です。</li>
@@ -326,21 +419,20 @@ input[type=range]{accent-color:var(--acc)}
       <li>WAV・AIFF・FLAC・MP3・Ogg・AAC は元のサンプルレートのまま解析します（M4A など読み取れない形式は再生環境のレートに変換）。クリップ検出が正確なのは、変換なしの WAV / AIFF / FLAC だけです。</li>
       <li>5.1ch・7.1ch なども全チャンネルを読み込みます。統合ラウドネスは LFE を除きサラウンドに +1.5 dB の重みを付け、ステレオ系の指標はダウンミックスで計算します（タブ録音はステレオのみ）。</li>
     </ul></details>
-    <details class="help"><summary>おまかせマスタリング（10.）</summary><ul>
-      <li>いちばん簡単なのは、かんたん表示の「おまかせで仕上げる」：診断を見て、ジャンルを選んで「音を良くする」を押し、「仕上げた音」と「元の音」を聴き比べて保存するだけです。</li>
-      <li>10. の「おまかせマスタリング」でジャンルを選んで「おまかせで仕上げる」を押すと、オート EQ → オートコンプ → リミッターで、そのジャンルの大まかな目安の音量・音色に近づけます。各段はオン・オフと強さを変えられます。</li>
-      <li>処理前の音が自動で B に入り、試聴音量が「ラウドネス一致」になるので、音量差に惑わされずに聴き比べられます。「元の音に戻す」で戻せます。</li>
-      <li>好きな曲に近づけたいときは、その曲を 8. に保存して 5. でターゲットにし、EQ の基準を「5. で選んだターゲット」にします。</li>
+    <details class="help"><summary>マスタリング</summary><ul>
+      <li><b>かんたん</b>：ジャンルのカード → つまみ → 保存。「押している間だけ元の音」（<kbd>X</kbd> キー）で聴き比べます。元の音は音量をそろえて聴かせます。</li>
+      <li><b>プロ</b>：「🎛 マスタリング」のラックで「✨ おまかせで設定」を押すと、8. の「おまかせマスタリング」タブの設定（オート EQ の基準・コンプの強さ・目標ラウドネス・音質優先など）で数値を決めます。そこから EQ・コンプ・リミッターを自分で動かせます。動かすとすぐ音が変わります。</li>
+      <li>試聴している音と書き出す音は同じ処理で作ります。「🔍 仕上がりを解析」で、仕上げた音を 2.〜7. で解析し直し、処理前の音を B に入れて聴き比べられます。</li>
+      <li>好きな曲に近づけたいときは、その曲を「好きな曲に寄せる」（かんたん）・8. の「寄せる先」（プロ）に選ぶか、7. に保存して 5. でターゲットにします。</li>
     </ul></details>
-    <details class="help"><summary>音響・振動解析（9.）</summary><ul>
-      <li>9. は測定・工業向けの機能なので、最初は隠しています（9. があった場所の「9. を表示する」で出せます）。どれも「計算」を押したときだけ動きます。</li>
-      <li>騒音計（IEC 61672）・オクターブ（IEC 61260）・心理音響（ISO 532-1 ラウドネス、DIN 45692 シャープネス、ECMA-74 トーナリティ、ラフネス・変動強度のモデル推定）・フィルタと信号発生・次数解析・伝達関数・一括処理・ウォーターフォール・マーカー・レポートが使えます。</li>
-      <li>音圧に関わる値は「校正」に基づきます。校正器の音を録って範囲を選び「選択範囲を校正音にする」を押すと正確になります。</li>
+    <details class="help"><summary>ツール（上のバーの 🧰）</summary><ul>
+      <li>ピッチ解析・音符と MIDI・コードと TAB 譜・信号処理による分離・ピッチ補正とタイムストレッチ・音響振動解析（測定・工業向け）は、上のバーの「🧰 ツール」にあります。どれも「計算」や実行のボタンを押したときだけ動きます。</li>
+      <li>音響・振動解析：騒音計（IEC 61672）・オクターブ（IEC 61260）・心理音響（ISO 532-1 ラウドネス、DIN 45692 シャープネス、ECMA-74 トーナリティ、ラフネス・変動強度のモデル推定）・フィルタと信号発生・次数解析・伝達関数・一括処理・ウォーターフォール・マーカー・レポート。音圧に関わる値は「校正」に基づきます。</li>
     </ul></details>
     <details class="help"><summary>保存</summary><ul>
-      <li>解析結果の数値は 8. で保存できます。</li>
+      <li>解析結果の数値は 7. で保存できます。</li>
       <li>読み込んだ音声と信号発生器で作った音は、4. の選択範囲を WAV（24bit / 32bit float）か FLAC（24bit）で書き出せます。0 dBFS を超える部分まで残すなら 32bit float を選んでください。</li>
-      <li>「トリム」を切り替えると直前の音声を自動で再解析します。保存した結果は 8. から JSON で書き出し・読み込みできます（音声は含まれません）。</li>
+      <li>「トリム」を切り替えると直前の音声を自動で再解析します。保存した結果は 7. から JSON で書き出し・読み込みできます（音声は含まれません）。</li>
     </ul></details>
   </details>
 </section>
@@ -349,23 +441,20 @@ input[type=range]{accent-color:var(--acc)}
   <section class="panel adv" id="rack" data-nav="マスタリング">
     <h2>🎛 マスタリング</h2>
     <div class="rkSticky"><div class="rkBar">
-      <label class="sub">ジャンル<select id="rkPreset"></select></label><button id="rkAuto" class="primary" title="元の音から、EQ・コンプ・リミッターの数値を自動で決める（10. の設定を使います）">✨ おまかせで設定</button><button id="rkFlat" title="何もかかっていない状態から自分で組み立てる">まっさらから</button>
-      <span class="rkSep"></span>
-      <button id="rkPlay" title="再生 / 停止（Space）">▶</button><button id="rkBypass" title="元の音（音量をそろえて聴く・B キー）">元の音</button>
-      <span class="seg" id="rkSnap" title="スナップショット：空の枠を押すと保存、保存した枠を押すと呼び出し（1〜4 キー）"><button data-s="0">A</button><button data-s="1">B</button><button data-s="2">C</button><button data-s="3">D</button></span><button id="rkSnapSave" title="いまの設定を、選んでいる枠に上書き保存">📌</button>
-      <button id="rkUndo" title="元に戻す（Ctrl+Z）">↶</button><button id="rkRedo" title="やり直す（Ctrl+Shift+Z）">↷</button>
-      <span class="rkSep"></span>
-      <select id="rkPresetSel" title="自作プリセット"><option value="">自作プリセット…</option></select><button id="rkPresetSave">保存</button><button id="rkPresetDel">削除</button>
-      <span class="rkSep"></span>
-      <button id="rkCommit" title="仕上げた音を最後まで処理して、2.〜8. を解析し直す">🔍 仕上がりを解析</button>
-      <select id="rkFmt"><option value="wav24">WAV 24bit</option><option value="flac24">FLAC 24bit</option><option value="wav16">CD（WAV 16bit・44.1 kHz・ディザ）</option><option value="wav32f">WAV 32bit float</option></select><button id="rkExport" class="primary">💾 書き出す</button>
+      <span class="rkG"><label class="sub">ジャンル<select id="rkPreset"></select></label><button id="rkAuto" class="primary" title="元の音から、EQ・コンプ・リミッターの数値を自動で決める（8. の設定を使います）">✨ おまかせで設定</button><button id="rkFlat" title="何もかかっていない状態から自分で組み立てる">まっさらから</button></span>
+      <span class="rkG"><button id="rkPlay" title="再生 / 停止（Space）">▶</button><button id="rkBypass" title="元の音（音量をそろえて聴く・B キー）">元の音</button>
+        <span class="seg" id="rkSnap" title="スナップショット：空の枠を押すと保存、保存した枠を押すと呼び出し（1〜4 キー）"><button data-s="0">A</button><button data-s="1">B</button><button data-s="2">C</button><button data-s="3">D</button></span><button id="rkSnapSave" title="いまの設定を、選んでいる枠に上書き保存">📌</button>
+        <button id="rkUndo" title="元に戻す（Ctrl+Z）">↶</button><button id="rkRedo" title="やり直す（Ctrl+Shift+Z）">↷</button></span>
+      <span class="rkG"><select id="rkPresetSel" title="自作プリセット"><option value="">自作プリセット…</option></select><button id="rkPresetSave">保存</button><button id="rkPresetDel">削除</button></span>
+      <span class="rkG rkOut"><button id="rkCommit" title="仕上げた音を最後まで処理して、2.〜7. を解析し直す">🔍 仕上がりを解析</button>
+        <select id="rkFmt"><option value="wav24">WAV 24bit</option><option value="flac24">FLAC 24bit</option><option value="wav16">CD（WAV 16bit・44.1 kHz・ディザ）</option><option value="wav32f">WAV 32bit float</option></select><button id="rkExport" class="primary">💾 書き出す</button></span>
     </div>
     <canvas id="cvRkMeter"></canvas></div>
     <div id="rkMsg" class="sub" style="min-height:1.5em"></div>
     <div id="rkEmpty" class="note">「✨ おまかせで設定」で元の音から数値を決めるか、「まっさらから」で何もかかっていない状態から始めてください。動かすとすぐ音が変わり、書き出す音も同じ処理で作ります。</div>
     <div class="rkMods" id="rkMods" hidden>
       <div class="rkMod rkWide"><div class="rkHd"><b>EQ</b><label class="sub"><input type="checkbox" id="rkLin"> リニアフェーズ</label><label class="sub"><input type="checkbox" id="rkHp"> 20 Hz 以下をカット</label><span class="sub">点をドラッグ：周波数とゲイン／ホイール：Q／ダブルクリック：追加／Delete：削除</span></div>
-        <canvas id="cvRkEq"></canvas><div class="songWrap"><table id="rkEqT" class="msEqT"></table></div></div>
+        <canvas id="cvRkEq"></canvas><div class="legend" style="margin:2px 0 6px">線：EQ の特性（<span style="color:#6fd6ff">■</span> 左右　<span style="color:#ffb15a">■</span> ミッド　<span style="color:#6dffb0">■</span> サイド）　薄い線：平均スペクトル（点線＝元の音・紫＝仕上げた音）</div><div class="songWrap"><table id="rkEqT" class="msEqT"></table></div></div>
       <div class="rkMod"><div class="rkHd"><b>ステレオ</b></div><div id="rkStereo"></div></div>
       <div class="rkMod"><div class="rkHd"><b>修復・補助</b></div><div id="rkFix"></div></div>
       <div class="rkMod"><div class="rkHd"><b>コンプ</b><label class="sub"><input type="checkbox" id="rkCompOn"> 使う</label></div><div id="rkComp"></div></div>
@@ -394,7 +483,7 @@ input[type=range]{accent-color:var(--acc)}
     <div class="ezKnobs" id="ezKnobs"></div>
     <div class="ezStep"><span class="ezNum">3</span><b>できあがりを確かめて保存</b></div>
     <div class="ezScoreBox">
-      <div class="ezGauge" id="ezGauge"><div class="ezGIn"><b id="ezScore">—</b><span>点</span></div></div>
+      <div class="ezGauge" id="ezGauge"><div class="ezGIn"><span class="rk" id="ezRank"></span><span class="num"><b id="ezScore">—</b><span>点</span></span></div></div>
       <div class="ezScoreTxt"><div class="ezScoreHead" id="ezScoreHead">配信の準備度（目安）</div><ul id="ezTips" class="ezTips"></ul></div>
     </div>
     <div id="easyAfter" hidden>
@@ -556,7 +645,7 @@ input[type=range]{accent-color:var(--acc)}
     </div>
   </section>
   <section class="panel adv" data-nav="比較">
-    <h2>8. 保存して比較</h2>
+    <h2>7. 保存して比較</h2>
     <div class="row"><input type="text" id="saveName" placeholder="名前（例: 参考曲A / ライラ新曲 v2）" size="30"><button id="btnSave" class="primary">この結果を保存</button><label class="sub"><input type="checkbox" id="optSaveAudio" checked> 音声も保存（A/B試聴用・自分のファイルのみ）<span id="saveAudioNote"></span></label><button id="btnCopy">要約をコピー</button></div>
     <div id="savedList" style="margin-top:10px"></div>
     <div class="row" style="margin-top:8px"><button id="btnExport">保存データを書き出し</button><label class="file">保存データを読み込み<input type="file" id="importFile" accept=".json,application/json"></label></div>
@@ -565,18 +654,18 @@ input[type=range]{accent-color:var(--acc)}
   </section>
 </div>
 <section class="panel adv" id="sep" data-nav="編集">
-  <h2>10. 編集・書き出し</h2>
+  <h2>8. 編集・書き出し</h2>
   <div class="row" style="gap:8px;margin-bottom:4px">
     <label class="sub">対象<select id="edScope"><option value="all">曲全体（トリム後）</option><option value="sel">4. の選択範囲</option></select></label>
-    <button id="edUndo" disabled title="10. で処理する前の音に戻して解析し直します">元の音に戻す</button>
+    <button id="edUndo" disabled title="8. で処理する前の音に戻して解析し直します">元の音に戻す</button>
     <span id="edStatus" class="sub"></span>
   </div>
-  <div class="note">処理した音は新しい解析結果として 1.〜8. に表示され、そのまま再生・比較できます（「元の音に戻す」で処理前に戻せます）。編集した音は「書き出し・結合・分割」タブから WAV / FLAC で書き出せます。</div>
+  <div class="note">処理した音は新しい解析結果として 1.〜7. に表示され、そのまま再生・比較できます（「元の音に戻す」で処理前に戻せます）。編集した音は「書き出し・結合・分割」タブから WAV / FLAC で書き出せます。</div>
   <div class="tabs" id="edTabs"><button data-tab="master" class="on">おまかせマスタリング</button><button data-tab="basic">基本編集</button><button data-tab="out">書き出し・結合・分割</button><button data-tab="fix">修復</button><button data-tab="stems">パート別の音量（AI）</button></div>
 
   <div class="pane" data-pane="master">
     <div class="row"><label class="sub">ジャンル<select id="msPreset"></select></label><label class="sub">寄せる先<select id="msRef"></select></label><span id="msPresetNote" class="sub"></span></div>
-    <div class="sub" style="margin-top:4px">「寄せる先」にリファレンス曲（1. の曲リストの曲、「B で比べる」で入れた曲、8. に保存した曲）を選ぶと、その曲の音量・音色・ステレオの広さに近づけます（コンプの強さはジャンルの設定を使います）。</div>
+    <div class="sub" style="margin-top:4px">「寄せる先」にリファレンス曲（1. の曲リストの曲、「B で比べる」で入れた曲、7. に保存した曲）を選ぶと、その曲の音量・音色・ステレオの広さに近づけます（コンプの強さはジャンルの設定を使います）。</div>
     <div class="msGrid">
       <label class="msItem"><span><input type="checkbox" id="msEqOn" checked> <b>オート EQ</b></span>
         <span class="sub">基準<select id="msEqBase"><option value="genre">ジャンルの目安</option><option value="target">5. で選んだターゲット（好きな曲など）</option></select></span>
@@ -626,8 +715,8 @@ input[type=range]{accent-color:var(--acc)}
       <h3>音色の変化（処理前・処理後・目安）</h3><canvas id="cvMsSpec"></canvas>
       <div class="legend"><span style="color:#9aa0b4">―</span> 処理前　<span style="color:#5ad19a">―</span> 処理後　<span style="color:#c58aff">▒</span> 目安の範囲（1/6 オクターブ・音量をそろえて表示）</div>
     </div>
-    <div class="legend">曲全体（前後の無音トリム後）に、EQ → コンプ → リミッターの順でかけます（上の「対象」の設定は使いません）。処理後の音は 2.〜8. で解析し直され、「元の音に戻す」で戻せます。書き出しは「書き出し・結合・分割」タブから。
-      <br>ジャンルの値は、市販曲でよく見られる音量・音色の<b>大まかな目安</b>です（一般的な制作上の傾向をもとにした値で、特定の調査の実測値ではありません）。好きな曲に近づけたいときは、その曲を 8. に保存して 5. でターゲットにし、EQ の基準を「5. で選んだターゲット」にしてください。
+    <div class="legend">曲全体（前後の無音トリム後）に、EQ → コンプ → リミッターの順でかけます（上の「対象」の設定は使いません）。処理後の音は 2.〜7. で解析し直され、「元の音に戻す」で戻せます。書き出しは「書き出し・結合・分割」タブから。
+      <br>ジャンルの値は、市販曲でよく見られる音量・音色の<b>大まかな目安</b>です（一般的な制作上の傾向をもとにした値で、特定の調査の実測値ではありません）。好きな曲に近づけたいときは、その曲を 7. に保存して 5. でターゲットにし、EQ の基準を「5. で選んだターゲット」にしてください。
       <br>マスタリングでミックスの問題（楽器同士のかぶり、ボーカルの埋もれなど）は直せません。最後は必ず耳で確かめてください。配信では大きい曲ほど音量を下げられるので、音圧を上げすぎても大きく聞こえるとは限りません（2. の表を参照）。</div>
   </div>
 
@@ -647,12 +736,12 @@ input[type=range]{accent-color:var(--acc)}
     <div class="row"><span class="sub">ゲイン</span><input type="number" id="bcGain" value="-3" step="0.1" style="width:70px"><span class="sub">dB</span><button id="bcGainRun">音量を変える</button></div>
     <div class="row" style="margin-top:4px"><select id="bcNormMode"><option value="peak">ピーク（サンプルピーク）を揃える</option><option value="lufs">統合ラウドネスを揃える（曲全体）</option></select>
       <input type="number" id="bcNormTarget" value="-1" step="0.1" style="width:70px"><span class="sub" id="bcNormUnit">dBFS</span><button id="bcNorm" class="primary">ノーマライズ</button></div>
-    <div class="legend">上の「対象」が「4. の選択範囲」なら範囲だけ、「曲全体」なら全体に、フェード・ゲイン・ノーマライズをかけます。切り出し・削除・無音は 4. の選択範囲に対して働き、曲全体の長さが変わります（0 dBFS を超えた分は 32bit float で書き出せば残ります）。「元の音に戻す」で、10. で編集する前の音に戻せます。</div>
+    <div class="legend">上の「対象」が「4. の選択範囲」なら範囲だけ、「曲全体」なら全体に、フェード・ゲイン・ノーマライズをかけます。切り出し・削除・無音は 4. の選択範囲に対して働き、曲全体の長さが変わります（0 dBFS を超えた分は 32bit float で書き出せば残ります）。「元の音に戻す」で、8. で編集する前の音に戻せます。</div>
   </div>
 
   <div class="pane" data-pane="out" hidden>
     <h3 style="margin-top:0">EQ・フィルタを音声に反映</h3>
-    <div class="row"><button id="outMeq">5. のマッチ EQ を適用</button><button id="outFlt">9. のフィルタ（IIR）を適用</button>
+    <div class="row"><button id="outMeq">5. のマッチ EQ を適用</button><button id="outFlt">ツールのフィルタ（IIR）を適用</button>
       <span class="sub">「対象」が選択範囲のときは、範囲の両端を短くなじませて適用します。適用後の音はそのまま下の書き出しで保存できます。</span></div>
     <h3>書き出し</h3>
     <div class="row"><label class="sub">範囲<select id="exRange"><option value="all">曲全体（前後の無音トリム後）</option><option value="whole">ファイル全体（トリムなし）</option><option value="sel">4. の選択範囲</option></select></label>
@@ -854,7 +943,7 @@ input[type=range]{accent-color:var(--acc)}
     <div class="row" style="margin-top:4px"><span class="sub">レベル</span><input type="number" id="genLevel" value="-20"><span class="sub">dBFS　長さ</span><input type="number" id="genDur" value="10"><span class="sub">秒</span>
       <select id="genFs"><option>44100</option><option selected>48000</option><option>96000</option></select><select id="genCh"><option value="1">モノラル</option><option value="2" selected>ステレオ</option></select>
       <button id="genRun" class="primary">生成して解析</button></div>
-    <div class="legend">処理した音声・生成した音声は、新しい解析結果として 1.〜8. に表示されます（元の解析結果は置き換わります）。レベルは正弦波のピーク基準で、雑音は実効値を同じレベルの正弦波にそろえます。</div>
+    <div class="legend">処理した音声・生成した音声は、新しい解析結果として 1.〜7. に表示されます（元の解析結果は置き換わります）。レベルは正弦波のピーク基準で、雑音は実効値を同じレベルの正弦波にそろえます。</div>
   </div>
 
   <div class="pane" data-pane="order" hidden>
@@ -2488,7 +2577,7 @@ function codecCompare(a,b,fs){
   const bands=BANDS.map(([name,lo,hi])=>{let p=0,q=0;for(let k=Math.ceil(lo/bh);k<sa.P.length&&k*bh<hi;k++){p+=sa.P[k];q+=sd.P[k];}return {name,lo,hi,db:p>0&&q>0?10*Math.log10(q/p):NaN};});
   return {tp:toDb(tp),sp:toDb(sp),over0,over1,nmr:ea>0&&ed>0?10*Math.log10(ed/ea):-Infinity,bands,cutoff:detectCutoff(avgSpectrum(mono(b),fs)),diff};
 }
-/* ---------- 分離・修復・ピッチ編集（10.） ---------- */
+/* ---------- 分離・修復・ピッチ編集（8.） ---------- */
 function hannP(N){const w=new Float64Array(N);for(let i=0;i<N;i++)w[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);return w;}
 // 44.1 / 48 kHz を基準にした FFT サイズ（88.2 kHz 以上は 2 倍にして周波数分解能をそろえる）
 function sepN(fs,base){return fs>64000?base*2:base;}
@@ -2892,7 +2981,7 @@ function notesJob(d,prog){
   if(d.harm){const N=sepN(d.fs,2048),h=N/4;x=chunked([x],N+h*10.5,h,seg=>hpssSeg(seg,d.fs,{out:"harm"}),prog,"打楽器の除去")[0];}
   return att(detectNotes(x,d.fs,d.o,prog));
 }
-// 10. の処理の振り分け。o.diff なら「取り除いた音」（元の音 − 処理後）を返す
+// 8. の処理の振り分け。o.diff なら「取り除いた音」（元の音 − 処理後）を返す
 function editProcess(d,prog){
   const {fs,op}=d,o=d.o||{},chs=d.chs;prog=prog||(()=>{});let out,extra={};
   if(op==="hpss"){const N=sepN(fs,2048),h=N/4;out=chunked(chs,N+h*((o.lt||17)/2+2),h,seg=>hpssSeg(seg,fs,o),prog,"調波・打楽器の分離");}
@@ -3610,7 +3699,7 @@ const idb={
 const SEG_COL=["#8ab4ff","#c58aff","#5ad19a","#f5c04a","#ff8a65","#4dd0e1","#f48fb1","#aed581"];
 const segColor=l=>SEG_COL[(l.charCodeAt(0)-65)%SEG_COL.length];
 const pref={get:(k,d)=>{try{return localStorage.getItem(k)||d;}catch(e){return d;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
-let rec=null,current=null,refId=null,busy=false,lastRaw=null,editOrig=null; // editOrig：10. で処理する前の音（元に戻す用）
+let rec=null,current=null,refId=null,busy=false,lastRaw=null,editOrig=null; // editOrig：8. で処理する前の音（元に戻す用）
 let genre=GENRES[pref.get("tabAnalyzerGenre","general")]?pref.get("tabAnalyzerGenre","general"):"general";
 let scope=pref.get("tabAnalyzerScope","all")==="focus"?"focus":"all";
 
@@ -4719,7 +4808,7 @@ function reportText(m,name){
   return L.join("\n");
 }
 function render(m,noScroll){
-  $("result").hidden=false;
+  $("result").hidden=false;document.body.classList.add("loaded");
   $("cards").innerHTML=cardsHtml(m);
   $("saveName").value=m.label&&m.label!=="タブ録音"?m.label.replace(/\.[^.]+$/,""):"";
   resetNvh();
@@ -4818,7 +4907,7 @@ function renderCompare(cur,rs,ref,m){
   el.innerHTML=h+"</table>";
 }
 
-/* ---------- 音響・振動解析（9.） ---------- */
+/* ---------- 音響・振動解析（ツール） ---------- */
 let calFs=parseFloat(pref.get("tabAnalyzerCalFs","100"))||100,calSet=pref.get("tabAnalyzerCalSet","")==="1";
 const nvhK=()=>calK(calFs);
 let slmRes=null,psyRes=null,ordRes=null,tfRes=null,batchRes=[];
@@ -4827,7 +4916,7 @@ function updateCalState(){
   $("calState").textContent=calSet?"校正済み":"未校正（仮の値）";$("calState").style.color=calSet?"var(--ok)":"var(--warn)";
 }
 function setCal(v,set){calFs=v;calSet=set;pref.set("tabAnalyzerCalFs",String(v));pref.set("tabAnalyzerCalSet",set?"1":"");updateCalState();}
-function nvhMsg(t,err){$("nvhStatus").textContent=t;$("nvhStatus").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="9. "+t;b.className="sub"+(err?" err":"");}}
+function nvhMsg(t,err){$("nvhStatus").textContent=t;$("nvhStatus").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="ツール："+t;b.className="sub"+(err?" err":"");}}
 // 解析範囲（lastRaw のサンプル位置）
 function nvhRange(){
   if(!current||!rawOK()){nvhMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return null;}
@@ -5264,7 +5353,7 @@ function renderTargetSel(){
   sel.value=tgtSel;$("tgtDel").hidden=!tgtSel.startsWith("c:");
   for(const b of $("tgtView").children)b.classList.toggle("on",b.dataset.v===tgtView);
   const list=loadSaved();
-  $("tgtList").innerHTML=list.length?list.map(x=>"<label title='"+esc(x.name)+"'><input type='checkbox' value='"+x.id+"'> "+esc(x.name)+(x.tonal?"":" <small class='sub'>（旧形式）</small>")+"</label>").join(""):"<span class='sub'>保存した曲がありません。好きな曲を解析して 8. で保存してください。</span>";
+  $("tgtList").innerHTML=list.length?list.map(x=>"<label title='"+esc(x.name)+"'><input type='checkbox' value='"+x.id+"'> "+esc(x.name)+(x.tonal?"":" <small class='sub'>（旧形式）</small>")+"</label>").join(""):"<span class='sub'>保存した曲がありません。好きな曲を解析して 7. で保存してください。</span>";
 }
 function renderTarget(m){
   const T=getTarget(),cmp=compareTonal(m,T),note=$("tgtNote");
@@ -5598,11 +5687,11 @@ async function runAllSongs(){
     }
   }finally{
     songRunning=false;renderSongs();
-    if(n)setStatus(n+" 曲を解析しました"+(saved?"（"+saved+" 曲を 8. に保存）":"")+(songStopReq?"・中止しました":""));
+    if(n)setStatus(n+" 曲を解析しました"+(saved?"（"+saved+" 曲を 7. に保存）":"")+(songStopReq?"・中止しました":""));
     if(saved&&current)refresh();
   }
 }
-// 8. の保存一覧に追加（音声は FLAC 24bit で IndexedDB へ）
+// 7. の保存一覧に追加（音声は FLAC 24bit で IndexedDB へ）
 async function saveSongSnapshot(res,fname,raw,s0,s1){
   const s=snapshot(res,fname.replace(/\.[^.]+$/,""));s.id=Math.max(Date.now(),...loadSaved().map(y=>y.id+1)); // 連続保存で ID が重ならないように
   try{
@@ -5805,8 +5894,8 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="0"){e.preventDefault();setView(0,current.dur);}
 });
 // 上部バー・折りたたみ・ヘルプ
-/* ---------- 10. 分離・修復・ピッチ編集 ---------- */
-function edMsg(t,err){$("edStatus").textContent=t;$("edStatus").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="10. "+t;b.className="sub"+(err?" err":"");}}
+/* ---------- 8. 分離・修復・ピッチ編集 ---------- */
+function edMsg(t,err){$("edStatus").textContent=t;$("edStatus").style.color=err?"var(--bad)":"";const b=$("tbStatus");if(t){b.textContent="8. "+t;b.className="sub"+(err?" err":"");}else if(/^8\. .*…$/.test(b.textContent))b.textContent="";} // 「…中」の表示は、終わったら消す
 function edRange(){
   if(!current||!rawOK()){edMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. でファイルを読み込んでください",true);return null;}
   const fs=lastRaw.fs;
@@ -6009,7 +6098,7 @@ $("tabRun").onclick=async()=>{
   $("tabInfo").textContent=out.notes.length?"音符 "+out.notes.length+" 個"+(out.dropped?"（弾けない音 "+out.dropped+" 個を省略）":""):"音符は見つかりませんでした";
 };
 $("tabSave").onclick=()=>{if(!tabRes)return;download(new Blob(["\ufeff"+("TAB 譜"+(tabRes.edited?"（自動推定＋手動編集）":"（自動推定）")+": "+tabRes.label+"\n"+tabRes.text+"\n楽曲アナライザで自動推定。誤りを含むことがあります。\n").replace(/\n/g,"\r\n")],{type:"text/plain;charset=utf-8"}),"tab-"+safeName(tabRes.label)+".txt");};
-/* ---------- 10. 基本編集・書き出し・結合・分割 ---------- */
+/* ---------- 8. 基本編集・書き出し・結合・分割 ---------- */
 const cloneChs=chs=>chs.map(c=>new Float32Array(c));
 // 編集した音を新しい解析結果にする（長さが変わる編集用。「元の音に戻す」で戻せる）
 async function edLocal(label,build){
@@ -6082,7 +6171,7 @@ function applySosEdit(label,mkSos){
     });
   });
 }
-/* ---------- 10. おまかせマスタリング ---------- */
+/* ---------- 8. おまかせマスタリング ---------- */
 // ジャンルごとの大まかな目安（市販曲でよく見られる傾向をもとにした値。特定の調査の実測値ではない）。
 // lufs：目標の統合ラウドネス、ceil：トゥルーピークの上限（Spotify の推奨に合わせ、−14 LUFS より大きい目安は −2 dBTP、それ以外は −1 dBTP）、comp：コンプの強さ、att/rel：コンプのアタック/リリース[ms]、tone：汎用の目安（ヒット曲の平均的な傾き）からの差[dB]（low=低域 / mid=2〜5 kHz の張り / high=高域）
 const MASTER_PRESETS={
@@ -6141,7 +6230,7 @@ function msAutoEq(cmp,fs,amt,maxDb){
     for(let r=0;r<B;r++)if(r!==c){const f=A[r][c]/A[c][c];for(let k=c;k<B;k++)A[r][k]-=f*A[c][k];y[r]-=f*y[c];}}
   return MS_EQ.map((b,i)=>Object.assign({},b,{g:Math.max(-maxDb,Math.min(maxDb,y[i]/A[i][i]))*amt})).filter(b=>Math.abs(b.g)>=0.3);
 }
-// 10. の設定から、おまかせマスタリングの処理内容を組み立てる（m：対象の曲の解析結果。1 曲の仕上げとアルバム仕上げで共通）
+// 8. の設定から、おまかせマスタリングの処理内容を組み立てる（m：対象の曲の解析結果。1 曲の仕上げとアルバム仕上げで共通）
 function buildMasterOpts(m,fs,key,ov){
   ov=ov||{};const P=MASTER_PRESETS[key]||MASTER_PRESETS.stream,ref=ov.ref!==undefined?ov.ref:msRefObj();
   // リファレンスに寄せる：目標の音量はその曲の統合ラウドネス（−24〜−5 LUFS の範囲）、上限は Spotify の推奨（−14 LUFS より大きければ −2 dBTP）
@@ -6320,26 +6409,26 @@ function renderDelivery(m){
   const L=m.lufs,tp=m.tp,loud=L>-14,tpLim=loud?-2:-1;
   // Spotify
   add("Spotify","音量","−14 LUFS にそろえて再生される",f1(L)+" LUFS","info",L>-14?"再生時に約 "+f1(L+14)+" dB 下げられます（大きくしても大きくは聞こえません）":L<-14?"再生時に、ピークの余裕の範囲で上げられます":"");
-  add("Spotify","トゥルーピーク",(loud?"−14 LUFS より大きいので ":"")+tpLim+" dBTP 以下（推奨）",f1(tp)+" dBTP",tp<=tpLim?"ok":"warn",tp<=tpLim?"":"10. のおまかせマスタリングで上限を "+tpLim+" dBTP にして仕上げる");
+  add("Spotify","トゥルーピーク",(loud?"−14 LUFS より大きいので ":"")+tpLim+" dBTP 以下（推奨）",f1(tp)+" dBTP",tp<=tpLim?"ok":"warn",tp<=tpLim?"":"8. のおまかせマスタリングで上限を "+tpLim+" dBTP にして仕上げる");
   // Apple Digital Masters
   const AR=[44100,48000,88200,96000,176400,192000];
   if(fmt&&!fmt.lossy){
     const eff=fmt.effBits||fmt.bits,pad=fmt.bits>=24&&eff&&eff<fmt.bits;
-    add("Apple Digital Masters","ビット深度","24bit PCM（16bit を 24bit にした水増しは不可）",(fmt.float?"32bit 浮動小数点":fmt.bits+"bit")+(pad?"（実際は "+eff+"bit の音）":""),fmt.float?"warn":pad||fmt.bits<24?"bad":"ok",fmt.float?"24bit 整数で書き出す（10. の書き出しで「WAV 24bit」か「FLAC 24bit」）":pad?"元の 24bit 以上の音源から書き出し直す（このファイルの音は 16bit 相当です）":fmt.bits<24?"24bit 以上の元音源から書き出す（16bit からの水増しは不可）":"");
+    add("Apple Digital Masters","ビット深度","24bit PCM（16bit を 24bit にした水増しは不可）",(fmt.float?"32bit 浮動小数点":fmt.bits+"bit")+(pad?"（実際は "+eff+"bit の音）":""),fmt.float?"warn":pad||fmt.bits<24?"bad":"ok",fmt.float?"24bit 整数で書き出す（8. の書き出しで「WAV 24bit」か「FLAC 24bit」）":pad?"元の 24bit 以上の音源から書き出し直す（このファイルの音は 16bit 相当です）":fmt.bits<24?"24bit 以上の元音源から書き出す（16bit からの水増しは不可）":"");
     const up=fmt.fs>48000&&m.cutoff&&m.cutoff.f<23000;
     add("Apple Digital Masters","サンプルレート","44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz、44.1 kHz 未満やアップサンプル不可",(fmt.fs/1000)+" kHz"+(up?"（約 "+fmtF(m.cutoff.f)+"Hz より上が空：アップサンプルの可能性）":""),!AR.includes(fmt.fs)?"bad":up?"warn":"ok",!AR.includes(fmt.fs)?"対応するサンプルレートで書き出す":up?"元のサンプルレートのまま書き出す（上げても音質は上がりません）":"");
-  }else add("Apple Digital Masters","ファイル形式","24bit PCM（ALAC / FLAC も可）",fmt&&fmt.lossy?fmt.container+"（圧縮音源）":"処理後の音：書き出す形式で決まります",fmt&&fmt.lossy?"bad":"info",fmt&&fmt.lossy?"MP3・AAC などではなく、元の WAV / FLAC で納品する":"10. の書き出しで「WAV 24bit」か「FLAC 24bit」を選ぶ");
-  add("Apple Digital Masters","トゥルーピーク","−1 dBTP 以下（BS.1770-4 で測定）",f1(tp)+" dBTP",tp<=-1?"ok":"bad",tp<=-1?"":"10. のおまかせマスタリングで上限を −1 dBTP 以下にして仕上げる");
+  }else add("Apple Digital Masters","ファイル形式","24bit PCM（ALAC / FLAC も可）",fmt&&fmt.lossy?fmt.container+"（圧縮音源）":"処理後の音：書き出す形式で決まります",fmt&&fmt.lossy?"bad":"info",fmt&&fmt.lossy?"MP3・AAC などではなく、元の WAV / FLAC で納品する":"8. の書き出しで「WAV 24bit」か「FLAC 24bit」を選ぶ");
+  add("Apple Digital Masters","トゥルーピーク","−1 dBTP 以下（BS.1770-4 で測定）",f1(tp)+" dBTP",tp<=-1?"ok":"bad",tp<=-1?"":"8. のおまかせマスタリングで上限を −1 dBTP 以下にして仕上げる");
   // CD
   const fs=fmt&&fmt.fs||m.fs;
-  add("CD（Red Book）","形式","16bit・44.1 kHz・ステレオ",(fmt&&fmt.bits?fmt.bits+"bit・":"")+(fs/1000)+" kHz・"+(m.layout.length===2?"ステレオ":m.layout.length+"ch"),fs===44100&&m.layout.length===2?(fmt&&fmt.bits===16?"ok":"info"):"warn",fs!==44100?"10. の書き出しで「サンプルレート 44.1 kHz」と「WAV 16bit（ディザあり）」を選ぶ（かんたん表示なら保存の形式で「CD 用」）":m.layout.length!==2?"ステレオにする":fmt&&fmt.bits===16?"":"10. の書き出しで「WAV 16bit（ディザあり）」を選ぶ");
+  add("CD（Red Book）","形式","16bit・44.1 kHz・ステレオ",(fmt&&fmt.bits?fmt.bits+"bit・":"")+(fs/1000)+" kHz・"+(m.layout.length===2?"ステレオ":m.layout.length+"ch"),fs===44100&&m.layout.length===2?(fmt&&fmt.bits===16?"ok":"info"):"warn",fs!==44100?"8. の書き出しで「サンプルレート 44.1 kHz」と「WAV 16bit（ディザあり）」を選ぶ（かんたん画面なら保存の形式で「CD 用」）":m.layout.length!==2?"ステレオにする":fmt&&fmt.bits===16?"":"8. の書き出しで「WAV 16bit（ディザあり）」を選ぶ");
   $("delivNote").textContent=fmt?"ファイル："+fmt.name+"（"+fmt.container+(fmt.bits?"・"+(fmt.float?"32bit 浮動小数点":fmt.bits+"bit"):"")+(fmt.fs?"・"+fmt.fs/1000+" kHz":"")+"）":"編集・仕上げ後の音です（ファイル形式の条件は、書き出すときの形式で決まります）";
   $("delivTable").innerHTML="<tr><th>配信先</th><th>項目</th><th>条件</th><th>この曲</th><th>判定</th><th>対処</th></tr>"+rows.map(r=>"<tr><td>"+esc(r.svc)+"</td><td>"+esc(r.item)+"</td><td>"+esc(r.cond)+"</td><td>"+esc(r.val)+"</td><td class='j "+r.lv+"'>"+J[r.lv]+"</td><td>"+esc(r.fix||"")+"</td></tr>").join("");
 }
 
 
 
-/* ---------- 10. パート別の音量（HTDemucs） ---------- */
+/* ---------- 8. パート別の音量（HTDemucs） ---------- */
 const DMX_MODEL={url:"https://huggingface.co/ptasior/pizu-audio-models/resolve/74331d1e9344e876513b474325fb8fb316fbb392/htdemucs_embedded.onnx",size:180534758,sha256:"e5e425c17683f163a472462eb5f5a4ffcd11c31858d57fbd0833b012d8b88077"};
 const ORT_BASE="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
 // ONNX Runtime Web 1.20.1（npm 公開版と同一であることを確認済み）の各ファイルの大きさと SHA-256。読み込む前に必ず照合する
@@ -6350,7 +6439,7 @@ const ORT_FILES=[
 const DMX_NAMES={drums:"ドラム",bass:"ベース",other:"その他（ギター・鍵盤など）",vocals:"ボーカル"};
 let dmxWorker=null,dmxReady=null,dmxEp="",dmxThreads=1,stState=null,stStopReq=false,dmxReject=null;
 const dmxEpName=()=>dmxEp==="webgpu"?"WebGPU":"CPU（WASM・"+dmxThreads+" スレッド）";
-const stMsg=(t,err)=>{$("stMsg").textContent=t;$("stMsg").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="10. "+t;b.className="sub"+(err?" err":"");}};
+const stMsg=(t,err)=>{$("stMsg").textContent=t;$("stMsg").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="8. "+t;b.className="sub"+(err?" err":"");}};
 const sha256hex=async buf=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",buf))].map(b=>b.toString(16).padStart(2,"0")).join("");
 // モデルを用意する：ブラウザに保存済みならそれを使い、なければダウンロードする。どちらも SHA-256 で本物か確かめる
 async function dmxModel(){
@@ -6796,7 +6885,7 @@ async function msPlan(opt){
   if(opt.play||was)playFrom(was&&was.side==="A"?was.pos:lastPos,"A");
   return out;
 }
-// 仕上がりを解析する（プロ画面）：仕上げた音を全部処理して、2.〜8. を解析し直す。元の音は B に入れて聴き比べられる
+// 仕上がりを解析する（プロ画面）：仕上げた音を全部処理して、2.〜7. を解析し直す。元の音は B に入れて聴き比べられる
 async function msCommit(){
   if(!MS||!MS.P)return false;
   if(busy){edMsg("他の処理が終わるまでお待ちください",true);return false;}
@@ -6885,7 +6974,7 @@ function renderEasy(){
       if(it&&d.length){it.a="目安からのずれ："+d.map(([b,c])=>b.name+" "+(b.ex>0?"+":"")+f1(b.ex)+" → "+(c.ex>0?"+":"")+f1(c.ex)+" dB").join("、");
         if(d.some(([,c])=>Math.abs(c.ex)>=1.5))it.x="仕上げの EQ は音を壊さないよう控えめ（最大 ±3 dB）にしています。まだずれが大きい帯域は、ミックスで楽器の音量や EQ を見直すと確実に良くなります。";}}
     const li=msLast.info&&msLast.info.lim;
-    if(li&&li.psrGuard)h+="<div class='ed info' style='grid-column:1/-1'><div class='et'>音質を守るため、"+f1(current.lufs)+" LUFS で止めました</div><div class='ex'>目安の "+f1(li.target)+" LUFS まで上げると"+(li.guardBy==="st"?"大きくしすぎ（一番大きい区間が −10 LUFS 超え）":"音が潰れる（PSR が "+f1(li.minPsr)+" dB を割る）")+"ためです。配信サービスは −14 LUFS 前後にそろえて再生するので、聴こえる大きさはほぼ変わりません。くわしい表示の 10. で「音質優先」を外すと、目安まで上げられます。</div></div>";
+    if(li&&li.psrGuard)h+="<div class='ed info' style='grid-column:1/-1'><div class='et'>音質を守るため、"+f1(current.lufs)+" LUFS で止めました</div><div class='ex'>目安の "+f1(li.target)+" LUFS まで上げると"+(li.guardBy==="st"?"大きくしすぎ（一番大きい区間が −10 LUFS 超え）":"音が潰れる（PSR が "+f1(li.minPsr)+" dB を割る）")+"ためです。配信サービスは −14 LUFS 前後にそろえて再生するので、聴こえる大きさはほぼ変わりません。プロ画面の 8. で「音質優先」を外すと、目安まで上げられます。</div></div>";
   }
   h+=items.map(x=>"<div class='ed "+x.lv+"'><div class='et'>"+esc(x.t)+"</div>"+(x.x?"<div class='ex'>"+esc(x.x)+"</div>":"")+(x.a?"<div class='ea'>→ "+esc(x.a)+"</div>":"")+"</div>").join("");
   $("easyDiag").innerHTML=h;easySeekUi(player?playPosNow():lastPos);
@@ -6955,7 +7044,7 @@ function rkRender(){
   $("rkStereo").innerHTML=(st?rkDef("side","サイド",()=>S.side,v=>S.side=v,-6,6,0.1,"dB"):"<div class='sub'>モノラルの曲です</div>")
     +(st?"<div class='rkP'><span>低域モノ</span><select data-sel='bm'>"+[[0,"しない"],[80,"80 Hz 以下"],[100,"100 Hz 以下"],[120,"120 Hz 以下"],[150,"150 Hz 以下"],[200,"200 Hz 以下"]].map(([f,t])=>"<option value='"+f+"'"+(+S.bassMono===f?" selected":"")+">"+t+"</option>").join("")+"</select><span></span><span></span></div>":"");
   $("rkFix").innerHTML="<label class='sub'><input type='checkbox' data-chk='declip'"+(S.declip?" checked":"")+(MS.P0&&MS.P0.declip?"":" disabled")+"> 音割れの修復</label><br><label class='sub'><input type='checkbox' data-chk='deharsh'"+(S.deharsh?" checked":"")+(MS.P0&&MS.P0.deharsh?"":" disabled")+"> 耳に痛い瞬間を抑える</label>"
-    +"<div class='sub' style='margin-top:4px'>この 2 つは、曲全体を調べて決める基準を使うので、おまかせ（10. で有効にした場合）で見つかったときだけ使えます。</div>"
+    +"<div class='sub' style='margin-top:4px'>この 2 つは、曲全体を調べて決める基準を使うので、おまかせ（8. で有効にした場合）で見つかったときだけ使えます。</div>"
     +"<div class='sub' style='margin-top:6px'>かんたん画面のつまみ：迫力 "+f1(S.knobs.low)+" / 明るさ "+f1(S.knobs.high)+" / 広がり "+f1(S.knobs.width)+" / 音圧 "+f1(S.knobs.drive)+" dB <button data-act='knob0'>0 に戻す</button></div>";
   const c=S.comp,l=S.lim;
   $("rkComp").innerHTML=rkDef("cthr","しきい値",()=>c.thr,v=>c.thr=v,-50,0,0.5,"dB")+rkDef("crat","比率",()=>c.ratio,v=>c.ratio=v,1.1,10,0.1,":1")+rkDef("catt","アタック",()=>c.attack,v=>c.attack=v,1,200,1,"ms")+rkDef("crel","リリース",()=>c.release,v=>c.release=v,20,2000,10,"ms")
@@ -6970,7 +7059,7 @@ function rkBarUi(){
   [...$("rkSnap").children].forEach((b,i)=>{b.classList.toggle("has",!!RK.snaps[i]);b.classList.toggle("on",i===RK.snapOn);b.disabled=!on;});
   $("rkBypass").classList.toggle("on",!!(MS&&MS.on&&!MS.wet));$("rkPlay").textContent=player?"■":"▶";
   const stale=MS&&MS.committedVer!=null&&MS.committedVer!==MS.ver;
-  $("rkMsg").textContent=!on?"":(MS.metrics?"":MS.prog>=1?"仕上がりの数値を測っています…　":"仕上げた音を処理中… "+Math.round((MS.prog||0)*100)+"%　")+(stale?"設定を変えたので、2.〜8. は前の設定の解析結果です（「🔍 仕上がりを解析」で更新）":MS.committedVer==null?"2.〜8. は元の音の解析結果です（「🔍 仕上がりを解析」で仕上げた音を解析）":"");
+  $("rkMsg").textContent=!on?"":(MS.metrics?"":MS.prog>=1?"仕上がりの数値を測っています…　":"仕上げた音を処理中… "+Math.round((MS.prog||0)*100)+"%　")+(stale?"設定を変えたので、2.〜7. は前の設定の解析結果です（「🔍 仕上がりを解析」で更新）":MS.committedVer==null?"2.〜7. は元の音の解析結果です（「🔍 仕上がりを解析」で仕上げた音を解析）":"");
 }
 $("rkMods").addEventListener("input",e=>{
   const id=e.target.dataset.id;if(!id||!rkOn())return;const d=RK_P[id],v=Math.max(d.min,Math.min(d.max,+e.target.value));if(!Number.isFinite(v))return;d.set(v);
@@ -7001,7 +7090,7 @@ function rkEqTable(){
 }
 // EQ のグラフ：対象ごとの合成特性・点・仕上げ前後の平均スペクトル
 const RKE={H:230,lo:-18,hi:18},rkX=(f,w)=>Math.log(f/20)/Math.log(1000)*w,rkF=(x,w)=>20*Math.pow(1000,x/w),rkY=g=>8+(RKE.hi-g)/(RKE.hi-RKE.lo)*(RKE.H-16),rkG=y=>RKE.hi-(y-8)/(RKE.H-16)*(RKE.hi-RKE.lo);
-const RK_COL={st:"#8ab4ff",m:"#ffb15a",s:"#7be3a1"};
+const RK_COL={st:"#6fd6ff",m:"#ffb15a",s:"#6dffb0"};
 function rkDrawEq(){
   if(!rkOn())return;const cv=$("cvRkEq"),W=Math.max(300,cv.parentElement.clientWidth-20),g=fitCanvas(cv,W,RKE.H),S=MS.S,fs=MS.fs,lin=!!S.lin;
   g.fillStyle="#0b0d16";g.fillRect(0,0,W,RKE.H);g.font="10px sans-serif";g.lineWidth=1;
@@ -7014,10 +7103,11 @@ function rkDrawEq(){
   // 対象ごとの合成特性
   const P=msCompile(S,fs);
   for(const t of ["st","m","s"]){const grp=P.eq.find(x=>x.target===t);if(!grp&&t!=="st")continue;const sos=(grp?grp.sos:[]).concat(t==="st"?P.sos:[]);
-    g.strokeStyle=RK_COL[t];g.lineWidth=t==="st"?2.2:1.6;g.beginPath();for(let x=0;x<=W;x+=2){const f=rkF(x,W);if(f>fs*0.49)break;let db=sos.length?20*Math.log10(sosResp(sos,f,fs)):0;if(lin)db*=2;const y=rkY(Math.max(RKE.lo-2,Math.min(RKE.hi+2,db)));x?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();}
-  S.eqBands.forEach((b,i)=>{const x=rkX(b.f,W),y=rkY(/pass$/.test(b.type)?0:b.g);g.fillStyle=b.on===false?"#555":RK_COL[b.t||"st"];g.beginPath();g.arc(x,y,i===RK.sel?8:6,0,Math.PI*2);g.fill();
+    g.strokeStyle=RK_COL[t];g.lineWidth=t==="st"?2.2:1.6;g.beginPath();let xe=0;for(let x=0;x<=W;x+=2){const f=rkF(x,W);if(f>fs*0.49)break;let db=sos.length?20*Math.log10(sosResp(sos,f,fs)):0;if(lin)db*=2;const y=rkY(Math.max(RKE.lo-2,Math.min(RKE.hi+2,db)));x?g.lineTo(x,y):g.moveTo(x,y);xe=x;}
+    g.save();g.shadowColor=RK_COL[t];g.shadowBlur=t==="st"?10:4;g.stroke();g.restore();
+    if(t==="st"){g.lineTo(xe,rkY(0));g.lineTo(0,rkY(0));g.closePath();const fg=g.createLinearGradient(0,0,0,RKE.H);fg.addColorStop(0,"rgba(111,214,255,.22)");fg.addColorStop(0.5,"rgba(111,214,255,.04)");fg.addColorStop(1,"rgba(194,100,255,.20)");g.fillStyle=fg;g.fill();}}
+  S.eqBands.forEach((b,i)=>{const x=rkX(b.f,W),y=rkY(/pass$/.test(b.type)?0:b.g);g.save();g.shadowColor=RK_COL[b.t||"st"];g.shadowBlur=b.on===false?0:12;g.fillStyle=b.on===false?"#555":RK_COL[b.t||"st"];g.beginPath();g.arc(x,y,i===RK.sel?8:6,0,Math.PI*2);g.fill();g.restore();
     if(i===RK.sel){g.strokeStyle="#fff";g.lineWidth=2;g.stroke();g.fillStyle="#e6e8ef";g.fillText(fmtF(b.f)+"Hz "+(/pass$/.test(b.type)?"":(b.g>0?"+":"")+f1(b.g)+"dB ")+"Q"+(+b.Q).toFixed(2),Math.min(W-140,x+10),Math.max(12,y-10));}});
-  g.fillStyle="#9aa0b4";g.fillText("線：EQ の特性（青＝左右・橙＝ミッド・緑＝サイド）　薄い線：平均スペクトル（点線＝元の音・紫＝仕上げた音）",8,12);
 }
 {const cv=$("cvRkEq"),hit=e=>{const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let best=-1,bd=14;MS.S.eqBands.forEach((b,i)=>{const d=Math.hypot(rkX(b.f,r.width)-x,rkY(/pass$/.test(b.type)?0:b.g)-y);if(d<bd){bd=d;best=i;}});return {i:best,x,y,w:r.width};};
   cv.addEventListener("pointerdown",e=>{if(!rkOn())return;const h=hit(e);RK.sel=h.i;if(h.i>=0){RK.drag={i:h.i};cv.setPointerCapture(e.pointerId);}rkEqTable();rkDrawEq();cv.focus&&cv.focus();});
@@ -7029,7 +7119,7 @@ function rkDrawEq(){
 }
 // 常時メーター：瞬間（0.4 秒）・短期（3 秒）・曲全体のラウドネス、ピーク、PSR、コンプ / リミッターの圧縮量、相関
 function rkMeter(){
-  const cv=$("cvRkMeter");if(!cv.offsetParent)return;const W=Math.max(280,cv.parentElement.clientWidth-28),two=W<620,H=two?112:58,g=fitCanvas(cv,W,H);g.fillStyle="#0b0d16";g.fillRect(0,0,W,H);
+  const cv=$("cvRkMeter");if(!cv.offsetParent)return;const W=Math.max(280,cv.parentElement.clientWidth),two=W<620,H=two?112:58,g=fitCanvas(cv,W,H);g.fillStyle="#0b0d16";g.fillRect(0,0,W,H);
   let mom=NaN,stt=NaN,pk=NaN,cor=NaN,gr=null;const M=MS&&MS.metrics;
   if(player&&playCtx&&anL){const fs=playCtx.sampleRate;if(!liveL||liveL.length!==anL.fftSize){liveL=new Float32Array(anL.fftSize);liveR=new Float32Array(anR.fftSize);}
     anL.getFloatTimeDomainData(liveL);anR.getFloatTimeDomainData(liveR);const n=liveL.length,W4=Math.min(n,Math.round(0.4*fs)),kL=makeK(fs),kR=makeK(fs);let e=0,p=0,sl=0,sr=0,slr=0;
@@ -7040,7 +7130,7 @@ function rkMeter(){
   const cells=[["瞬間",mom,"LUFS",-40,0],["短期",stt,"LUFS",-40,0],["曲全体",M?M.lufs:NaN,"LUFS",-40,0],["ピーク",pk,"dBFS",-40,0],["TP（曲）",M?M.tp:NaN,"dBTP",-12,1],["PSR",M?M.psr:NaN,"dB",0,20],["コンプ",gr?-gr.c:NaN,"dB GR",-12,0],["リミッター",gr?-gr.l:NaN,"dB GR",-12,0],["相関",cor,"",-1,1]];
   const per=two?5:cells.length,cw=W/per;cells.forEach(([nm,v,u,lo,hi],i)=>{const x=(i%per)*cw+4,w=cw-8,y0=two&&i>=per?54:0;g.save();g.translate(0,y0);g.fillStyle="#9aa0b4";g.font="10.5px sans-serif";g.fillText(nm,x,12);
     g.fillStyle="#1d2130";g.fillRect(x,40,w,8);if(Number.isFinite(v)){const r=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));
-      g.fillStyle=u.startsWith("dB GR")?(v<-4?"#ff6b6b":"#ffb15a"):nm==="PSR"?(v<8?"#ff6b6b":"#5ad19a"):nm.startsWith("TP")?(v>-1?"#ff6b6b":"#5ad19a"):"#8ab4ff";
+      g.fillStyle=u.startsWith("dB GR")?(v<-4?"#ff6b7d":"#ffb15a"):nm==="PSR"?(v<8?"#ff6b7d":"#4fe3a6"):nm.startsWith("TP")?(v>-1?"#ff6b7d":"#4fe3a6"):(()=>{const lg=g.createLinearGradient(x,0,x+w,0);lg.addColorStop(0,"#35c8ff");lg.addColorStop(1,"#c264ff");return lg;})();
       if(u.startsWith("dB GR"))g.fillRect(x+w*r,40,w*(1-r),8);else g.fillRect(x,40,w*r,8);}
     g.fillStyle="#e6e8ef";g.font="bold 14px sans-serif";g.fillText(Number.isFinite(v)?(nm==="相関"?f1(v,2):f1(v)):"—",x,32);g.fillStyle="#6c7290";g.font="10px sans-serif";if(w>70)g.fillText(u,x+Math.min(w-30,58),32);g.restore();});
 }
@@ -7101,7 +7191,7 @@ window.addEventListener("resize",()=>{rkTbh();if(rkOn()&&!document.body.classLis
 new ResizeObserver(rkTbh).observe($("topbar"));
 /* ---------- かんたん画面：ジャンルのカード・つまみ・元の音を聴くボタン・準備度 ---------- */
 const EZ_EMOJI={stream:"🌐",pop:"🎤",rock:"🎸",edm:"🪩",hiphop:"🎧",rnb:"💜",acoustic:"🪕",jazz:"🎷",classical:"🎻"};
-const EZ_SHORT={stream:"配信向け",pop:"J-POP",rock:"ロック",edm:"EDM",hiphop:"ヒップホップ",rnb:"R&B・バラード",acoustic:"アコースティック",jazz:"ジャズ",classical:"クラシック"};
+const EZ_SHORT={stream:"配信向け",pop:"J-POP",rock:"ロック",edm:"EDM",hiphop:"ヒップホップ",rnb:"R&B・バラード",acoustic:"アコ・弾き語り",jazz:"ジャズ",classical:"クラシック"};
 $("ezCards").innerHTML=Object.entries(MASTER_PRESETS).map(([k,P])=>"<button class='ezCard' data-k='"+k+"' title='"+esc(P.name)+"'><span class='em'>"+(EZ_EMOJI[k]||"🎵")+"</span><span class='nm'>"+esc(EZ_SHORT[k]||P.name)+"</span><span class='lv'>"+P.lufs+" LUFS</span></button>").join("");
 $("ezCards").onclick=e=>{const b=e.target.closest(".ezCard");if(!b||b.disabled)return;b.blur();
   $("easyGenre").value=b.dataset.k;$("easyGenre").onchange({target:$("easyGenre")});$("easyRun").click();};
@@ -7166,13 +7256,18 @@ function ezStateAfter(){
   return {lufs:M.lufs,tp:M.tp,psr:M.psr,cmp:M.curve&&T?compareTonal({curve:M.curve,source:m0.source,cutoff:m0.cutoff,fs:m0.fs},T):null,
     target:li?Math.round(li.target*10)/10:-14,ceil:li?li.ceilTarget:-1,guard:!!(li&&li.psrGuard)&&!(MS.S&&MS.S.knobs.drive)};
 }
+function ezCount(to){
+  const el=$("ezScore"),from=Number.isFinite(EZ.sc)?EZ.sc:0;EZ.sc=to;cancelAnimationFrame(EZ.scRaf);if(from===to||matchMedia("(prefers-reduced-motion:reduce)").matches){el.textContent=String(to);return;}
+  const t0=performance.now(),step=t=>{const k=Math.max(0,Math.min(1,(t-t0)/600)),e=1-Math.pow(1-k,3);el.textContent=String(Math.round(from+(to-from)*e));if(k<1)EZ.scRaf=requestAnimationFrame(step);};EZ.scRaf=requestAnimationFrame(step);
+}
 function ezRenderScore(){
   if(!current)return;const key=$("easyGenre").value,ms=!!(MS&&MS.on&&MS.P),b=ezScoreOf(ezStateBefore(key));
   let sc=b,head="いまの状態（仕上げる前）";
   if(ms&&MS.metrics){sc=ezScoreOf(ezStateAfter());head="仕上げ前 "+b.tot+" 点 → 仕上げ後 "+sc.tot+" 点";}
   else if(ms)head="仕上げた音を測っています… "+Math.round((MS.prog||0)*100)+"%（仕上げ前は "+b.tot+" 点）";
-  const g=$("ezGauge");g.style.setProperty("--v",String(sc.tot));g.style.setProperty("--c",sc.tot>=80?"#5ad19a":sc.tot>=60?"#f5c04a":"#ff6b6b");
-  $("ezScore").textContent=ms&&!MS.metrics?"…":String(sc.tot);$("ezScoreHead").textContent="配信の準備度（目安）："+head;
+  const wait0=ms&&!MS.metrics,g=$("ezGauge");g.style.setProperty("--v",String(sc.tot));g.style.setProperty("--c",wait0?"#5a6080":sc.tot>=80?"#4fe3a6":sc.tot>=65?"#ffc857":"#ff6b7d");
+  const wait=ms&&!MS.metrics;$("ezRank").textContent=wait?"":sc.tot>=90?"RANK S":sc.tot>=80?"RANK A":sc.tot>=65?"RANK B":"RANK C";
+  if(wait){$("ezScore").textContent="…";EZ.sc=null;}else ezCount(sc.tot);$("ezScoreHead").textContent="配信の準備度（目安）："+head;
   $("ezTips").innerHTML=sc.it.map(x=>"<li class='"+x.lv+"'>"+esc(x.t)+"</li>").join("");
 }
 function ezUpdate(){
@@ -7183,6 +7278,7 @@ function ezUpdate(){
   $("ezHold").disabled=!ms;ezRenderScore();ezStatic();
 }
 msHooks.push(t=>{
+  if(t==="planstart"||t==="plan"||t==="planfail"||t==="end")$("ezStage").classList.toggle("magic",t==="planstart");
   if(t==="planstart"){$("ezMagic").hidden=false;$("ezMagicTxt").textContent="魔法をかけています…";ezUpdate();}
   else if(t==="planprog"){$("ezMagicTxt").textContent="魔法をかけています…（"+(MS&&MS.planStep||"")+"）";}
   else if(t==="plan"||t==="planfail"||t==="end"){$("ezMagic").hidden=true;ezUpdate();}
@@ -7200,8 +7296,8 @@ const EZ_NB=64,EZ_F0=30,EZ_F1=18000,ezF=i=>EZ_F0*Math.pow(EZ_F1/EZ_F0,i/EZ_NB),e
 function ezCurveAt(curve,f){if(!curve||!curve.length)return NaN;let j=0;while(j<curve.length-1&&curve[j+1].f<f)j++;const a=curve[j],b=curve[Math.min(curve.length-1,j+1)];
   if(!(b.f>a.f))return a.db;const r=Math.max(0,Math.min(1,Math.log(f/a.f)/Math.log(b.f/a.f)));return a.db+(b.db-a.db)*r;}
 function drawEzFft(live){
-  const W=ezW(),H=150,g=fitCanvas($("cvEzFft"),W,H),nb=EZ_NB,bw=W/nb;
-  g.fillStyle="#090b14";g.fillRect(0,0,W,H);
+  const W=ezW(),H=170,g=fitCanvas($("cvEzFft"),W,H),nb=EZ_NB,bw=W/nb;
+  g.clearRect(0,0,W,H);
   g.strokeStyle="rgba(255,255,255,.06)";g.lineWidth=1;g.font="10px sans-serif";g.fillStyle="#7f86a3";
   const X=f=>Math.log(f/EZ_F0)/Math.log(EZ_F1/EZ_F0)*W;
   for(const [f,t] of [[50,"50"],[100,"100"],[300,"300"],[1000,"1k"],[3000,"3k"],[10000,"10k"]]){g.beginPath();g.moveTo(X(f),0);g.lineTo(X(f),H);g.stroke();g.fillText(t,X(f)+3,H-4);}
@@ -7223,10 +7319,15 @@ function drawEzFft(live){
     const cur=EZ.lv[i],tg=lv[i];EZ.lv[i]=tg>cur?cur+(tg-cur)*0.6:cur+(tg-cur)*(live?0.25:1);
     EZ.pk[i]=Math.max(EZ.lv[i],EZ.pk[i]-(live?0.006:1));
     const v=EZ.lv[i],h=v*(H-18),x=i*bw+1,hue=ezHue(i);
-    const gr=g.createLinearGradient(0,H-h,0,H);gr.addColorStop(0,"hsla("+hue+",95%,70%,.95)");gr.addColorStop(1,"hsla("+hue+",90%,40%,.35)");
-    g.fillStyle=gr;g.fillRect(x,H-h,Math.max(1,bw-2),h);
-    if(live){g.fillStyle="hsla("+hue+",100%,85%,.9)";g.fillRect(x,H-EZ.pk[i]*(H-18)-2,Math.max(1,bw-2),2);}
+    const gr=g.createLinearGradient(0,H-h,0,H);gr.addColorStop(0,"hsla("+hue+",100%,72%,.98)");gr.addColorStop(1,"hsla("+hue+",95%,45%,.18)");
+    g.fillStyle=gr;const w=Math.max(1,bw-2),r=Math.min(3,w/2,h);g.beginPath();g.moveTo(x,H);g.lineTo(x,H-h+r);g.quadraticCurveTo(x,H-h,x+r,H-h);g.lineTo(x+w-r,H-h);g.quadraticCurveTo(x+w,H-h,x+w,H-h+r);g.lineTo(x+w,H);g.closePath();g.fill();
+    if(live){g.fillStyle="hsla("+hue+",100%,88%,.95)";g.fillRect(x,H-EZ.pk[i]*(H-18)-2,w,2);}
   }
+  // 上端をなめらかな光る線でつなぐ
+  {const lg=g.createLinearGradient(0,0,W,0);lg.addColorStop(0,"#ff6ad5");lg.addColorStop(0.5,"#6e9bff");lg.addColorStop(1,"#5dffb0");g.save();g.strokeStyle=lg;g.lineWidth=2;g.shadowColor="rgba(140,170,255,.9)";g.shadowBlur=12;g.beginPath();
+    for(let i=0;i<nb;i++){const xx=(i+0.5)*bw,yy=H-EZ.lv[i]*(H-18);if(!i)g.moveTo(xx,yy);else{const px=(i-0.5)*bw,py=H-EZ.lv[i-1]*(H-18);g.quadraticCurveTo(px,py,(px+xx)/2,(py+yy)/2);}}g.stroke();g.restore();}
+  if(live){let m=0;for(let i=0;i<nb;i++)m+=EZ.lv[i];EZ.glow=(EZ.glow||0)*0.7+Math.min(1,Math.max(0,(m/nb-0.25)*2.2))*0.3;$("ezStage").style.setProperty("--lv",EZ.glow.toFixed(3));}
+  else $("ezStage").style.setProperty("--lv","0");
   // 比べる線（段階 3 で「仕上げる前」の形を重ねる）
   if(EZ.ghost&&!live){g.strokeStyle="rgba(255,255,255,.55)";g.setLineDash([4,3]);g.lineWidth=1.4;g.beginPath();
     for(let i=0;i<nb;i++){const y=H-EZ.ghost[i]*(H-18),x=(i+0.5)*bw;i?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();g.setLineDash([]);}
@@ -7248,7 +7349,7 @@ function drawEzPos(pos){
   const W=ezW(),d=ezDur(),x=d>0?Math.max(0,Math.min(1,pos/d))*W:0;ezBase();
   const g=fitCanvas($("cvEzGram"),W,130);g.drawImage(EZ.gram,0,0,W,130);
   g.fillStyle="rgba(0,0,0,.25)";g.fillRect(0,0,x,130);
-  g.fillStyle="rgba(255,255,255,.9)";g.fillRect(x-1,0,2,130);g.fillStyle="rgba(255,255,255,.18)";g.fillRect(x-5,0,10,130);
+  g.save();g.shadowColor="#8fd0ff";g.shadowBlur=14;g.fillStyle="#fff";g.fillRect(x-1,0,2,130);g.restore();
   g.font="10px sans-serif";g.fillStyle="#c9cfe6";for(const [f,t] of [[100,"100"],[1000,"1k"],[10000,"10k"]]){const gr=current&&current.specgram?sgDefault(current):null;if(!gr)break;const y=yOfF(f,gr,130);if(y>10&&y<126)g.fillText(t,4,y+3);}
   const w=fitCanvas($("cvEzWave"),W,56);w.drawImage(EZ.wave,0,0,W,56);
   if(x>0)w.drawImage(EZ.waveOn,0,0,Math.round(x*(window.devicePixelRatio||1)),EZ.waveOn.height,0,0,x,56);
@@ -7270,7 +7371,7 @@ $("outMeq").onclick=()=>{
   const a=+$("meqAmt").value/100;applySosEdit("マッチ EQ "+Math.round(a*100)+"%",fs=>meqFit.bands.map(b=>rbjBiquad(b.type,b.f,b.Q,b.g*a,fs)));
 };
 $("outFlt").onclick=()=>{
-  const st=fltStages();if(!st.length){edMsg("9. のフィルタ（IIR）で有効な段がありません",true);return;}
+  const st=fltStages();if(!st.length){edMsg("ツール（音響・振動解析）のフィルタ（IIR）で有効な段がありません",true);return;}
   applySosEdit("フィルタ "+st.length+" 段",fs=>st.map(s=>rbjBiquad(s.type,s.f,s.Q,s.g,fs)));
 };
 
@@ -7525,7 +7626,7 @@ $("tbRef").onchange=e=>{refId=e.target.value?+e.target.value:null;refresh();};
 // タブ録音の音声は保存しない方針：以前の版でブラウザ内に保存された音声を削除し、数値だけ残す
 {const l=loadSaved();let changed=false;for(const x of l)if(x.source==="tab"&&x.hasAudio){idb.del(x.id).catch(()=>{});x.hasAudio=false;changed=true;}if(changed)storeSaved(l);}
 renderSaved(loadSaved());updateNav();updateButtons();
-// 9. 音響・振動解析
+// ツール：音響・振動解析
 updateCalState();buildFltRows();
 $("calFs").onchange=e=>{const v=parseFloat(e.target.value);if(Number.isFinite(v))setCal(v,true);};
 $("calFromSel").onclick=()=>{
@@ -7598,7 +7699,7 @@ $("cvDynMap").addEventListener("mousemove",e=>{
 $("cdcRun").onclick=runCodec;
 $("cdcAuto").checked=pref.get("tabAnalyzerCdcAuto","1")==="1";
 $("cdcAuto").onchange=e=>pref.set("tabAnalyzerCdcAuto",e.target.checked?"1":"0");
-// 9. 音響・振動解析（測定・工業向け）は既定で隠す
+// ツール：音響・振動解析（測定・工業向け）は既定で隠す
 $("cdcListen").onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v)setVariant(v);};
 renderTargetSel();initCodecs().then(updateButtons);
 
