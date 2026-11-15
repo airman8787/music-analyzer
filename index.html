@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wD5R7wC1ojJ/Wbk3NFZVOnuKrNJueJ5Dsli+8Cx62JQ=' 'sha256-8puuof0nuw2DmlGR81c9UTYGbCrVWU4WO6kp8KdQTiA=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wD5R7wC1ojJ/Wbk3NFZVOnuKrNJueJ5Dsli+8Cx62JQ=' 'sha256-HzIV5j2HXF0aY0qTyOyjeZnjRg6u6PEjbvFgCwnoXLI=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ — マスタリングスタジオ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -6847,6 +6847,14 @@ function msSettingsFromPlan(P0,eqBands,lin){
     lim:P0.lim?Object.assign({on:true},P0.lim,{opt:Object.assign({},P0.lim.opt)}):{on:false,gain:0,ceil:-1,opt:{la:4,hold:20,relMin:30,relMax:150}},
     post:P0.post||0,knobs:{low:0,high:0,width:0,drive:0},stage:{low:0,body:0,vox:0,air:0,wide:0}};
 }
+// サウンドステージの値（dB）を EQ にする。groups：{st:[],m:[],s:[]} に追加する
+function ssBiquads(G,st2,fs,lin,groups){
+  const eqG=(type,g)=>lin&&!/pass$/.test(type)?g/2:g,mid=st2?"m":"st";
+  if(G.low)groups[mid].push(rbjBiquad("peaking",70,0.8,eqG("peaking",G.low),fs));
+  if(G.body)groups.st.push(rbjBiquad("peaking",250,0.9,eqG("peaking",G.body),fs));
+  if(G.vox){groups[mid].push(rbjBiquad("peaking",2500,0.8,eqG("peaking",G.vox),fs));if(st2)groups.s.push(rbjBiquad("peaking",2500,0.8,eqG("peaking",-G.vox/3),fs));}
+  if(G.air)groups.st.push(rbjBiquad("highshelf",9000,0.7,eqG("highshelf",G.air),fs));
+}
 function msCompile(S,fs){
   const lin=!!S.lin,eqG=(type,g)=>lin&&!/pass$/.test(type)?g/2:g,groups={st:[],m:[],s:[]};
   for(const b of S.eqBands)if(b.on!==false&&b.f>0)groups[b.t||"st"].push(rbjBiquad(b.type,b.f,b.Q,eqG(b.type,b.g),fs));
@@ -6855,11 +6863,7 @@ function msCompile(S,fs){
   if(K.low)groups.st.push(rbjBiquad("lowshelf",100,0.7,eqG("lowshelf",K.low),fs));
   if(K.high)groups.st.push(rbjBiquad("highshelf",8000,0.7,eqG("highshelf",K.high),fs));
   // サウンドステージ：低音とボーカル帯は中央の成分（ミッド）を動かす。ボーカル帯は、同じ高さの左右の成分を 1/3 だけ逆に動かして、中央を際立たせる
-  const G=S.stage||{},st2=!!(MS&&MS.src.chs.length===2),mid=st2?"m":"st";
-  if(G.low)groups[mid].push(rbjBiquad("peaking",70,0.8,eqG("peaking",G.low),fs));
-  if(G.body)groups.st.push(rbjBiquad("peaking",250,0.9,eqG("peaking",G.body),fs));
-  if(G.vox){groups[mid].push(rbjBiquad("peaking",2500,0.8,eqG("peaking",G.vox),fs));if(st2)groups.s.push(rbjBiquad("peaking",2500,0.8,eqG("peaking",-G.vox/3),fs));}
-  if(G.air)groups.st.push(rbjBiquad("highshelf",9000,0.7,eqG("highshelf",G.air),fs));
+  const G=S.stage||{},st2=!!(MS&&MS.src.chs.length===2);ssBiquads(G,st2,fs,lin,groups);
   const side=Math.round(((S.side||0)+(K.width||0)+(G.wide||0))*10)/10,c=S.comp,l=S.lim;
   return {declip:S.declip||null,sos:S.hp?[rbjBiquad("highpass",20,0.707,0,fs)]:[],eq:["st","m","s"].map(t=>({target:t,sos:groups[t]})).filter(g=>g.sos.length),eqZero:lin,
     side:side&&MS&&MS.src.chs.length===2?{db:side}:null,bassMono:S.bassMono?{f:S.bassMono}:null,deharsh:S.deharsh||null,
@@ -6907,6 +6911,10 @@ async function msPlan(opt){
   // 直流（DC）を除いた音の大きさ（RMS）が −70 dBFS 未満なら、仕上げられる音が無い（無音・直流だけのファイルなど。ラウドネスは低域フィルタの立ち上がりで値が出てしまうことがある）
   {let e=0,n=0;for(const c of MS.src.chs){let mu=0;for(let i=0;i<c.length;i++)mu+=c[i];mu/=Math.max(1,c.length);for(let i=0;i<c.length;i++){const v=c[i]-mu;e+=v*v;}n+=c.length;}
    if(!(e/Math.max(1,n)>1e-7)){const t="処理できませんでした: 音がほとんどありません（無音か、直流（DC）成分だけの音です）";edMsg(t,true);msMsg(t,true);return null;}}
+  // サウンドステージ：手で動かしてあればその値を、なければ「EQ をかけてもまだ目安の範囲から外れる帯域を、範囲の端まで寄せる」値を使う
+  const st2=MS.src.chs.length===2,prevS=MS.S,userStage=prevS&&prevS.stage&&prevS.stageAuto===false?prevS.stage:null,T0=usedT||genreTarget(key);
+  const stage=userStage?Object.assign({},userStage):ssAuto(m,T0,o,fs);stage.wide=prevS&&prevS.stage?prevS.stage.wide||0:0;
+  {const gr={st:[],m:[],s:[]};ssBiquads(stage,st2,fs,lin,gr);for(const t of ["st","m","s"]){if(!gr[t].length)continue;const e=o.eq.find(x=>x.target===t);if(e)e.sos=e.sos.concat(gr[t]);else o.eq.push({target:t,sos:gr[t]});}}
   msPlanCancel();const tok=++msPlanTok,ms=MS,chs=MS.src.chs.map(c=>c.slice()),segs=opt.noRough?null:msRoughSegs(m,fs,MS.len);
   $("msOut").hidden=true;edMsg("おまかせマスタリング…");ms.planning=true;ms.planStep="";msEmit("planstart");
   const w=new Worker(URL.createObjectURL(new Blob([$("dsp").textContent,PLAN_WORKER],{type:"text/javascript"})));msPlanW=w;
@@ -6915,7 +6923,7 @@ async function msPlan(opt){
   const apply=(info,rough)=>{
     const knobs=gotFirst&&ms.S?ms.S.knobs:null; // 先に鳴らしている間に動かしたつまみは、差し替えの後も残す
     ms.plan={key,name:P.name,info,eqBands,notes,T:usedT||genreTarget(key),lin,ref};ms.planLufs=info.lim?info.lim.lufs:NaN;
-    const stage=ms.S&&ms.S.stage;ms.S=msSettingsFromPlan(info.P,eqBands,lin);if(knobs)ms.S.knobs=knobs;if(stage)ms.S.stage=stage;ms.P0=info.P;ms.rough=rough;if(!gotFirst)ms.wet=true;
+    ms.S=msSettingsFromPlan(info.P,eqBands,lin);if(knobs)ms.S.knobs=knobs;ms.S.stage=Object.assign({},stage);ms.S.stageAuto=!userStage;ms.P0=info.P;ms.rough=rough;if(!gotFirst)ms.wet=true;
     msSetP(msCompile(ms.S,fs));msUpdateDry();
     if(!gotFirst){gotFirst=true;const wasPos=player&&player.side==="A"?playPosNow():null;
       if(opt.play||wasPos!=null){if(player)stopPlay();playFrom(wasPos!=null?wasPos:lastPos,"A");}first(true);}
@@ -7247,23 +7255,37 @@ new ResizeObserver(rkTbh).observe($("topbar"));
    ボーカル帯（1〜4 kHz）・きらめき（8 kHz 以上）と、左右の広がり。
    左右＝その帯域の左右の音量差、前後＝ジャンルの目安と比べた強さ（目安より強いほど手前）、玉の横幅＝左右への広がり。
    動かすと、マスタリングの EQ（低音・ボーカル帯は中央の成分）とサイドの音量が変わる。リミッターの手前に入るので音割れしない */
-const SS={an:null,key:"",views:[],hover:-1,drag:null,p:[0,0,0,0,0]};
+const SS={an:null,key:"",views:[],hover:-1,drag:null,p:[0,0,0,0,0],delta:[0,0,0,0]};
 const SS_Z=[{k:"low",n:"低音",s:"キック・ベース",ic:"🥁",f0:40,f1:120,col:"#6fd6ff"},{k:"body",n:"厚み",s:"中低音",ic:"🎸",f0:150,f1:400,col:"#ffc857"},
   {k:"vox",n:"ボーカル帯",s:"歌・主旋律",ic:"🎤",f0:1000,f1:4000,col:"#ff6ad5"},{k:"air",n:"きらめき",s:"高音",ic:"✨",f0:8000,f1:16000,col:"#6dffb0"}];
 const SS_WIDE={k:"wide",n:"広がり",col:"#b18cff"};
+const ssTarget=()=>{if(MS&&MS.plan&&MS.plan.T)return MS.plan.T;const R=msRefObj();return R?singleTarget(R,"リファレンス："+R.name):genreTarget($("msPreset").value);};
+// 帯域ごとの「目安との差」と、目安の許容範囲（上・下）。1/6 オクターブの値を帯域の中で平均
+function ssDev(m,T){const cmp=T?compareTonal(m,T):null;return SS_Z.map(z=>{if(!cmp)return {dev:NaN,up:3,lo:3};let d=0,u=0,l=0,c=0;
+  for(let j=0;j<TB_N;j++)if(TB_F[j]>=z.f0&&TB_F[j]<z.f1&&Number.isFinite(cmp.dev[j])){d+=cmp.dev[j];u+=T.hi[j]-T.med[j];l+=T.med[j]-T.lo[j];c++;}return c?{dev:d/c,up:u/c,lo:l/c}:{dev:NaN,up:3,lo:3};});}
+// EQ（HP・左右・ミッド）による、帯域ごとの平均の変化（dB）。音色の比較と同じ基準（100 Hz〜4 kHz の平均の変化を 0 とする）で表す
+function ssEqDelta(sos,eq,zero,fs){const all=(sos||[]).concat(...(eq||[]).filter(g=>g.target!=="s").map(g=>g.sos));if(!all.length)return [0,0,0,0];
+  const k=zero?2:1,H=f=>20*Math.log10(sosResp(all,f,fs))*k;let nm=0,nc=0;for(let j=0;j<TB_N;j++)if(TB_F[j]>=100&&TB_F[j]<=4000){nm+=H(TB_F[j]);nc++;}nm/=Math.max(1,nc);
+  return SS_Z.map(z=>{let d=0,c=0;for(let q=0;q<12;q++){const f=z.f0*Math.pow(z.f1/z.f0,(q+0.5)/12);if(f>fs*0.49)break;d+=H(f);c++;}return c?d/c-nm:0;});}
+// おまかせ：EQ をかけた後の予測で、まだ目安の範囲の外にいる帯域を、範囲の端まで寄せる（±4 dB まで）。
+// ステージの EQ 自身も他の帯域と基準を少し動かすので、予測し直しながら 5 回くり返す
+function ssAuto(m,T,o,fs){const D=ssDev(m,T),out={low:0,body:0,vox:0,air:0,wide:0},st2=m.layout.length===2;
+  for(let it=0;it<5;it++){const gr={st:[],m:[],s:[]};ssBiquads(out,st2,fs,!!o.eqZero,gr);
+    const eq=(o.eq||[]).concat(["st","m"].filter(t=>gr[t].length).map(t=>({target:t,sos:gr[t]}))),dl=ssEqDelta(o.sos,eq,o.eqZero,fs);
+    SS_Z.forEach((z,i)=>{const d=D[i];if(!Number.isFinite(d.dev))return;const r=d.dev+dl[i],adj=r>d.up?-(r-d.up):r<-d.lo?-(r+d.lo):0;out[z.k]=Math.max(-4,Math.min(4,out[z.k]+adj));});}
+  for(const z of SS_Z)out[z.k]=Math.round(out[z.k]*2)/2||0;return out;}
 const ssVals=()=>MS&&MS.S&&MS.S.stage||{low:0,body:0,vox:0,air:0,wide:0};
 const ssSrc=()=>MS?{chs:MS.src.chs,fs:MS.fs,m:MS.m0}:current&&rawOK()?{chs:lastRaw.chs.map(c=>c.subarray(current.trimStart,current.trimEnd)),fs:lastRaw.fs,m:current}:null;
 // 帯域ごとの左右の位置と広がり（曲全体から均等に取った最大 80 コマの FFT）
 function ssAnalyze(){
-  const S=ssSrc();if(!S)return null;const key=S.m.label+"/"+S.chs[0].length+"/"+S.fs+"/"+$("msPreset").value;if(SS.an&&SS.key===key)return SS.an;
+  const S=ssSrc();if(!S)return null;const key=S.m.label+"/"+S.chs[0].length+"/"+S.fs+"/"+ssTarget().name;if(SS.an&&SS.key===key)return SS.an;
   const N=4096,n=S.chs[0].length,L=S.chs[0],R=S.chs.length>1?S.chs[1]:S.chs[0],w=hannP(N),nf=Math.max(1,Math.min(80,Math.floor(n/N))),bh=S.fs/N;
   const acc=SS_Z.map(()=>({l:0,r:0,m:0,s:0}));let tm=0,ts=0;const lr=new Float64Array(N),li=new Float64Array(N),rr=new Float64Array(N),ri=new Float64Array(N);
   for(let f=0;f<nf;f++){const a=Math.floor((n-N)*(nf>1?f/(nf-1):0));for(let i=0;i<N;i++){lr[i]=L[a+i]*w[i];li[i]=0;rr[i]=R[a+i]*w[i];ri[i]=0;}fft(lr,li);fft(rr,ri);
     for(let k=2;k<N/2;k++){const fr=k*bh,pl=lr[k]*lr[k]+li[k]*li[k],pr=rr[k]*rr[k]+ri[k]*ri[k],mr=(lr[k]+rr[k])*0.5,mi=(li[k]+ri[k])*0.5,sr=(lr[k]-rr[k])*0.5,si=(li[k]-ri[k])*0.5,pm=mr*mr+mi*mi,ps=sr*sr+si*si;
       if(fr>=200){tm+=pm;ts+=ps;}for(let z=0;z<SS_Z.length;z++)if(fr>=SS_Z[z].f0&&fr<SS_Z[z].f1){const A=acc[z];A.l+=pl;A.r+=pr;A.m+=pm;A.s+=ps;}}}
-  // 前後：ジャンルの目安（1/6 オクターブ）との差を、帯域の中で平均
-  const cmp=compareTonal(S.m,genreTarget($("msPreset").value)),dev=SS_Z.map(z=>{if(!cmp)return 0;let d=0,c=0;for(let j=0;j<TB_N;j++)if(TB_F[j]>=z.f0&&TB_F[j]<z.f1&&Number.isFinite(cmp.dev[j])){d+=cmp.dev[j];c++;}return c?d/c:NaN;});
-  SS.key=key;SS.an={stereo:S.chs.length===2,zones:acc.map((A,i)=>({pan:(A.r-A.l)/(A.r+A.l+1e-30),width:Math.min(1,Math.sqrt(A.s/(A.m+1e-30))),dev:dev[i],none:!Number.isFinite(dev[i])||A.l+A.r<1e-12})),sm:10*Math.log10((ts+1e-30)/(tm+1e-30))};
+  const T=ssTarget(),D=ssDev(S.m,T);
+  SS.key=key;SS.an={stereo:S.chs.length===2,zones:acc.map((A,i)=>({pan:(A.r-A.l)/(A.r+A.l+1e-30),width:Math.min(1,Math.sqrt(A.s/(A.m+1e-30))),dev:D[i].dev,up:D[i].up,lo:D[i].lo,none:!Number.isFinite(D[i].dev)||A.l+A.r<1e-12})),sm:10*Math.log10((ts+1e-30)/(tm+1e-30))};
   return SS.an;
 }
 // セッションが無ければ、音割れしないようにリミッター（ゲイン 0 dB・上限 −1 dBTP）だけを入れた設定で始める
@@ -7276,22 +7298,25 @@ async function ssEnsure(){
 let ssAT=0;
 function ssSet(k,v,final){
   if(!MS||!MS.S)return;const lim=k==="wide"?4:6;v=Math.round(Math.max(-lim,Math.min(lim,v))*2)/2||0;if(!MS.S.stage)MS.S.stage={low:0,body:0,vox:0,air:0,wide:0};
-  if(MS.S.stage[k]===v&&!final){stgDraw();return;}MS.S.stage[k]=v;clearTimeout(ssAT);ssAT=setTimeout(()=>{msApplyS();if(final&&typeof rkPush==="function")rkPush();},final?0:45);stgUi();
+  if(MS.S.stage[k]===v&&!final){stgDraw();return;}MS.S.stage[k]=v;MS.S.stageAuto=false;clearTimeout(ssAT);ssAT=setTimeout(()=>{msApplyS();if(final&&typeof rkPush==="function")rkPush();},final?0:45);stgUi();
 }
 const ssTxt=(z,v)=>z.ic+" "+z.n+" "+(v>0?"+":v<0?"−":"±")+Math.abs(v).toFixed(1)+" dB";
 function stgUi(){
   const an=current?ssAnalyze():null,V=ssVals();
+  // EQ 全体（おまかせ・つまみ・ラックの EQ・ステージ）による変化の予測。玉の位置＝元の音の位置 ＋ この変化
+  SS.delta=[0,0,0,0];if(MS&&MS.S){const P=msCompile(MS.S,MS.fs);SS.delta=ssEqDelta(P.sos,P.eq,P.eqZero,MS.fs);}
   for(const v of SS.views){const q=s=>v.root.querySelector(s);q(".stgBody").hidden=!an;if(!an)continue;
     q("[data-info]").textContent=SS_Z.map(z=>ssTxt(z,V[z.k])).join("　")+(an.stereo?"　↔ 広がり "+(V.wide>0?"+":V.wide<0?"−":"±")+Math.abs(V.wide).toFixed(1)+" dB":"");
-    const tips=[],lv=i=>an.zones[i].dev+V[SS_Z[i].k],Z=an.zones;
-    if(!Z[2].none&&lv(2)<-1.5)tips.push("🎤 ボーカル帯が奥にいます（目安より "+f1(-lv(2))+" dB 弱い）。歌が埋もれて聞こえるなら「ボーカルを前に」");
-    if(!Z[0].none&&lv(0)<-2)tips.push("🥁 低音が奥にいます（目安より "+f1(-lv(0))+" dB 弱い）。キックやベースが物足りないなら「低音をはっきり」");
-    if(!Z[1].none&&lv(1)>2)tips.push("🎸 厚みが前に出すぎています（目安より "+f1(lv(1))+" dB 強い）。こもって聞こえるなら「こもりを取る」");
+    const tips=[],lv=i=>an.zones[i].dev+SS.delta[i],Z=an.zones;
+    if(MS&&MS.S&&MS.S.stageAuto&&MS.plan){const mv=SS_Z.filter(z=>V[z.k]);tips.push(mv.length?"✨ おまかせで、EQ をかけても目安の範囲から外れていた帯域（"+mv.map(z=>z.n).join("・")+"）を、範囲の端まで寄せました":"✨ おまかせの EQ だけで、どの帯域も目安の範囲に入りました");}
+    if(!Z[2].none&&lv(2)<-Z[2].lo-0.25)tips.push("🎤 ボーカル帯が奥にいます（目安より "+f1(-lv(2))+" dB 弱い）。歌が埋もれて聞こえるなら「ボーカルを前に」");
+    if(!Z[0].none&&lv(0)<-Z[0].lo-0.25)tips.push("🥁 低音が奥にいます（目安より "+f1(-lv(0))+" dB 弱い）。キックやベースが物足りないなら「低音をはっきり」");
+    if(!Z[1].none&&lv(1)>Z[1].up+0.25)tips.push("🎸 厚みが前に出すぎています（目安より "+f1(lv(1))+" dB 強い）。こもって聞こえるなら「こもりを取る」");
     const tp=q("[data-tip]");tp.hidden=!tips.length;tp.textContent=tips.join("　／　");}
   stgDraw();
 }
 function stgGeom(W,H){return {yB:50,yF:H-62,cx:W/2,half:W/2-46};}
-function ssPos(i,G,an,V,orig){const z=an.zones[i],d=Math.max(0,Math.min(1,0.5+(z.dev+(orig?0:V[SS_Z[i].k]))/14)),sc=0.5+0.5*d;return {x:G.cx+Math.max(-1,Math.min(1,z.pan*2.5))*G.half*sc,y:G.yB+d*(G.yF-G.yB),d,sc,r:14+20*d};}
+function ssPos(i,G,an,V,orig){const z=an.zones[i],d=Math.max(0,Math.min(1,0.5+(z.dev+(orig?0:(SS.delta?SS.delta[i]:0)))/14)),sc=0.5+0.5*d;return {x:G.cx+Math.max(-1,Math.min(1,z.pan*2.5))*G.half*sc,y:G.yB+d*(G.yF-G.yB),d,sc,r:14+20*d};}
 function ssWide(G,an,V,orig){const wn=Math.max(0,Math.min(1,(an.sm+(orig?0:V.wide)+22)/22)),y=G.yB+0.5*(G.yF-G.yB);return {dx:(0.22+0.72*wn)*G.half*0.75,y,wn};}
 function stgDraw(){
   const an=SS.an;if(!an||!current)return;const V=ssVals(),playing=!!player&&player.side==="A"&&anMix&&playCtx;
@@ -7306,8 +7331,10 @@ function stgDraw(){
     for(let k=0;k<=8;k++){const d=k/8,y=G.yB+d*(G.yF-G.yB),sc=0.5+0.5*d;g.beginPath();g.moveTo(G.cx-G.half*sc,y);g.lineTo(G.cx+G.half*sc,y);g.stroke();}
     for(let k=-4;k<=4;k++){g.beginPath();g.moveTo(G.cx+k/4*G.half*0.5,G.yB);g.lineTo(G.cx+k/4*G.half,G.yF);g.stroke();}
     // 目安の線（ここが「ジャンルの目安どおり」）
+    {const yc=G.yB+0.5*(G.yF-G.yB),hh=3/14*(G.yF-G.yB),gz=g.createLinearGradient(0,yc-hh,0,yc+hh);gz.addColorStop(0,"rgba(79,227,166,0)");gz.addColorStop(0.5,"rgba(79,227,166,.16)");gz.addColorStop(1,"rgba(79,227,166,0)");
+      g.fillStyle=gz;g.beginPath();g.moveTo(G.cx-G.half*(0.5+0.5*(0.5-3/14)),yc-hh);g.lineTo(G.cx+G.half*(0.5+0.5*(0.5-3/14)),yc-hh);g.lineTo(G.cx+G.half*(0.5+0.5*(0.5+3/14)),yc+hh);g.lineTo(G.cx-G.half*(0.5+0.5*(0.5+3/14)),yc+hh);g.closePath();g.fill();}
     {const y=G.yB+0.5*(G.yF-G.yB);g.strokeStyle="rgba(200,210,255,.45)";g.setLineDash([6,5]);g.beginPath();g.moveTo(G.cx-G.half*0.75,y);g.lineTo(G.cx+G.half*0.75,y);g.stroke();g.setLineDash([]);
-      g.fillStyle="#8f98c4";g.font="10.5px sans-serif";g.textAlign="right";g.fillText("目安",G.cx+G.half*0.75-4,y-4);}
+      g.fillStyle="#8f98c4";g.font="10.5px sans-serif";g.textAlign="right";g.fillText("目安（緑の帯＝ちょうどよい範囲のおおよそ）",G.cx+G.half*0.75-4,y-4);}
     g.fillStyle="#8f98c4";g.font="11px sans-serif";g.textAlign="left";g.fillText("奥（目安より弱い）",8,G.yB-18);g.fillText("手前（目安より強い）",8,G.yF+18);g.fillText("左",G.cx-G.half+2,G.yF+34);g.textAlign="right";g.fillText("右",G.cx+G.half-2,G.yF+34);
     g.textAlign="center";g.font="20px sans-serif";g.fillText("🎧",G.cx,H-12);
     const lab=[];
@@ -7320,7 +7347,7 @@ function stgDraw(){
       lab.push({x:G.cx+Wd.dx,y:Wd.y-30,col:SS_WIDE.col,txt:"広がり"+(V.wide?" "+(V.wide>0?"+":"−")+Math.abs(V.wide).toFixed(1):"")});}
     const order=[0,1,2,3].filter(i=>!an.zones[i].none).sort((a,b)=>ssPos(a,G,an,V).y-ssPos(b,G,an,V).y);
     for(const i of order){const z=SS_Z[i],A=an.zones[i],P=ssPos(i,G,an,V),r=P.r*(1+0.3*SS.p[i]),rx=r*(1+1.2*A.width),sel=SS.hover===i||SS.drag&&SS.drag.i===i,val=V[z.k];
-      if(val){const O=ssPos(i,G,an,V,true);g.strokeStyle=z.col;g.globalAlpha=.5;g.setLineDash([3,4]);g.beginPath();g.moveTo(O.x,O.y);g.lineTo(P.x,P.y);g.stroke();g.beginPath();g.ellipse(O.x,O.y,O.r*(1+1.2*A.width)*0.8,O.r*0.8,0,0,Math.PI*2);g.stroke();g.setLineDash([]);g.globalAlpha=1;}
+      if(val||Math.abs(SS.delta[i])>=0.25){const O=ssPos(i,G,an,V,true);g.strokeStyle=z.col;g.globalAlpha=.5;g.setLineDash([3,4]);g.beginPath();g.moveTo(O.x,O.y);g.lineTo(P.x,P.y);g.stroke();g.beginPath();g.ellipse(O.x,O.y,O.r*(1+1.2*A.width)*0.8,O.r*0.8,0,0,Math.PI*2);g.stroke();g.setLineDash([]);g.globalAlpha=1;}
       g.fillStyle="rgba(0,0,0,.35)";g.beginPath();g.ellipse(P.x,P.y+r*0.9,rx*0.9,r*0.28,0,0,Math.PI*2);g.fill();
       const rg=g.createRadialGradient(P.x-rx*0.25,P.y-r*0.3,r*0.1,P.x,P.y,Math.max(rx,r));rg.addColorStop(0,"#fff");rg.addColorStop(0.25,z.col);rg.addColorStop(1,z.col+"22");
       g.save();g.shadowColor=z.col;g.shadowBlur=14+28*SS.p[i];g.globalAlpha=0.6+0.35*P.d;g.fillStyle=rg;g.beginPath();g.ellipse(P.x,P.y,rx,r,0,0,Math.PI*2);g.fill();g.restore();
@@ -7338,13 +7365,14 @@ function stgMount(root){
   root.innerHTML="<div class='stgBody' hidden><canvas class='stgCv'></canvas>"
     +"<div class='row stgBtns'><button data-a='vox'>🎤 ボーカルを前に</button><button data-a='low'>🔊 低音をはっきり</button><button data-a='mud'>🌫 こもりを取る</button><button data-a='air'>✨ きらめきを足す</button><button data-a='reset'>↺ 元の位置に戻す</button></div>"
     +"<div class='stgTip' data-tip hidden></div><div class='sub' data-info style='margin-top:4px'></div>"
-    +"<div class='legend'>玉は<b>楽器ではなく帯域</b>です：低音（40〜120 Hz）・厚み（150〜400 Hz）・ボーカル帯（1〜4 kHz）・きらめき（8 kHz 以上）。左右の位置＝その帯域の左右の音量差、前後＝ジャンルの目安と比べた強さ、玉の横幅＝左右への広がり。"
+    +"<div class='legend'>玉は<b>楽器ではなく帯域</b>です：低音（40〜120 Hz）・厚み（150〜400 Hz）・ボーカル帯（1〜4 kHz）・きらめき（8 kHz 以上）。左右の位置＝その帯域の左右の音量差、前後＝ジャンルの目安と比べた強さ、玉の横幅＝左右への広がり。点線の丸は元の音の位置で、おまかせ・つまみ・EQ の分も玉の位置に入ります。"
+    +"<b>おまかせ</b>は、EQ をかけてもまだ目安の範囲から外れている帯域を、範囲の端まで自動で寄せます（手で動かした後は、その値を優先します）。"
     +"玉を上下にドラッグ＝前後（±6 dB）、紫の ◀ ▶ を左右にドラッグ＝広がり（±4 dB）、ダブルクリック＝元に戻す。動かすとすぐ音が変わります。"
     +"同じ帯域にいる他の楽器も一緒に動きます（たとえばボーカル帯を前に出すと、ギターやスネアの同じ高さの音も前に出ます）。左右の位置そのものは動かせません。</div></div>";
   const v={root,cv:root.querySelector("canvas"),W:300,H:300};SS.views.push(v);const cv=v.cv;
   root.addEventListener("click",async e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a)return;e.target.blur();if(!(await ssEnsure()))return;const V=ssVals();
     if(a==="vox")ssSet("vox",V.vox+4,true);else if(a==="low"){ssSet("low",V.low+3,true);}else if(a==="mud")ssSet("body",V.body-3,true);else if(a==="air")ssSet("air",V.air+3,true);
-    else if(a==="reset"){MS.S.stage={low:0,body:0,vox:0,air:0,wide:0};msApplyS();if(typeof rkPush==="function")rkPush();stgUi();}
+    else if(a==="reset"){MS.S.stage={low:0,body:0,vox:0,air:0,wide:0};MS.S.stageAuto=false;msApplyS();if(typeof rkPush==="function")rkPush();stgUi();}
     if(!player)playFrom(lastPos,"A");});
   cv.addEventListener("pointerdown",async e=>{const i=ssHit(v,e);if(i<0)return;e.preventDefault();cv.setPointerCapture(e.pointerId);const d={i,x:e.clientX,y:e.clientY,moved:false,ready:false};SS.drag=d;stgDraw();
     if(await ssEnsure()){const V=ssVals();d.v0=i===4?V.wide:V[SS_Z[i].k];d.ready=true;}else if(SS.drag===d)SS.drag=null;});
