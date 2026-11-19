@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wD5R7wC1ojJ/Wbk3NFZVOnuKrNJueJ5Dsli+8Cx62JQ=' 'sha256-HzIV5j2HXF0aY0qTyOyjeZnjRg6u6PEjbvFgCwnoXLI=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-zzvXgO6WA+pWwwRMkbp62t0dnE3lP5aVoTgKdEvo+pg=' 'sha256-IMJEdGJXLNYO67uCqjok67ot5bapBavuR2aAEBZqqMw=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ — マスタリングスタジオ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -37,6 +37,7 @@ button.rec{background:#7a2530;border-color:#a8384a}
 #songTable .role{display:inline-block;font-size:11px;font-weight:600;padding:0 6px;border-radius:4px;margin-right:6px}
 #songTable .role.a{background:#2c4a86;color:#fff}#songTable .role.b{background:#5b3a86;color:#fff}
 #songTable button{padding:3px 9px;font-size:12.5px}
+@media (max-width:640px){#songTable button{padding:7px 12px;font-size:13px}#segTable button{padding:7px 12px;font-size:13px}}
 .albumBox{margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2)}.albumBox>summary{cursor:pointer;font-size:13.5px}
 #albumTable td,#albumTable th{white-space:nowrap}
 .delivT td,.delivT th{text-align:left;vertical-align:top}.delivT td.j{white-space:nowrap;font-weight:600}.delivT .ok{color:var(--ok)}.delivT .warn{color:var(--warn)}.delivT .bad{color:var(--bad)}.delivT .info{color:var(--acc)}
@@ -365,7 +366,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
 </dialog>
 <header>
   <div class="heroTitle" aria-hidden="true">曲を入れるだけで、<span>音が良くなる。</span></div>
-  <div class="sub" id="tagline">ジャンルを選ぶだけの「かんたん」と、EQ・コンプ・リミッターを自分で追い込める「プロ」。聴きながら仕上げて、そのまま書き出せます。<br>🔒 音声はこの PC の中だけで処理され、外部には送信されません</div>
+  <div class="sub" id="tagline">ジャンルを選ぶだけの「かんたん」と、EQ・コンプ・リミッターを自分で追い込める「プロ」。聴きながら仕上げて、そのまま書き出せます。<br>🔒 音声はこの端末の中だけで処理され、外部には送信されません</div>
 </header>
 <main>
 <section class="panel" data-nav="読込">
@@ -401,7 +402,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
     </details>
     <div class="sub" style="margin-top:6px"><b>A で表示</b>：2.〜8. に詳しい結果を出し、編集もできる曲（1 曲）。<b>B で比べる</b>：A と聴き比べる曲（上のバーの A / B か <kbd>X</kbd> キーで切り替え）。曲名をクリックしても A で表示します。</div>
   </div>
-  <div class="sub" style="margin-top:8px">🔒 読み込んだ自分の楽曲ファイルはこのPC内だけで処理され、外部には送信されません。</div>
+  <div class="sub" style="margin-top:8px">🔒 読み込んだ自分の楽曲ファイルはこの端末内だけで処理され、外部には送信されません。</div>
   <div id="quick" class="note" style="margin-top:10px"><b>はじめかた</b>
     <ol>
       <li><b>曲ファイル</b>を上の枠にドロップ（複数まとめて OK。1 曲目が表示され、残りも自動で解析されて曲リストに並びます）</li>
@@ -514,7 +515,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
   <section class="panel adv" data-nav="概要"><h2>2. 概要</h2><div id="cards"></div>
     <h3>配信サービスでの再生音量（目安）</h3>
     <div id="platNote" class="note warn" hidden></div>
-    <table id="platTable"></table>
+    <div class="songWrap"><table id="platTable"></table></div>
     <h3>配信コーデックを通した音の確認<span class="pill new">試聴できます</span></h3>
     <div class="row" style="gap:8px"><label class="sub">コーデック<select id="cdcSel"></select></label><button id="cdcRun" class="primary">変換して比較</button><label class="sub"><input type="checkbox" id="cdcAuto"> 曲を読み込んだら自動で確認</label><span id="cdcStatus" class="sub"></span></div>
     <div class="sub" style="margin:4px 0 6px">マスター音源（WAV / FLAC）を配信で使われる圧縮コーデックで変換・復元し、ピークの増え方と、変換で変わる音を聴いて確かめます。ブラウザ内蔵の変換器を使うため、各サービスの実際の変換とは同じではありません（傾向の確認用）。</div>
@@ -1089,7 +1090,9 @@ function fineAt(x,j,st){const row=FINE_TAB[st],n=x.length;let y=0;for(let m=0;m<
 //   （強くクリップした広帯域ノイズでは 4 倍 FIR が 2.3 dB 以上低く読むことがあり、以前の 0.75 倍・1.3 倍では最大 0.47 dB 読み落とした）
 // ・各位置ではまず精密補間を 1/4 サンプル刻み（3 点）だけ計算し、その最大に 1/cos(π/8)（4 倍の格子で読み落とせる最大の比）を掛けても
 //   今の最大に届かない位置は、1/16 刻みの計算を省く
-// ・候補数に上限を設けない（以前は 200000 で打ち切っていたため、強く潰した長い曲で読み落としうる）
+// ・候補数に上限を設けない（以前は 200000 で打ち切っていたため、強く潰した長い曲で読み落としうる）。
+//   候補はブロックごとに集めて評価し、その都度捨てる（配列が曲全体分に膨らまないようにするため。
+//   評価順が変わっても、省けるのは「今の最大に 1.6 倍しても届かない候補」だけで、その判定は最大が増えるほど強くなるので結果は同じ）
 // 検証：合成信号 400 通り（ナイキスト付近の正弦波・ホワイトノイズ・クリップしたノイズ・矩形波・インパルス・チャープ、半数はリミッター通過）で、
 // 打ち切りなしの全数計算に対して読み落としなし
 const TP_BOUND=1/Math.cos(Math.PI/8);
@@ -1098,41 +1101,49 @@ function truePeak(x){
   for(let i=0;i<n;i++){const a=Math.abs(x[i]);if(a>sp)sp=a;}
   if(sp===0)return {sp:0,tp:0};
   // 窓内の全サンプルが sp/TP_GAIN 未満なら 4 倍 FIR の値は sp を超えないので計算を省略
-  const thr=sp/TP_GAIN,H=TP_H,cthr=0.6*sp;let last=-100,cn=0,cI=new Int32Array(4096),cV=new Float32Array(4096);
+  const thr=sp/TP_GAIN,H=TP_H,cthr=0.6*sp;let last=-100,best=sp;
+  const seen=new Uint8Array(n),vals=new Float64Array(FINE_STEPS+1),q4=FINE_STEPS/4;
   for(let i=0;i<11&&i<n;i++)if(Math.abs(x[i])>=thr)last=i;
-  for(let i=11;i<n;i++){
-    if(Math.abs(x[i])>=thr)last=i;
-    if(i-last>11)continue;
-    let m4=0;
-    for(let p=0;p<48;p+=12){let y=0;for(let k=0;k<12;k++)y+=H[p+k]*x[i-k];const a=y<0?-y:y;if(a>m4)m4=a;}
-    if(m4>=cthr){
-      if(cn===cI.length){const a=new Int32Array(cn*2),b=new Float32Array(cn*2);a.set(cI);b.set(cV);cI=a;cV=b;}
-      cI[cn]=i;cV[cn]=m4;cn++;
+  const BLK=1<<20;
+  for(let b0=11;b0<n;b0+=BLK){
+    const b1=Math.min(n,b0+BLK);
+    let cn=0,cI=new Int32Array(4096),cV=new Float32Array(4096);
+    for(let i=b0;i<b1;i++){
+      if(Math.abs(x[i])>=thr)last=i;
+      if(i-last>11)continue;
+      let m4=0;
+      for(let p=0;p<48;p+=12){let y=0;for(let k=0;k<12;k++)y+=H[p+k]*x[i-k];const a=y<0?-y:y;if(a>m4)m4=a;}
+      if(m4>=cthr){
+        if(cn===cI.length){const a=new Int32Array(cn*2),b=new Float32Array(cn*2);a.set(cI);b.set(cV);cI=a;cV=b;}
+        cI[cn]=i;cV[cn]=m4;cn++;
+      }
     }
-  }
-  const ord=new Uint32Array(cn);for(let c=0;c<cn;c++)ord[c]=c;
-  ord.sort((a,b)=>cV[b]-cV[a]);
-  let best=sp;const seen=new Uint8Array(n),vals=new Float64Array(FINE_STEPS+1),q4=FINE_STEPS/4;
-  for(let q=0;q<cn;q++){
-    const c=ord[q];if(cV[c]*1.6<best)break;
-    // 4 倍 FIR の出力 i は、おおよそ元の i-6 〜 i-5 の区間に当たる
-    // 補間の窓が信号の端にかかる区間（先頭・末尾の約 128 サンプル）は切れ目のオーバーシュートを拾うため対象外（サンプルピークで扱う）
-    if(cI[c]-7<FINE_K||cI[c]-4>=n-FINE_K)continue;
-    for(let j=cI[c]-7;j<=cI[c]-4;j++){
-      if(seen[j])continue;seen[j]=1;
-      let a=Math.max(Math.abs(x[j]),Math.abs(x[j+1]));
-      for(let st=q4;st<FINE_STEPS;st+=q4){const v=Math.abs(fineAtIn(x,j,st));if(v>a)a=v;}
-      if(a>best)best=a;
-      if(a*TP_BOUND<best)continue;
-      let bv=0,bs=0;
-      for(let st=0;st<=FINE_STEPS;st++){const v=Math.abs(st===0?x[j]:st===FINE_STEPS?x[j+1]:fineAtIn(x,j,st));vals[st]=v;if(v>bv){bv=v;bs=st;}}
-      if(bs>0&&bs<FINE_STEPS){const a=vals[bs-1],b=vals[bs],cc=vals[bs+1],den=a-2*b+cc;if(den<0)bv=b-0.125*(a-cc)*(a-cc)/den;}
-      if(bv>best)best=bv;
+    if(!cn)continue;
+    const ord=new Uint32Array(cn);for(let c=0;c<cn;c++)ord[c]=c;
+    ord.sort((a,b)=>cV[b]-cV[a]);
+    for(let q=0;q<cn;q++){
+      const c=ord[q];if(cV[c]*1.6<best)break;
+      // 4 倍 FIR の出力 i は、おおよそ元の i-6 〜 i-5 の区間に当たる
+      // 補間の窓が信号の端にかかる区間（先頭・末尾の約 128 サンプル）は切れ目のオーバーシュートを拾うため対象外（サンプルピークで扱う）
+      if(cI[c]-7<FINE_K||cI[c]-4>=n-FINE_K)continue;
+      for(let j=cI[c]-7;j<=cI[c]-4;j++){
+        if(seen[j])continue;seen[j]=1;
+        let a=Math.max(Math.abs(x[j]),Math.abs(x[j+1]));
+        for(let st=q4;st<FINE_STEPS;st+=q4){const v=Math.abs(fineAtIn(x,j,st));if(v>a)a=v;}
+        if(a>best)best=a;
+        if(a*TP_BOUND<best)continue;
+        let bv=0,bs=0;
+        for(let st=0;st<=FINE_STEPS;st++){const v=Math.abs(st===0?x[j]:st===FINE_STEPS?x[j+1]:fineAtIn(x,j,st));vals[st]=v;if(v>bv){bv=v;bs=st;}}
+        if(bs>0&&bs<FINE_STEPS){const a=vals[bs-1],b=vals[bs],cc=vals[bs+1],den=a-2*b+cc;if(den<0)bv=b-0.125*(a-cc)*(a-cc)/den;}
+        if(bv>best)best=bv;
+      }
     }
   }
   return {sp,tp:best};
 }
-// クリップ検出：(A) フルスケール付近の連続、(B) 正規化で下げられても残る「同じ値の連続」（PCMを変換なしで読んだ場合に有効）
+// クリップ検出：(A) フルスケール付近の連続、(B) 正規化で下げられても残る「同じ値の連続」（PCMを変換なしで読んだ場合に有効）、
+// (C) 相対基準（そのチャンネルの最大値の 0.999 倍以上が同符号で 2 サンプル以上）＝修復側（declipCh）と同じ条件。
+// 0.999 に届かない高さで頭打ちした float 等は (A)(B) に当たらないため、(C) は件数を分けて返す（強い警告は (A)(B) の件数で出す）
 function clipRuns(x,fs,sp){
   const n=x.length,ev=[];
   let cur=0;
@@ -1155,7 +1166,19 @@ function clipRuns(x,fs,sp){
     if(s<=end){if(s+l>end){samples+=s+l-end;end=s+l;}continue;}
     runs++;samples+=l;end=s+l;if(starts.length<500)starts.push(s/fs);
   }
-  return {runs,samples,starts};
+  let relRuns=0,relSamples=0;const relStarts=[];
+  if(sp>0){
+    const th=0.999*sp;let st=-1,sg=0;
+    for(let i=0;i<=n;i++){
+      const inR=i<n&&Math.abs(x[i])>=th;
+      if(inR&&(st<0||Math.sign(x[i])===sg)){if(st<0){st=i;sg=Math.sign(x[i]);}}
+      else{
+        if(st>=0&&i-st>=2){relRuns++;relSamples+=i-st;if(relStarts.length<500)relStarts.push(st/fs);}
+        st=inR?i:-1;if(inR)sg=Math.sign(x[i]);
+      }
+    }
+  }
+  return {runs,samples,starts,relRuns,relSamples,relStarts};
 }
 function fft(re,im){
   const n=re.length;
@@ -1291,9 +1314,12 @@ function estimateBpm(flux,fps){
   const conf=Math.max(0,Math.min(1,acf(60/bpm*fps)));
   return {bpm,conf,half:bpm/2>=60?bpm/2:null,double:bpm*2<=200?bpm*2:null};
 }
+// FFT の窓長をサンプルレートに合わせる（44.1 kHz で base サンプルぶんの時間長にする。framePass と同じ考え方。
+// 固定だと 192 kHz で窓が短く、8 kHz では 1 秒近くになって、時間方向のなまり方がレートで変わってしまう）
+const fftN=(base,fs)=>Math.max(1024,Math.min(65536,Math.pow(2,Math.round(Math.log2(base*fs/44100)))));
 // 1秒ごとのクロマ（12音の強さ）。和声の変化を構成検出に使う
 function chromaPass(mono,fs){
-  const N=8192,S=Math.floor(mono.length/fs);if(S<1)return null;
+  const N=fftN(8192,fs),S=Math.floor(mono.length/fs);if(S<1)return null;
   const win=new Float64Array(N);for(let i=0;i<N;i++)win[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);
   const bh=fs/N,k0=Math.max(1,Math.ceil(80/bh)),k1=Math.min(N/2-1,Math.floor(5000/bh));
   const pc=new Int8Array(k1+1);for(let k=k0;k<=k1;k++)pc[k]=((Math.round(69+12*Math.log2(k*bh/440))%12)+12)%12;
@@ -1558,7 +1584,7 @@ function corrSeries(L,R,fs,step=0.5){
 }
 // 帯域ごとの相関・ステレオ幅（L/Rのクロススペクトルから）と、ゴニオメーター用の分布
 function stereoDetail(L,R,fs){
-  const N=8192,n=L.length,bh=fs/N,H=N/2;
+  const N=fftN(8192,fs),n=L.length,bh=fs/N,H=N/2;
   const win=new Float64Array(N);for(let i=0;i<N;i++)win[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);
   const sxx=new Float64Array(H+1),syy=new Float64Array(H+1),sxy=new Float64Array(H+1);
   const a=new Float64Array(N),ai=new Float64Array(N),b=new Float64Array(N),bi=new Float64Array(N);
@@ -1608,6 +1634,7 @@ function analyzeAll(chsIn,fs,opts={}){
   const sp=Math.max(...pk.map(p=>p.sp)),tp=Math.max(...pk.map(p=>p.tp));
   const clips=chs.map((c,i)=>clipRuns(c,fs,pk[i].sp));
   const clipStarts=[].concat(...clips.map(c=>c.starts)).sort((a,b)=>a-b);
+  const clipStartsRel=[].concat(...clips.map(c=>c.relStarts)).sort((a,b)=>a-b);
   prog("ステレオ");
   const st=stereoStats(L,R,fs);
   let ssAll=0;for(const c of chs)for(let i=0;i<n;i++)ssAll+=c[i]*c[i];
@@ -1642,6 +1669,7 @@ function analyzeAll(chsIn,fs,opts={}){
     lufs:loud.integrated,lra:loud.lra,momMax:loud.momMax,stMax:loud.stMax,momSeries:loud.momSeries,stSeries:loud.stSeries,
     sp:spDb,tp:tpDb,plr:tpDb-loud.integrated,rms:toDb(rmsAll),crest:spDb-toDb(rmsAll),
     clipRuns:clips.reduce((a,c)=>a+c.runs,0),clipSamples:clips.reduce((a,c)=>a+c.samples,0),clipStarts,
+    clipRunsRel:clips.reduce((a,c)=>a+c.relRuns,0),clipStartsRel,
     corr:st.corr,corrLow:st.corrLow,width:st.width,monoLoss:st.monoLoss,balance:st.balance,dc:st.dc,
     bands:ss.bands,curve:ss.curve,centroid:ss.centroid,key,bpm,sections:sec.bounds,segments:sec.segs,focus,
     env:waveEnvelope(mono),trimStart,trimEnd,psr,dr,tonal,lowEnd,cutoff};
@@ -2435,7 +2463,7 @@ function drValue(chs,fs,weights){
 // 100 Hz〜4 kHz の平均が 0 dB になるよう正規化（曲の音量差を消す）。ステレオならサイド成分も同じ基準で返す（S − M が帯域ごとの広さ）
 const TB_N=60,TB_F=Array.from({length:TB_N},(_,j)=>20*Math.pow(2,(j+0.5)/6));
 function tonalCurve(L,R,fs,loud,stereo){
-  const N=8192,n=L.length,bh=fs/N,H=N/2,win=new Float64Array(N);for(let i=0;i<N;i++)win[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);
+  const N=fftN(8192,fs),n=L.length,bh=fs/N,H=N/2,win=new Float64Array(N);for(let i=0;i<N;i++)win[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);
   const Pm=new Float64Array(H+1),Ps=stereo?new Float64Array(H+1):null,re=new Float64Array(N),im=new Float64Array(N),re2=new Float64Array(N),im2=new Float64Array(N);
   const st=loud.stSeries,I=loud.integrated,dt=st.length>1?st[1].t-st[0].t:0.1;
   const gate=t=>{if(!Number.isFinite(I)||!st.length)return true;const b=Math.round((t+1.5-st[0].t)/dt);if(b<0||b>=st.length)return false;return st[b].v>=I-10;};
@@ -3793,6 +3821,8 @@ async function decodeFile(file){
   let buf,resampled=false;
   if(sr>=3000&&sr<=768000&&window.OfflineAudioContext)buf=await new OfflineAudioContext(1,1,sr).decodeAudioData(ab);
   else{const ctx=new (window.AudioContext||window.webkitAudioContext)();try{buf=await ctx.decodeAudioData(ab);}finally{ctx.close();}resampled=true;}
+  // 長い曲は、この後のコピーや解析でメモリを使い切ってスマホでは解析ごと落ちる。設計上の上限（MAX_SEC）で、理由を示して止める
+  if(buf.length>MAX_SEC*buf.sampleRate)throw new Error("長すぎるため読み込めません（約 "+Math.round(buf.length/buf.sampleRate/60)+" 分）。このツールで扱えるのは "+(MAX_SEC/60)+" 分までです。短く切り分けたファイルで読み込んでください");
   // ラウドネス（BS.1770）は 0.4 秒の区間で測るので、それより短い音は解析できない（壊れたファイルが数ミリ秒の音として読めることもある）
   if(buf.length<0.4*buf.sampleRate)throw new Error("音声が短すぎます（"+(buf.length/buf.sampleRate).toFixed(2)+" 秒）。0.4 秒以上の音声を読み込んでください（ファイルが途中で切れている可能性もあります）");
   const chs=[];for(let c=0;c<Math.min(8,buf.numberOfChannels);c++)chs.push(new Float32Array(buf.getChannelData(c)));
@@ -3997,6 +4027,7 @@ function makeChecks(m,ref){
   const FIX_CLIP="マスターの最終段（リミッターの後）でピークが 0 dBFS を超えていないか、書き出し前のトラックやバスがクリップしていないかを確認してください。";
   if(m.clipRuns>20)add("bad","連続クリップ疑いが "+m.clipRuns+" か所あります。ミックス/マスターの歪みの可能性があります。",FIX_CLIP,clipAt);
   else if(m.clipRuns>0)add("warn","連続クリップ疑いが "+m.clipRuns+" か所あります（波形の頭打ち）。",FIX_CLIP,clipAt);
+  else if(m.clipRunsRel>0)add("warn","最大値付近で頭打ち状の連続が "+m.clipRunsRel+" か所あります（フルスケールに届かない高さで潰れている可能性があります）。おまかせの「音割れの修復」で作り直せます。",FIX_CLIP,(m.clipStartsRel||[]).slice(0,6).map(t=>({t:Math.max(0,t-1),b:t+1,label:fmtT2(t)})));
   else if(reliable)add("ok","クリップ（波形の頭打ち）は検出されませんでした。");
   else add("info","クリップ（波形の頭打ち）は検出されませんでした。ただし"+(tab?"配信コーデック":m.source==="lossy"?"圧縮コーデック":"再サンプリング")+"を通った音では頭打ちの痕跡が崩れるため、見逃している可能性があります。");
   if(Number.isFinite(m.lra)){
@@ -5477,7 +5508,7 @@ const CDC=[{k:"aac128",name:"AAC 128 kbps",codec:"mp4a.40.2",br:128000},{k:"aac1
 let cdc=null,aVariant="orig",cdcReady=null;
 async function initCodecs(){
   const sel=$("cdcSel");
-  if(!window.AudioEncoder||!window.AudioDecoder||!window.AudioData){sel.innerHTML="<option>使えません</option>";sel.disabled=true;$("cdcRun").disabled=true;$("cdcStatus").textContent="WebCodecs に対応したブラウザ（Chrome / Edge の PC 版）が必要です。";cdcReady=[];return;}
+  if(!window.AudioEncoder||!window.AudioDecoder||!window.AudioData){sel.innerHTML="<option>使えません</option>";sel.disabled=true;$("cdcRun").disabled=true;$("cdcStatus").textContent="このブラウザでは WebCodecs（音声の圧縮変換）が使えないため、この確認はできません。Chrome や Edge など、対応しているブラウザで開いてください。";cdcReady=[];return;}
   const ok=[];
   for(const c of CDC){c.rates=[];for(const fs of [48000,44100]){try{const r=await AudioEncoder.isConfigSupported({codec:c.codec,sampleRate:fs,numberOfChannels:2,bitrate:c.br});if(r&&r.supported)c.rates.push(fs);}catch(e){}}if(c.rates.length)ok.push(c);}
   cdcReady=ok;
@@ -5631,8 +5662,9 @@ async function addSongs(files){
   }else if(current){
     // すでに別の曲を表示中：新しく入れた最初の曲に切り替える（仕上げなどの処理中なら、終わるのを待ってから）
     const x=add[0];setStatus("「"+x.name+"」に切り替えます"+(busy||rec?"（今の処理が終わったら）":"")+"…");
-    for(let t=0;(busy||rec)&&t<1800;t++)await new Promise(r=>setTimeout(r,200));
+    for(let t=0;(busy||rec)&&t<150;t++)await new Promise(r=>setTimeout(r,200));
     if(!busy&&!rec&&songs.includes(x)&&x.st!=="err"&&aSongId!==x.id)await openSongA(x,false,false);
+    else if(busy||rec)setStatus("前の処理が終わらなかったため、「"+x.name+"」への切り替えをやめました",true);
   }
   if(songs.some(x=>x.st==="wait"))runAllSongs();
 }
@@ -6246,7 +6278,7 @@ function buildMasterOpts(m,fs,key,ov){
   // リファレンスに寄せる：ステレオの広さ（サイド / ミッドのエネルギー比）の差を、サイドの音量で ±3 dB まで合わせる
   if(ref&&m.stereo&&m.layout.length===2&&Number.isFinite(ref.width)&&Number.isFinite(m.width)){const d=Math.max(-3,Math.min(3,ref.width-m.width));if(Math.abs(d)>=0.5)o.side={db:Math.round(d*10)/10};}
   if($("msDeharsh").checked)o.deharsh={maxDb:4,thrDb:4,win:30};
-  if($("msDeclip").checked&&m.clipRuns>0)o.declip={};
+  if($("msDeclip").checked&&(m.clipRuns>0||m.clipRunsRel>0))o.declip={};
   const lin=$("msEqPhase").value==="lin",eqG=b=>lin&&!/pass$/.test(b.type)?b.g/2:b.g,groups={st:[],m:[],s:[]};let usedT=null;
   if($("msManEq").checked){
     eqBands=msEqBands.filter(b=>b.on&&b.f>0);
@@ -6646,6 +6678,13 @@ $("albumRun").onclick=async()=>{
       const L=rows.filter(r=>!r.err&&r.lufs!=null).map(r=>r.lufs),spread=L.length?Math.max(...L)-Math.min(...L):0;
       $("albumMsg").textContent=(albumStopReq?"中止しました。":"")+files.length+" 曲を仕上げました。曲ごとの音量の差は最大 "+f1(spread)+" dB"+(target!=null?"（"+f1(target)+" LUFS にそろえました）":"")+"。";
     }else $("albumMsg").textContent=albumStopReq?"中止しました":"仕上げられた曲がありません";
+  }catch(e){
+    console.error(e);
+    // 途中まで仕上がった曲は失わない：残っている分だけでも ZIP にして受け取れるようにする
+    const files=bufs.map((b,i)=>b&&{name:String(i+1).padStart(2,"0")+"_"+safeName(list[i].name).replace(/\\.[^.]+$/,"")+"_master."+fm.ext,data:b}).filter(Boolean);
+    let saved=0;
+    if(files.length){try{albumZip=zipStore(files);$("albumDl").hidden=false;saved=files.length;}catch(e2){console.error(e2);}}
+    $("albumMsg").textContent="途中で失敗しました（"+(e.message||e)+"）。"+(saved?"完了していた "+saved+" 曲だけ ZIP にしました（音量そろえが済んでいない曲を含みます）。「ZIP で保存」から受け取ってください":"仕上げた曲を ZIP にできませんでした");
   }finally{busy=false;updateButtons();$("albumStop").hidden=true;$("albumRun").disabled=false;}
 };
 $("albumDl").onclick=()=>{if(albumZip)download(albumZip,"album_master.zip");};
@@ -6994,7 +7033,7 @@ function easyDiag(m,key){
   if(L>-8)add("warn","音量：とても大きい（"+f1(L)+" LUFS）","配信サービスでは −14 前後まで自動で下げられます。大きくしすぎた分、音が潰れて損をしやすい状態です。","「"+P.name+"」の目安 "+P.lufs+" LUFS に合わせます");
   else if(L<P.lufs-4)add("info","音量：小さめ（"+f1(L)+" LUFS）","市販曲と並べると小さく聞こえます。","音割れしないように "+P.lufs+" LUFS まで上げます");
   else add("ok","音量：ちょうどよい（"+f1(L)+" LUFS）","","目安の "+P.lufs+" LUFS に細かく合わせます");
-  if(m.clipRuns>0||m.tp>0)add("bad","音割れ：あり（または、その可能性）","波形が頭打ちになっている、またはピークが 0 dB を超えています。再生機器や配信の変換で歪みます。",m.clipRuns>0?"割れた所を前後の音から作り直してから仕上げます（低音の山などはよく戻りますが、ノイズのような音は戻せません。書き出し前のミックスで直すのが確実です）":"ピークを "+P.ceil+" dBTP 以下に抑えます");
+  if(m.clipRuns>0||m.clipRunsRel>0||m.tp>0)add("bad","音割れ：あり（または、その可能性）","波形が頭打ちになっている、またはピークが 0 dB を超えています。再生機器や配信の変換で歪みます。",(m.clipRuns>0||m.clipRunsRel>0)?"割れた所を前後の音から作り直してから仕上げます（低音の山などはよく戻りますが、ノイズのような音は戻せません。書き出し前のミックスで直すのが確実です）":"ピークを "+P.ceil+" dBTP 以下に抑えます");
   else if(m.tp>-1||L>-14&&m.tp>-2)add("warn","音割れ：余裕が少ない（"+f1(m.tp)+" dBTP）","配信の変換（AAC・Ogg など）でピークが増え、歪むことがあります。Spotify は、−14 LUFS より大きい曲では −2 dBTP 以下を推奨しています。","ピークを "+P.ceil+" dBTP 以下に抑えます");
   else add("ok","音割れ：なし（"+f1(m.tp)+" dBTP）","","");
   const ps=m.psr&&Number.isFinite(m.psr.loud)?m.psr.loud:NaN;
