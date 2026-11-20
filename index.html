@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-zzvXgO6WA+pWwwRMkbp62t0dnE3lP5aVoTgKdEvo+pg=' 'sha256-IMJEdGJXLNYO67uCqjok67ot5bapBavuR2aAEBZqqMw=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-zzvXgO6WA+pWwwRMkbp62t0dnE3lP5aVoTgKdEvo+pg=' 'sha256-lWBqnebQr8l/Fik5i6F6aN/2vTzS2qFr+LJhCFw0h/A=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ — マスタリングスタジオ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -6768,7 +6768,7 @@ function msMsg(t,err){const b=$("tbStatus");b.textContent=t;b.className="sub"+(e
 function msBegin(){
   if(!current||!rawOK())return null;
   if(MS)return MS; // セッションは、別の曲を読み込むか別の編集をするまで続く（仕上がりを解析しても元の音は変わらない）
-  const fs=lastRaw.fs,s0=current.trimStart,s1=current.trimEnd,chs=lastRaw.chs.map(c=>c.slice(s0,s1));
+  const fs=lastRaw.fs,s0=current.trimStart,s1=current.trimEnd,chs=lastRaw.chs.map(c=>c.subarray(s0,s1));
   MS={m0:current,fs,len:s1-s0,C:pvGrid(fs),src:{chs},weights:current.layout.map(chWeight),
     info:{source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout},label:current.label,
     P:null,S:null,ver:0,cache:new Map(),wet:true,dryDb:0,metrics:null,prog:0,on:false,srcSent:false,src0:null};
@@ -6914,7 +6914,22 @@ function msApplyS(){if(MS&&MS.S)msSetP(msCompile(MS.S,MS.fs));}
 // おまかせの計算用の Worker：まず曲の一部（segs）だけで数値を決めて返し（rough）、続けて曲全体で決めて返す（full）。
 // 専用の Worker なので、別のジャンルを選んだり曲を替えたりしたら、途中でも止められる
 const PLAN_WORKER=`
-self.onmessage=e=>{const d=e.data,fs=d.fs;try{
+let input;
+self.onmessage=e=>{const d=e.data;try{
+  if(d.type==="input"){
+    input=d.lengths.map(n=>new Float32Array(n));
+    return;
+  }
+  if(d.type==="chunk"){
+    input[d.channel].set(d.samples,d.offset);
+    return;
+  }
+  d.chs=input;
+  input=null;
+  const fs=d.fs;
+  // 直流（DC）を除いた音の大きさ（RMS）が −70 dBFS 未満なら、仕上げられる音が無い（無音・直流だけのファイルなど。ラウドネスは低域フィルタの立ち上がりで値が出てしまうことがある）
+  {let e=0,n=0;for(const c of d.chs){let mu=0;for(let i=0;i<c.length;i++)mu+=c[i];mu/=Math.max(1,c.length);for(let i=0;i<c.length;i++){const v=c[i]-mu;e+=v*v;}n+=c.length;}
+   if(!(e/Math.max(1,n)>1e-7)){throw new Error("音がほとんどありません（無音か、直流（DC）成分だけの音です）");}}
   if(d.segs&&d.segs.length){
     const F=Math.round(fs*0.005),len=d.segs.reduce((a,x)=>a+x[1]-x[0],0),ex=d.chs.map(()=>new Float32Array(len));let o=0;
     for(const [a,b] of d.segs){const n=b-a;for(let c=0;c<ex.length;c++){const y=ex[c].subarray(o,o+n);y.set(d.chs[c].subarray(a,b));
@@ -6923,7 +6938,7 @@ self.onmessage=e=>{const d=e.data,fs=d.fs;try{
   }
   const r=masterProcess(d.chs,fs,d.o,st=>self.postMessage({type:"progress",step:st}));self.postMessage({type:"full",info:r.info});
 }catch(err){self.postMessage({type:"error",message:String(err&&err.message||err)});}};`;
-let msPlanTok=0,msPlanW=null,msPlanEnd=null;
+let msPlanTok=0,msPlanW=null,msPlanEnd=null,msPlanUrl=null;
 function msPlanCancel(){if(msPlanW){try{msPlanW.terminate();}catch(e){}msPlanW=null;}if(msPlanEnd){const f=msPlanEnd;msPlanEnd=null;f(false);}}
 // 先に鳴らすための抜き出し：いちばん大きい所 3 か所（前後 3 秒ずつ）と、均等に取った 5 か所（3 秒ずつ）
 function msRoughSegs(m,fs,len){
@@ -6947,16 +6962,13 @@ async function msPlan(opt){
   const key=$("msPreset").value,m=MS.m0,fs=MS.fs;
   const B=buildMasterOpts(m,fs,key);if(B.err){edMsg(B.err,true);msMsg(B.err,true);return null;}
   const {o,eqBands,notes,usedT,lin,P,ref}=B;
-  // 直流（DC）を除いた音の大きさ（RMS）が −70 dBFS 未満なら、仕上げられる音が無い（無音・直流だけのファイルなど。ラウドネスは低域フィルタの立ち上がりで値が出てしまうことがある）
-  {let e=0,n=0;for(const c of MS.src.chs){let mu=0;for(let i=0;i<c.length;i++)mu+=c[i];mu/=Math.max(1,c.length);for(let i=0;i<c.length;i++){const v=c[i]-mu;e+=v*v;}n+=c.length;}
-   if(!(e/Math.max(1,n)>1e-7)){const t="処理できませんでした: 音がほとんどありません（無音か、直流（DC）成分だけの音です）";edMsg(t,true);msMsg(t,true);return null;}}
   // サウンドステージ：手で動かしてあればその値を、なければ「EQ をかけてもまだ目安の範囲から外れる帯域を、範囲の端まで寄せる」値を使う
   const st2=MS.src.chs.length===2,prevS=MS.S,userStage=prevS&&prevS.stage&&prevS.stageAuto===false?prevS.stage:null,T0=usedT||genreTarget(key);
   const stage=userStage?Object.assign({},userStage):ssAuto(m,T0,o,fs);stage.wide=prevS&&prevS.stage?prevS.stage.wide||0:0;
   {const gr={st:[],m:[],s:[]};ssBiquads(stage,st2,fs,lin,gr);for(const t of ["st","m","s"]){if(!gr[t].length)continue;const e=o.eq.find(x=>x.target===t);if(e)e.sos=e.sos.concat(gr[t]);else o.eq.push({target:t,sos:gr[t]});}}
-  msPlanCancel();const tok=++msPlanTok,ms=MS,chs=MS.src.chs.map(c=>c.slice()),segs=opt.noRough?null:msRoughSegs(m,fs,MS.len);
+  msPlanCancel();const tok=++msPlanTok,ms=MS,chs=MS.src.chs,segs=opt.noRough?null:msRoughSegs(m,fs,MS.len);
   $("msOut").hidden=true;edMsg("おまかせマスタリング…");ms.planning=true;ms.planStep="";msEmit("planstart");
-  const w=new Worker(URL.createObjectURL(new Blob([$("dsp").textContent,PLAN_WORKER],{type:"text/javascript"})));msPlanW=w;
+  let w=null;
   let first=null,done=null,gotFirst=false;const pFirst=new Promise(r=>first=r);ms.planDone=new Promise(r=>done=r);msPlanEnd=v=>{first(null);done(v);};
   const alive=()=>MS===ms&&msPlanTok===tok;
   const apply=(info,rough)=>{
@@ -6969,23 +6981,55 @@ async function msPlan(opt){
     if(!rough){ms.planning=false;edMsg("");msMsg("");}
     msEmit("plan");
   };
-  w.onmessage=e=>{const d=e.data;if(!alive())return;
-    if(d.type==="progress"){ms.planStep=d.step;edMsg("おまかせマスタリング："+d.step);msEmit("planprog");}
-    else if(d.type==="rough")apply(d.info,true);
-    else if(d.type==="full"){apply(d.info,false);msPlanW=null;msPlanEnd=null;try{w.terminate();}catch(_){}done(true);}
-    else if(d.type==="error"){console.error(d.message);ms.planning=false;const keep=gotFirst; // 先の設定で鳴っていれば、その設定を正式なものとして残す
-      if(keep){ms.rough=false;msEmit("plan");}else{edMsg("処理できませんでした: "+d.message,true);msMsg("処理できませんでした: "+d.message,true);msEmit("planfail");}
-      msPlanW=null;msPlanEnd=null;try{w.terminate();}catch(_){}first(keep?true:null);done(keep);}
+  const finish=(ok,message)=>{
+    if(!alive()||msPlanW!==w)return;
+    if(message){
+      ms.planning=false;
+      if(gotFirst){ms.rough=false;msEmit("plan");}
+      else msEmit("planfail");
+      const t="処理できませんでした: "+message;
+      edMsg(t,true);msMsg(t,true);
+    }
+    msPlanEnd=null;
+    msPlanCancel();
+    first(gotFirst?true:null);done(ok);
   };
-  w.onerror=e=>{if(e.preventDefault)e.preventDefault();if(!alive())return;ms.planning=false;const t="おまかせの計算が異常終了しました（メモリ不足の可能性があります）";edMsg(t,true);msMsg(t,true);if(gotFirst){ms.rough=false;msEmit("plan");}else msEmit("planfail");msPlanW=null;msPlanEnd=null;first(gotFirst?true:null);done(gotFirst);};
-  w.postMessage({chs,fs,o,segs},chs.map(c=>c.buffer));
+  try{
+    if(!msPlanUrl)msPlanUrl=URL.createObjectURL(new Blob([$("dsp").textContent,PLAN_WORKER],{type:"text/javascript"}));
+    w=new Worker(msPlanUrl);msPlanW=w;
+    w.onmessage=e=>{
+      if(!alive()||msPlanW!==w)return;
+      const d=e.data;
+      try{
+        if(d.type==="progress"){ms.planStep=d.step;edMsg("おまかせマスタリング："+d.step);msEmit("planprog");}
+        else if(d.type==="rough")apply(d.info,true);
+        else if(d.type==="full"){apply(d.info,false);finish(true);}
+        else if(d.type==="error")finish(gotFirst,d.message);
+      }catch(err){finish(gotFirst,err.message||String(err));}
+    };
+    w.onerror=e=>{e.preventDefault();finish(gotFirst,"おまかせの計算が異常終了しました");};
+    w.onmessageerror=()=>finish(gotFirst,"おまかせの計算結果を読み込めませんでした");
+    w.postMessage({type:"input",lengths:chs.map(c=>c.length)});
+    // 転送用のコピーは短い区間ごとに作り、描画やキャンセルの機会を設ける。
+    const chunkSize=1024*1024;
+    for(let channel=0;channel<chs.length;channel++){
+      const c=chs[channel];
+      for(let offset=0;offset<c.length;offset+=chunkSize){
+        if(c.length>chunkSize||channel>0)await tick();
+        if(!alive()||msPlanW!==w)return pFirst;
+        const samples=c.slice(offset,offset+chunkSize);
+        w.postMessage({type:"chunk",channel,offset,samples},[samples.buffer]);
+      }
+    }
+    w.postMessage({type:"run",fs,o,segs});
+  }catch(err){finish(gotFirst,err.message||String(err));}
   return pFirst;
 }
 // 仕上がりを解析する（プロ画面）：仕上げた音を全部処理して、2.〜7. を解析し直す。元の音は B に入れて聴き比べられる
 async function msCommit(){
   if(!MS||!MS.P)return false;
   if(busy){edMsg("他の処理が終わるまでお待ちください",true);return false;}
-  if(MS.planning){edMsg("おまかせの計算が終わるのを待っています…");await MS.planDone;if(!MS||!MS.P||busy)return false;}
+  if(MS.planning){const ms=MS,done=ms.planDone;edMsg("おまかせの計算が終わるのを待っています…");if(!await done||MS!==ms||ms.planDone!==done||!ms.P||busy)return false;}
   const before=MS.m0,beforeChs=MS.src0||MS.src.chs,fs=MS.fs,plan=MS.plan,base=(MS.label||"音声").replace(/（おまかせ：[^）]*）$/,"");
   stopPlay();busy=true;updateButtons();edMsg("仕上げた音を最後まで処理しています…");let chs;
   try{chs=await msFull();}catch(e){edMsg("処理できませんでした: "+e.message,true);return false;}finally{busy=false;updateButtons();}
