@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-nvja3InybQOQ46DQMgZM2DIKbQsdc3m7VtL11fw5Ddw=' 'sha256-VRvbwYkQ1i3AKaglxxbSA4C35vmH2iie8UWMOkjmXo0=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-nvja3InybQOQ46DQMgZM2DIKbQsdc3m7VtL11fw5Ddw=' 'sha256-S9LSW2H8ZUNpvhdTIf7+RUE6gxBlWDHAVlXDCxnC7CQ=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>おまかせマスタリング — 解析もできるブラウザのマスタリングツール</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -330,6 +330,9 @@ body.loaded #drop{padding:14px}
 @media (max-width:640px){.modeTop button{padding:5px 7px;font-size:12.5px}.tb-right select{max-width:70px}.tb-right button{padding:6px 9px}.tb-in{gap:5px;padding:6px 8px}}
 /* 右側の操作は、幅が足りないとき選択欄が縮んで、画面からはみ出さないようにする */
 .tb-right{min-width:0;max-width:100%}.tb-right>label{display:inline-flex;align-items:center;min-width:0;flex:0 1 auto}.tb-right>label>select{min-width:64px;flex:1 1 auto}#devSim{width:180px}
+.msItem select{max-width:100%}
+/* 比較対象の曲名が長いとき（fitRef）：欄を次の行に回して行いっぱいに使う */
+.tb-right.refLong{flex-basis:100%;flex-wrap:wrap;row-gap:4px}
 /* スマホ幅で 2 段目に回ったときは、選択欄を広げて中の文字が切れないようにする */
 @media (max-width:640px){.tb-right{flex:1 1 0;min-width:min-content;justify-content:flex-end}.tb-right>label{flex:1 1 0}.tb-right>label>select{width:100%;max-width:none;padding-left:4px;padding-right:2px;font-size:12.5px}#devSim{width:100%}.tb-right{gap:4px}#tbAB{gap:3px}#tbAB button{padding:4px 7px}}
 /* 360 px 未満では 1 行に並ばないので、右側の操作を 2 段目に置き、選択欄はその次の行に回す */
@@ -684,7 +687,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
     <div class="sub" style="margin-top:4px">「寄せる先」にリファレンス曲（1. の曲リストの曲、「B で比べる」で入れた曲、7. に保存した曲）を選ぶと、その曲の音量・音色・ステレオの広さに近づけます（コンプの強さはジャンルの設定を使います）。</div>
     <div class="msGrid">
       <label class="msItem"><span><input type="checkbox" id="msEqOn" checked> <b>オート EQ</b></span>
-        <span class="sub">基準<select id="msEqBase"><option value="genre">ジャンルの目安</option><option value="target">5. で選んだターゲット（好きな曲など）</option></select></span>
+        <span class="sub">基準<select id="msEqBase" title="オート EQ が音色を合わせる先。ターゲットは 5. で選んだ好きな曲など"><option value="genre">ジャンルの目安</option><option value="target">5. で選んだターゲット</option></select></span>
         <span class="sub">かかり具合<input type="number" id="msEqAmt" value="70" min="0" max="100" step="10" style="width:60px">%</span>
         <span class="sub"><input type="checkbox" id="msHp" checked> 20 Hz 以下（聞こえない超低域）をカット</span></label>
       <label class="msItem"><span><input type="checkbox" id="msCompOn" checked> <b>オートコンプ</b></span>
@@ -6634,6 +6637,29 @@ function fitDevSim(){
   pr.remove();
 }
 if(window.ResizeObserver)new ResizeObserver(fitDevSim).observe($("devSim"));else{addEventListener("resize",fitDevSim);fitDevSim();}
+// 比較対象：選んだ曲名が欄に収まらないときは、まず欄を名前の幅まで広げ、それでも入らなければ次の行に回して行いっぱいに使う。
+// それでも入らない長さの名前は切れるので、マウスを乗せると全部出るようにする
+function fitRef(){
+  const s=$("tbRef"),lab=s.parentNode,box=lab.parentNode;
+  s.title=s.selectedIndex>0?s.options[s.selectedIndex].textContent:"比較対象";
+  box.classList.remove("refLong");s.style.width="";s.style.maxWidth="";lab.style.flex="";lab.style.order="";
+  if(!s.offsetWidth||s.selectedIndex<=0)return;
+  const pr=document.createElement("select"),o=document.createElement("option");
+  pr.tabIndex=-1;pr.setAttribute("aria-hidden","true");pr.style.cssText="position:absolute;visibility:hidden;pointer-events:none;width:auto;max-width:none;min-width:0;flex:none";
+  pr.appendChild(o);o.textContent=s.options[s.selectedIndex].textContent;lab.appendChild(pr);const need=pr.offsetWidth;pr.remove();
+  const row=box.parentNode,fits=()=>{const r=row.getBoundingClientRect(),c=getComputedStyle(row);return s.offsetWidth>=need&&box.getBoundingClientRect().right<=r.right-parseFloat(c.paddingRight)+0.5;};
+  if(fits())return;
+  s.style.maxWidth="none";s.style.width=need+"px";lab.style.flex="0 1 auto";
+  if(fits())return;
+  box.classList.add("refLong");s.style.width="";lab.style.flex="1 1 100%";lab.style.order="9";
+}
+let fitTopbarQ=0;
+function fitTopbar(){if(fitTopbarQ)return;fitTopbarQ=requestAnimationFrame(()=>{fitTopbarQ=0;fitDevSim();fitRef();});}
+addEventListener("resize",fitTopbar);
+$("tbRef").addEventListener("change",fitTopbar);
+new MutationObserver(fitTopbar).observe($("tbRef"),{childList:true});
+new MutationObserver(fitTopbar).observe($("tbAB"),{attributes:true,attributeFilter:["hidden"]});
+new MutationObserver(fitTopbar).observe(document.body,{attributes:true,attributeFilter:["class"]});
 $("devSim").onchange=e=>{e.target.blur();rebuildPlaybackFilter();const on=e.target.value!=="off";e.target.style.borderColor=on?"var(--warn)":"";setStatus(on?"再生機器：「"+DEV_SIM[e.target.value].name+"」の大まかな近似で再生しています（実機を測ったデータではありません）":"再生機器：そのまま");};
 /* ---------- リファレンス曲に寄せる ---------- */
 // 1. で B に入れた曲は、仕上げで B が「処理前の音」に置き換わっても選べるよう、ここに覚えておく
