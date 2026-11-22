@@ -328,6 +328,10 @@ body.loaded #drop{padding:14px}
 @media (max-width:1080px){.tb-br{display:inline}.tb-name{font-size:12px;line-height:1.15;letter-spacing:.06em}}
 @media (max-width:640px){.tb-name{display:none}.tb-title{display:flex}}
 @media (max-width:640px){.modeTop button{padding:5px 7px;font-size:12.5px}.tb-right select{max-width:70px}.tb-right button{padding:6px 9px}.tb-in{gap:5px;padding:6px 8px}}
+/* 右側の操作は、幅が足りないとき選択欄が縮んで、画面からはみ出さないようにする */
+.tb-right{min-width:0;max-width:100%}.tb-right>label{display:inline-flex;align-items:center;min-width:0;flex:0 1 auto}.tb-right>label>select{min-width:64px;flex:1 1 auto}
+/* スマホ幅で 2 段目に回ったときは、選択欄を広げて中の文字が切れないようにする */
+@media (max-width:640px){.tb-right{flex:1 1 0;min-width:min-content;justify-content:flex-end}.tb-right>label{flex:1 1 0}.tb-right>label>select{width:100%;max-width:none;padding-left:6px;padding-right:2px}.tb-right{gap:4px}#tbAB{gap:3px}#tbAB button{padding:4px 7px}}
 .ezKnob .kv{width:100%;text-align:center}.ezGIn .num b{color:#fff}
 body:not(.loaded) main>section.panel:first-child>h2{display:none}
 .stgBox{margin:8px 0;border-top:2px solid #ff6ad5}.stgBox>summary,.ezStgBox>summary{cursor:pointer;font-size:14px;color:var(--text)}.stgBox>summary b{color:#dfe7ff;letter-spacing:.04em}
