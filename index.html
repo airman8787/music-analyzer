@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-nvja3InybQOQ46DQMgZM2DIKbQsdc3m7VtL11fw5Ddw=' 'sha256-HGAlkGAgoL2b2pqdzgG+SYITxNcEGWoXMC6On8RIfV4=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-q4ohJ2c+VK6TRwTUZYBVchSD4NGKu+spg2rIppUs2nA=' 'sha256-HlouYmLKuYSbZOwxMZPOABX2h8VV87JngY6ER5tVhLI=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>おまかせマスタリング — 解析もできるブラウザのマスタリングツール</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -518,7 +518,8 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
     <details class="sub" style="margin-top:8px"><summary>何をしているの？</summary>
       <ul>
         <li>選んだジャンルの大まかな目安に合わせて、<b>音色の整え（EQ）→ 音量の粒をそろえる（コンプ）→ 音割れしないように音量を上げる（リミッター）</b>を自動でかけます。</li>
-        <li>つまみ：<b>迫力</b>＝100 Hz より下をなだらかに上げ下げ、<b>明るさ</b>＝8 kHz より上をなだらかに上げ下げ、<b>広がり</b>＝広げるときは左右に広がった成分（サイド）の 3 kHz より上だけを持ち上げ（ボーカルとベースは中央のまま。低域は 120 Hz 以下をモノラルにまとめ、相関が 0 を下回らない量まで）、狭めるときはサイド全体を下げる、<b>音圧</b>＝リミッターに入れる音量（おまかせの値からの差）です。</li>
+        <li>つまみ：<b>迫力</b>＝100 Hz より下をなだらかに上げ下げ、<b>明るさ</b>＝8 kHz より上をなだらかに上げ下げ、<b>広がり</b>＝左右の広さ（次の項目）、<b>音圧</b>＝リミッターに入れる音量（おまかせの値からの差）です。</li>
+        <li>広がり：広げるときは、左右に広がった成分（サイド）の 3 kHz より上だけを持ち上げます（ボーカルとベースは中央のまま）。ほぼモノラルの曲は、代わりに 3 kHz より上を疑似ステレオで広げます（モノラルで聴くと元の音と同じ）。どちらも、広げている間は 120 Hz 以下をモノラルにまとめ、相関が 0 を下回らない量で止めます。狭めるときは、サイド全体を下げます。</li>
         <li>点数は、音量（ジャンルの目安との差）・ピーク（音割れの余裕）・迫力（PSR：潰れていないか）・音色（目安からのずれ）を 25 点ずつで見た<b>目安</b>です。耳で聴いて良いと思う方を選んでください。</li>
         <li>音割れの基準（トゥルーピーク）は、−14 LUFS より大きく仕上げるジャンルでは −2 dBTP、それ以外は −1 dBTP（Spotify の推奨）です。ジャンルの音量・音色は市販曲でよく見られる傾向をもとにした目安です。</li>
         <li>試聴している音と保存する音は、同じ処理で作っています。細かく調整したいときは、上の「🎛 プロ」に切り替えてください。</li>
@@ -3148,6 +3149,16 @@ function msLimit(chs,pk,fs,gainDb,ceilDb,o){
 }
 // 低域のモノラル化：サイド（L−R）から f 以下を取り除く。S' = S − LP(S)（LP はゼロ位相の 4 次バターワースを前後に通したもの）。
 // f より上ではサイドがそのまま残るので、ステレオ感と位相は変わらない
+// 疑似ステレオ（ほぼモノラルの曲を広げる）：中央の成分（ミッド）の f より上を、7 ms と 13 ms ずらした差から「作ったサイド」D を作り、
+// L＋g·D、R−g·D にする。L＋R は元のまま（D は打ち消し合う）なので、モノラルで聴くと元の音とまったく同じになる。
+// 2 つのずれの差にしているので、左右に分かれる高さが規則的に並ばず、片側だけの音色の癖が目立ちにくい
+function msPseudo(chs,fs,o){
+  const [L,R]=chs,n=L.length,M=new Float32Array(n);for(let i=0;i<n;i++)M[i]=(L[i]+R[i])*0.5;
+  const h=sosRun(M,[rbjBiquad("highpass",o.f,0.707,0,fs),rbjBiquad("highpass",o.f,0.707,0,fs)]),d1=Math.round(o.d1*fs/1000),d2=Math.round(o.d2*fs/1000),k=o.g*Math.SQRT1_2;
+  const oL=new Float32Array(n),oR=new Float32Array(n);
+  for(let i=0;i<n;i++){const v=k*((i>=d1?h[i-d1]:0)-(i>=d2?h[i-d2]:0));oL[i]=L[i]+v;oR[i]=R[i]-v;}
+  return [oL,oR];
+}
 function msBassMono(chs,fs,f){
   if(chs.length!==2)return {chs,info:null};
   const [L,R]=chs,n=L.length,S=new Float32Array(n);for(let i=0;i<n;i++)S[i]=(L[i]-R[i])*0.5;
@@ -3265,6 +3276,7 @@ function masterRender(chs,fs,P){
   if(P.eq&&P.eq.length)x=msEqApply(x,P.eq,!!P.eqZero);
   if(P.side&&x.length===2&&P.side.db){const g=Math.pow(10,P.side.db/20),[L,R]=x,n=L.length,oL=new Float32Array(n),oR=new Float32Array(n);
     for(let i=0;i<n;i++){const m=(L[i]+R[i])*0.5,sd=(L[i]-R[i])*0.5*g;oL[i]=m+sd;oR[i]=m-sd;}x=[oL,oR];}
+  if(P.pseudo&&x.length===2)x=msPseudo(x,fs,P.pseudo);
   if(P.bassMono)x=msBassMono(x,fs,P.bassMono.f).chs;
   if(P.deharsh&&Number.isFinite(P.deharsh.thrAbs))x=msDeharsh(x,fs,P.deharsh).chs;
   if(P.comp&&Number.isFinite(P.comp.thr)){const r=msCompress(x,fs,P.comp);x=r.chs;info.grC=r.info?r.info.grT:null;}
@@ -6974,20 +6986,23 @@ function msCompile(S,fs){
   // サウンドステージ：低音とボーカル帯は中央の成分（ミッド）を動かす。ボーカル帯は、同じ高さの左右の成分を 1/3 だけ逆に動かして、中央を際立たせる
   const G=S.stage||{},st2=!!(MS&&MS.src.chs.length===2);ssBiquads(G,st2,fs,lin,groups);
   // 広がり（かんたん画面のつまみ・サウンドステージ）：広げるときは、サイドの 3 kHz より上だけを持ち上げる（シンバル・響き・倍音が外へ。ボーカルとベースは中央に残る）。
-  // 広げている間は低域（120 Hz 以下）をモノラルにまとめ（ラックで「しない」を選んだときを除く）、相関が 0 を下回らない量までにする（msWideMax）。狭めるときは、サイド全体を下げる
+  // 広げている間は低域（120 Hz 以下）をモノラルにまとめ（ラックで「しない」を選んだときを除く）、相関が 0 を下回らない量までにする（msWideMax）。狭めるときは、サイド全体を下げる。
+  // ほぼモノラルの曲（3 kHz より上のサイドがミッドより 15 dB 以上小さい）は、持ち上げるサイドが無いので、代わりに疑似ステレオ（msPseudo）で 3 kHz より上を広げる
   const wq=st2?Math.max(0,K.width||0)+Math.max(0,G.wide||0):0;
   const side=Math.round(((S.side||0)+Math.min(0,K.width||0)+Math.min(0,G.wide||0))*10)/10,c=S.comp,l=S.lim;
-  let bm=S.bassMono||0,wg=0;
-  if(wq>0){const bmW=bm||(S.bassMonoOff?0:WIDE_BM);wg=msWideMax(groups,side,bmW,wq,fs,lin);
-    if(wg>0){groups.s.push(rbjBiquad("highshelf",WIDE_F,0.7,eqG("highshelf",wg),fs));bm=bmW;}}
-  if(MS)MS.wide={req:wq,got:wg,bm:bm&&!S.bassMono?bm:0};
+  let bm=S.bassMono||0,wg=0,ps=null;const an=wq>0?msWideAn():null,pm=!!(an&&an.hiSM<PSEUDO_TH);
+  if(wq>0){const bmW=bm||(S.bassMonoOff?0:WIDE_BM);wg=msWideMax(groups,side,bmW,wq,fs,lin,pm);
+    if(wg>0){if(pm)ps={g:pseudoG(wg),f:WIDE_F,d1:7,d2:13};else groups.s.push(rbjBiquad("highshelf",WIDE_F,0.7,eqG("highshelf",wg),fs));bm=bmW;}}
+  if(MS)MS.wide={req:wq,got:wg,bm:bm&&!S.bassMono?bm:0,pseudo:pm};
   return {declip:S.declip||null,sos:S.hp?[rbjBiquad("highpass",20,0.707,0,fs)]:[],eq:["st","m","s"].map(t=>({target:t,sos:groups[t]})).filter(g=>g.sos.length),eqZero:lin,
-    side:side&&MS&&MS.src.chs.length===2?{db:side}:null,bassMono:bm?{f:bm}:null,deharsh:S.deharsh||null,
+    side:side&&MS&&MS.src.chs.length===2?{db:side}:null,pseudo:ps,bassMono:bm?{f:bm}:null,deharsh:S.deharsh||null,
     comp:c&&c.on?{ratio:c.ratio,attack:c.attack,release:c.release,gr:c.gr,thr:c.thr,L90:c.L90}:null,
     lim:l&&l.on?{gain:l.gain+(K.drive||0),ceil:l.ceil,opt:Object.assign({},l.opt)}:null,post:S.post||0};
 }
 function msApplyS(){if(MS&&MS.S){msSetP(msCompile(MS.S,MS.fs));msWideNote();}}
-const WIDE_F=3000,WIDE_BM=120;
+const WIDE_F=3000,WIDE_BM=120,PSEUDO_TH=Math.pow(10,-1.5);
+// 疑似ステレオの強さ：広がり w dB で、作ったサイドを 3 kHz より上のミッドの −18＋3w dB に（+4 で −6 dB、+6 で 0 dB まで）
+const pseudoG=w=>Math.min(1,Math.pow(10,(-18+3*w)/20));
 // 広がりの上限を決めるための、元の音のミッド / サイドの帯域（1/6 オクターブ）ごとのエネルギー。
 // 曲全体から均等に取った最大 80 コマ。1 コマは相関メーターと同じくらいの長さ（4096 点の FFT を 4 つ続けた約 0.37 秒）
 function msWideAn(){
@@ -7001,13 +7016,14 @@ function msWideAn(){
       for(let i=0;i<N;i++){const j=a+i;lr[i]=j<n?L[j]*w[i]:0;rr[i]=j<n?R[j]*w[i]:0;li[i]=ri[i]=0;}fft(lr,li);fft(rr,ri);
       for(let k=1;k<N/2;k++){const b=band[k];if(b<0)continue;const mr=lr[k]+rr[k],mi=li[k]+ri[k],sr=lr[k]-rr[k],si=li[k]-ri[k];m[b]+=mr*mr+mi*mi;s[b]+=sr*sr+si*si;}}
     fr.push({m,s});}
-  return MS.wideAn={src:L,fc,fr};
+  let hm=0,hs=0;for(const x of fr)for(let b=0;b<fc.length;b++)if(fc[b]>=WIDE_F){hm+=x.m[b];hs+=x.s[b];}
+  return MS.wideAn={src:L,fc,fr,hiSM:hs/(hm+1e-30)};
 }
 // 相関が 0 を下回らない範囲で、広がり（サイドの高域シェルフ）の上限を 0.5 dB 刻みで探す。
 // 相関の符号は Σ(L·R)＝Σ(ミッド²−サイド²) の符号と同じなので、ミッドとサイドのエネルギーの比で判定できる。
 // 約 0.37 秒のコマ（−40 dB より大きいもの）ごとに相関が 0 以上（サイド ≤ ミッド）、曲全体では少し余裕をみて相関 ≈ +0.1 以上（サイド ≤ ミッドの 0.8 倍）を守る
 // （元から相関が 0 を下回っているコマは、広げなくてもそうなので除く。曲全体で元から余裕がなければ広げない）。ほかの EQ・サイドの音量・低域モノも含めて予測する
-function msWideMax(groups,side,bm,req,fs,lin){
+function msWideMax(groups,side,bm,req,fs,lin,pseudo){
   const an=msWideAn();if(!an)return req;
   const k=lin?4:2,sl=Math.pow(10,side/10),nb=an.fc.length,R=0.8,m=groups.st.concat(groups.m),sd=groups.st.concat(groups.s);
   const hm=an.fc.map(f=>Math.pow(sosResp(m,f,fs),k)),hs=an.fc.map(f=>f<bm?0:Math.pow(sosResp(sd,f,fs),k)*sl);
@@ -7015,8 +7031,10 @@ function msWideMax(groups,side,bm,req,fs,lin){
   let EM=0,ES=0,mx=0;for(const x of F){EM+=x.em;ES+=x.es;mx=Math.max(mx,x.em+x.es);}
   if(!(EM>0)||ES>R*EM)return 0;
   const use=an.fr.map((x,i)=>F[i].em+F[i].es>=mx*1e-4&&F[i].es<=F[i].em);
-  const ok=g=>{const sh=[rbjBiquad("highshelf",WIDE_F,0.7,lin?g/2:g,fs)],h=an.fc.map((f,b)=>hs[b]*Math.pow(sosResp(sh,f,fs),k));let es=0;
-    for(let i=0;i<an.fr.length;i++){const x=an.fr[i];let e=0;for(let b=0;b<nb;b++)e+=x.s[b]*h[b];es+=e;if(use[i]&&e>F[i].em)return false;}
+  // 疑似ステレオは、ミッドの 3 kHz より上（ハイパス後）の g² 倍のエネルギーをサイドに足す（2 つのずれの差は、平均すると元と同じエネルギー）
+  const hp=[rbjBiquad("highpass",WIDE_F,0.707,0,fs),rbjBiquad("highpass",WIDE_F,0.707,0,fs)],hpd=an.fc.map((f,b)=>hm[b]*Math.pow(sosResp(hp,f,fs),2));
+  const ok=g=>{let h,q=0;if(pseudo){h=hs;q=Math.pow(pseudoG(g),2);}else{const sh=[rbjBiquad("highshelf",WIDE_F,0.7,lin?g/2:g,fs)];h=an.fc.map((f,b)=>hs[b]*Math.pow(sosResp(sh,f,fs),k));}let es=0;
+    for(let i=0;i<an.fr.length;i++){const x=an.fr[i];let e=0;for(let b=0;b<nb;b++)e+=x.s[b]*h[b]+q*x.m[b]*hpd[b];es+=e;if(use[i]&&e>F[i].em)return false;}
     return es<=R*EM;};
   for(let g=Math.round(req*2)/2;g>0;g=Math.round((g-0.5)*2)/2)if(ok(g))return g;
   return 0;
@@ -7024,7 +7042,8 @@ function msWideMax(groups,side,bm,req,fs,lin){
 // 広がりを相関の上限で止めたときは、つまみの下に出す
 function msWideNote(){
   const c=MS&&MS.wide,el=$("ezK_width");if(!el)return;
-  el.querySelector(".kh").textContent=c&&c.req>c.got?"相関の上限で +"+c.got.toFixed(1)+" dB":"左右の広さ";
+  el.querySelector(".kh").textContent=c&&c.req>c.got?"相関の上限で +"+c.got.toFixed(1)+" dB":c&&c.pseudo&&c.got>0?"疑似ステレオ":"左右の広さ";
+  el.title=c&&c.pseudo&&c.got>0?"ほぼモノラルの曲なので、3 kHz より上を疑似ステレオで広げています（モノラルで聴くと元の音と同じです）":"";
 }
 // おまかせ：元の音を分析して数値を決める（曲全体を何度か処理して音量を合わせるので、数秒〜十数秒かかる）
 // おまかせの計算用の Worker：まず曲の一部（segs）だけで数値を決めて返し（rough）、続けて曲全体で決めて返す（full）。
@@ -7505,7 +7524,7 @@ function stgUi(){
   // EQ 全体（おまかせ・つまみ・ラックの EQ・ステージ）による変化の予測。玉の位置＝元の音の位置 ＋ この変化
   SS.delta=[0,0,0,0];if(MS&&MS.S){const P=msCompile(MS.S,MS.fs);SS.delta=ssEqDelta(P.sos,P.eq,P.eqZero,MS.fs);}
   for(const v of SS.views){const q=s=>v.root.querySelector(s);q(".stgBody").hidden=!an;if(!an)continue;
-    q("[data-info]").textContent=SS_Z.map(z=>ssTxt(z,V[z.k])).join("　")+(an.stereo?"　↔ 広がり "+(V.wide>0?"+":V.wide<0?"−":"±")+Math.abs(V.wide).toFixed(1)+" dB"+(MS&&MS.wide&&MS.wide.req>MS.wide.got?"（相関が 0 を下回らないよう、つまみと合わせて +"+MS.wide.got.toFixed(1)+" dB まで）":""):"");
+    q("[data-info]").textContent=SS_Z.map(z=>ssTxt(z,V[z.k])).join("　")+(an.stereo?"　↔ 広がり "+(V.wide>0?"+":V.wide<0?"−":"±")+Math.abs(V.wide).toFixed(1)+" dB"+(MS&&MS.wide&&MS.wide.req>MS.wide.got?"（相関が 0 を下回らないよう、つまみと合わせて +"+MS.wide.got.toFixed(1)+" dB まで）":"")+(MS&&MS.wide&&MS.wide.pseudo&&MS.wide.got>0?"（ほぼモノラルなので疑似ステレオ）":""):"");
     const tips=[],lv=i=>an.zones[i].dev+SS.delta[i],Z=an.zones;
     if(MS&&MS.S&&MS.S.stageAuto&&MS.plan){const mv=SS_Z.filter(z=>V[z.k]);tips.push(mv.length?"✨ おまかせで、EQ をかけても目安の範囲から外れていた帯域（"+mv.map(z=>z.n).join("・")+"）を、範囲の端まで寄せました":"✨ おまかせの EQ だけで、どの帯域も目安の範囲に入りました");}
     if(!Z[2].none&&lv(2)<-Z[2].lo-0.25)tips.push("🎤 ボーカル帯が奥にいます（目安より "+f1(-lv(2))+" dB 弱い）。歌が埋もれて聞こえるなら「ボーカルを前に」");
