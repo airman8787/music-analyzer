@@ -4,7 +4,9 @@
 
 **演奏動画を MP4 のまま開いて、録音の音量やピークを確認できます。** 動画から音声を取り出す手間はありません。Chrome で MP4 動画の音声解析を確認済みです。読み込める動画は、ブラウザと音声コーデックによって異なります。
 
-**使う: https://airman8787.github.io/music-analyzer/**（旧名「楽曲アナライザ」。URL はそのままです）
+**使う: [https://airman8787.github.io/music-analyzer/](https://airman8787.github.io/music-analyzer/)**
+
+旧名は「楽曲アナライザ」です。名前を変えましたが、URL はそのままです。
 
 `index.html` をダウンロードして、ローカルで開いても同じように使えます。
 
