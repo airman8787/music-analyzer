@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-nvja3InybQOQ46DQMgZM2DIKbQsdc3m7VtL11fw5Ddw=' 'sha256-bCjFRFv6TljX5BHO7R7+3w/wC5kSkAqU+6fur7gJ4pA=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-nvja3InybQOQ46DQMgZM2DIKbQsdc3m7VtL11fw5Ddw=' 'sha256-VRvbwYkQ1i3AKaglxxbSA4C35vmH2iie8UWMOkjmXo0=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>おまかせマスタリング — 解析もできるブラウザのマスタリングツール</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -329,9 +329,11 @@ body.loaded #drop{padding:14px}
 @media (max-width:640px){.tb-name{display:none}.tb-title{display:flex}}
 @media (max-width:640px){.modeTop button{padding:5px 7px;font-size:12.5px}.tb-right select{max-width:70px}.tb-right button{padding:6px 9px}.tb-in{gap:5px;padding:6px 8px}}
 /* 右側の操作は、幅が足りないとき選択欄が縮んで、画面からはみ出さないようにする */
-.tb-right{min-width:0;max-width:100%}.tb-right>label{display:inline-flex;align-items:center;min-width:0;flex:0 1 auto}.tb-right>label>select{min-width:64px;flex:1 1 auto}
+.tb-right{min-width:0;max-width:100%}.tb-right>label{display:inline-flex;align-items:center;min-width:0;flex:0 1 auto}.tb-right>label>select{min-width:64px;flex:1 1 auto}#devSim{width:180px}
 /* スマホ幅で 2 段目に回ったときは、選択欄を広げて中の文字が切れないようにする */
-@media (max-width:640px){.tb-right{flex:1 1 0;min-width:min-content;justify-content:flex-end}.tb-right>label{flex:1 1 0}.tb-right>label>select{width:100%;max-width:none;padding-left:6px;padding-right:2px}.tb-right{gap:4px}#tbAB{gap:3px}#tbAB button{padding:4px 7px}}
+@media (max-width:640px){.tb-right{flex:1 1 0;min-width:min-content;justify-content:flex-end}.tb-right>label{flex:1 1 0}.tb-right>label>select{width:100%;max-width:none;padding-left:4px;padding-right:2px;font-size:12.5px}#devSim{width:100%}.tb-right{gap:4px}#tbAB{gap:3px}#tbAB button{padding:4px 7px}}
+/* 360 px 未満では 1 行に並ばないので、右側の操作を 2 段目に置き、選択欄はその次の行に回す */
+@media (max-width:359px){.tb-right{flex-basis:100%;flex-wrap:wrap;row-gap:4px}.tb-right>label{order:2;flex:1 1 45%}}
 .ezKnob .kv{width:100%;text-align:center}.ezGIn .num b{color:#fff}
 body:not(.loaded) main>section.panel:first-child>h2{display:none}
 .stgBox{margin:8px 0;border-top:2px solid #ff6ad5}.stgBox>summary,.ezStgBox>summary{cursor:pointer;font-size:14px;color:var(--text)}.stgBox>summary b{color:#dfe7ff;letter-spacing:.04em}
@@ -6599,12 +6601,12 @@ $("stApply").onclick=async()=>{
 // mono：左右を混ぜて 1 つのスピーカーで鳴らす（スマホの多くは片側のスピーカーが主に鳴る）
 const DEV_SIM={
   off:{name:"そのまま"},
-  phone:{name:"スマホのスピーカー",mono:true,st:[["highpass",350,0.7,0],["highpass",350,0.7,0],["peaking",2500,1,4],["lowpass",9000,0.7,0]]},
+  phone:{name:"スマホのスピーカー",short:"スマホ",mono:true,st:[["highpass",350,0.7,0],["highpass",350,0.7,0],["peaking",2500,1,4],["lowpass",9000,0.7,0]]},
   laptop:{name:"ノートPC",st:[["highpass",200,0.7,0],["highpass",200,0.7,0],["peaking",900,1.2,2],["peaking",4000,1,3],["lowpass",15000,0.7,0]]},
-  earbuds:{name:"安いイヤホン",st:[["highpass",50,0.7,0],["lowshelf",120,0.7,-4],["peaking",3000,1,5],["highshelf",8000,0.7,-6]]},
-  car:{name:"車のスピーカー",st:[["highpass",35,0.7,0],["lowshelf",90,0.7,5],["peaking",250,1,3],["peaking",1200,1,-3],["lowpass",12000,0.7,0]]},
-  tv:{name:"テレビのスピーカー",st:[["highpass",150,0.7,0],["highpass",150,0.7,0],["peaking",2000,1,3],["lowpass",12000,0.7,0]]},
-  mono:{name:"モノラル（左右を混ぜる）",mono:true,st:[]}
+  earbuds:{name:"安いイヤホン",short:"イヤホン",st:[["highpass",50,0.7,0],["lowshelf",120,0.7,-4],["peaking",3000,1,5],["highshelf",8000,0.7,-6]]},
+  car:{name:"車のスピーカー",short:"車",st:[["highpass",35,0.7,0],["lowshelf",90,0.7,5],["peaking",250,1,3],["peaking",1200,1,-3],["lowpass",12000,0.7,0]]},
+  tv:{name:"テレビのスピーカー",short:"テレビ",st:[["highpass",150,0.7,0],["highpass",150,0.7,0],["peaking",2000,1,3],["lowpass",12000,0.7,0]]},
+  mono:{name:"モノラル（左右を混ぜる）",short:"モノラル",mono:true,st:[]}
 };
 // 再生機器の近似を、音声ノードの鎖として input の後ろにつなぎ、最後のノードを返す（作ったノードは list に入れる）
 function devSimChain(ctx,input,key,list){
@@ -6615,6 +6617,23 @@ function devSimChain(ctx,input,key,list){
 }
 $("devSim").innerHTML=Object.entries(DEV_SIM).map(([k,d])=>"<option value='"+k+"'>"+d.name+"</option>").join("");
 $("devSim").value="off"; // 起動時は毎回「そのまま」（気づかずに近似の音で判断しないように）
+// 上のバーの選択欄の文字が切れないようにする。
+// ・最小幅：再生機器は短い名前、比較対象は「比較なし」が収まる幅（その場の文字の大きさで測る）
+// ・再生機器は、選択欄に収まらない名前だけ短い名前にする（幅は中身で決まらないので、書き換えても大きさは変わらない）
+function fitDevSim(){
+  const s=$("devSim");if(!s.offsetWidth)return;
+  const pr=document.createElement("select"),o=document.createElement("option");
+  pr.tabIndex=-1;pr.setAttribute("aria-hidden","true");pr.style.cssText="position:absolute;visibility:hidden;pointer-events:none;width:auto;max-width:none;min-width:0;flex:none";
+  pr.appendChild(o);s.parentNode.appendChild(pr);
+  const need=t=>{o.textContent=t;return pr.offsetWidth;};
+  const mn=Math.max(...Object.values(DEV_SIM).map(d=>need(d.short||d.name)))+"px",mr=need("比較なし")+"px";
+  if(s.style.minWidth!==mn)s.style.minWidth=mn;
+  if($("tbRef").style.minWidth!==mr)$("tbRef").style.minWidth=mr;
+  const w=s.offsetWidth;
+  for(const op of s.options){const d=DEV_SIM[op.value],t=d.short&&need(d.name)>w?d.short:d.name;if(op.textContent!==t)op.textContent=t;}
+  pr.remove();
+}
+if(window.ResizeObserver)new ResizeObserver(fitDevSim).observe($("devSim"));else{addEventListener("resize",fitDevSim);fitDevSim();}
 $("devSim").onchange=e=>{e.target.blur();rebuildPlaybackFilter();const on=e.target.value!=="off";e.target.style.borderColor=on?"var(--warn)":"";setStatus(on?"再生機器：「"+DEV_SIM[e.target.value].name+"」の大まかな近似で再生しています（実機を測ったデータではありません）":"再生機器：そのまま");};
 /* ---------- リファレンス曲に寄せる ---------- */
 // 1. で B に入れた曲は、仕上げで B が「処理前の音」に置き換わっても選べるよう、ここに覚えておく
