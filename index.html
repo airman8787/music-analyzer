@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-zzvXgO6WA+pWwwRMkbp62t0dnE3lP5aVoTgKdEvo+pg=' 'sha256-lWBqnebQr8l/Fik5i6F6aN/2vTzS2qFr+LJhCFw0h/A=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-nvja3InybQOQ46DQMgZM2DIKbQsdc3m7VtL11fw5Ddw=' 'sha256-hhqw7iHEJXGuGiLYssJajfJ0I4s1xfK37LUhpFxdKKE=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>楽曲アナライザ — マスタリングスタジオ</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
@@ -393,7 +393,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
       <div class="row" style="margin-top:8px">
         <label class="sub">ジャンル<select id="albumGenre"></select></label>
         <label class="sub">音量<select id="albumMode"><option value="same">全曲の音量をそろえる（おすすめ）</option><option value="genre">各曲ともジャンルの目安に合わせる</option></select></label>
-        <label class="sub">形式<select id="albumFmt"><option value="flac24">FLAC 24bit</option><option value="wav24">WAV 24bit</option><option value="wav16">CD 用（WAV 16bit・44.1 kHz・ディザあり）</option></select></label>
+        <label class="sub">形式<select id="albumFmt"><option value="flac24">FLAC 24bit</option><option value="wav24">WAV 24bit</option><option value="wav16">CD 用（WAV 16bit・44.1 kHz・ディザあり）</option><option value="mp3_320">MP3 320 kbps</option><option value="m4a_256">M4A（AAC 256 kbps）</option></select></label>
       </div>
       <div class="row" style="margin-top:8px"><button id="albumRun" class="primary">まとめて仕上げる</button><button id="albumStop" hidden>中止</button><button id="albumDl" hidden>💾 ZIP で保存</button><span id="albumMsg" class="sub"></span></div>
       <div class="songWrap"><table id="albumTable" style="margin-top:6px"></table></div>
@@ -452,7 +452,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
         <button id="rkUndo" title="元に戻す（Ctrl+Z）">↶</button><button id="rkRedo" title="やり直す（Ctrl+Shift+Z）">↷</button></span>
       <span class="rkG"><select id="rkPresetSel" title="自作プリセット"><option value="">自作プリセット…</option></select><button id="rkPresetSave">保存</button><button id="rkPresetDel">削除</button></span>
       <span class="rkG rkOut"><button id="rkCommit" title="仕上げた音を最後まで処理して、2.〜7. を解析し直す">🔍 仕上がりを解析</button>
-        <select id="rkFmt"><option value="wav24">WAV 24bit</option><option value="flac24">FLAC 24bit</option><option value="wav16">CD（WAV 16bit・44.1 kHz・ディザ）</option><option value="wav32f">WAV 32bit float</option></select><button id="rkExport" class="primary">💾 書き出す</button></span>
+        <select id="rkFmt"><option value="wav24">WAV 24bit</option><option value="flac24">FLAC 24bit</option><option value="wav16">CD（WAV 16bit・44.1 kHz・ディザ）</option><option value="wav32f">WAV 32bit float</option><option value="aiff24">AIFF 24bit</option><option value="mp3_320">MP3 320 kbps CBR</option><option value="mp3_v0">MP3 V0（VBR）</option><option value="m4a_256">M4A（AAC 256 kbps）</option><option value="ogg_q8">Ogg Vorbis q8</option></select><button id="rkExport" class="primary">💾 書き出す</button></span>
     </div>
     <canvas id="cvRkMeter"></canvas></div>
     <div id="rkMsg" class="sub" style="min-height:1.5em"></div>
@@ -497,7 +497,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
       <div class="easyAB"><button id="easyA" class="easyAbBtn">✨ 仕上げた音</button><button id="easyB" class="easyAbBtn">元の音</button><button id="easyStop" class="easyAbBtn" title="停止（Space）">■</button></div>
       <div class="sub" style="text-align:center;margin-top:4px">2 つは音量をそろえて聴かせています（大きいほうが良く聞こえる錯覚を防ぐため）。<kbd>X</kbd> キーでも切り替えられます。上のバーの「再生機器」で、スマホ・イヤホン・車などで聴いたときの大まかな近似も試せます。</div>
       <div class="easyRow" style="margin-top:10px;justify-content:center">
-        <label class="easyLbl">保存の形式<select id="easyFmt"><option value="wav24">WAV 24bit（おすすめ）</option><option value="wav16">CD 用（WAV 16bit・44.1 kHz・ディザあり）</option><option value="flac24">FLAC 24bit（小さいファイル）</option></select></label>
+        <label class="easyLbl">保存の形式<select id="easyFmt"><option value="wav24">WAV 24bit（おすすめ）</option><option value="wav16">CD 用（WAV 16bit・44.1 kHz・ディザあり）</option><option value="flac24">FLAC 24bit（小さいファイル）</option><option value="mp3_320">MP3 320 kbps（高音質・どこでも再生）</option><option value="m4a_256">M4A（AAC 256 kbps・iPhone 向け）</option></select></label>
         <button id="easySave" class="primary ezSave">💾 仕上げた音を保存</button><button id="easyUndo">元の音に戻す</button>
       </div>
     </div>
@@ -2203,7 +2203,12 @@ const SAVE_FORMATS={
   wav16:{name:"WAV 16bit（ディザあり・CD 向け）",ext:"wav",mime:"audio/wav",bits:16,dither:true},
   wav32f:{name:"WAV 32bit float",ext:"wav",mime:"audio/wav",bits:32,float:true},
   flac24:{name:"FLAC 24bit",ext:"flac",mime:"audio/flac",bits:24,flac:true},
-  flac16:{name:"FLAC 16bit（ディザあり）",ext:"flac",mime:"audio/flac",bits:16,flac:true,dither:true}
+  flac16:{name:"FLAC 16bit（ディザあり）",ext:"flac",mime:"audio/flac",bits:16,flac:true,dither:true},
+  aiff24:{name:"AIFF 24bit（Mac・Logic 向け）",ext:"aif",mime:"audio/aiff",bits:24,aiff:true},
+  mp3_320:{name:"MP3 320 kbps（高音質・固定ビットレート）",ext:"mp3",mime:"audio/mpeg",lossy:"mp3",cfg:{bitrate:320},short:"MP3 320 kbps"},
+  mp3_v0:{name:"MP3 V0（高音質・可変ビットレート 約 245 kbps）",ext:"mp3",mime:"audio/mpeg",lossy:"mp3",cfg:{vbrQuality:0},short:"MP3 V0"},
+  m4a_256:{name:"M4A（AAC 256 kbps・iPhone / Apple Music 向け）",ext:"m4a",mime:"audio/mp4",lossy:"aac",br:256000,short:"M4A（AAC 256 kbps）"},
+  ogg_q8:{name:"Ogg Vorbis（高音質 q8・約 256 kbps）",ext:"ogg",mime:"audio/ogg",lossy:"ogg",cfg:{vbrQuality:8},short:"Ogg Vorbis q8"}
 };
 // 浮動小数点 → 整数（範囲外はクリップ）。dither のとき TPDF ディザ（±1 LSB の三角分布）を加えてから丸める。
 // 16bit に落とすとき、ディザがないと小さい音（フェードアウトの終わりなど）で量子化誤差が音と相関して歪みになる。
@@ -2348,8 +2353,19 @@ function encodeFlac(chs,fs,f,progress){
   return bw.buf.slice(0,bw.pos).buffer;
 }
 function encodeAudio(chs,fs,key,progress){
-  const f=SAVE_FORMATS[key];
-  return f.flac?encodeFlac(chs,fs,f,progress):encodeWav(chs,fs,f);
+  const f=SAVE_FORMATS[key];if(f.lossy)throw new Error("圧縮形式はここでは作れません");
+  return f.flac?encodeFlac(chs,fs,f,progress):f.aiff?encodeAiff(chs,fs,f):encodeWav(chs,fs,f);
+}
+// AIFF（ビッグエンディアンの整数 PCM）。サンプルレートは 80 bit の拡張精度浮動小数点で書く
+function encodeAiff(chs,fs,f){
+  const nc=chs.length,n=chs[0].length,bps=f.bits/8,size=n*nc*bps,pad=size&1,buf=new ArrayBuffer(12+26+16+size+pad),v=new DataView(buf),u=new Uint8Array(buf);
+  const str=(p,t)=>{for(let i=0;i<t.length;i++)u[p+i]=t.charCodeAt(i);};
+  str(0,"FORM");v.setUint32(4,4+26+16+size+pad);str(8,"AIFF");str(12,"COMM");v.setUint32(16,18);v.setUint16(20,nc);v.setUint32(22,n);v.setUint16(26,f.bits);
+  {let e=16383+Math.floor(Math.log2(fs)),m=fs/Math.pow(2,Math.floor(Math.log2(fs)));v.setUint16(28,e);const hi=Math.floor(m*2147483648),lo=Math.round((m*2147483648-hi)*4294967296);v.setUint32(30,hi>>>0);v.setUint32(34,lo>>>0);}
+  str(38,"SSND");v.setUint32(42,8+size);v.setUint32(46,0);v.setUint32(50,0);
+  let p=54;for(let s0=0;s0<n;s0+=fs){const s1=Math.min(n,s0+fs),ints=chs.map(c=>toInt(c.subarray(s0,s1),f.bits,f.dither));
+    for(let i=0;i<s1-s0;i++)for(let c=0;c<nc;c++){const x=ints[c][i];if(bps===3){u[p]=(x>>16)&255;u[p+1]=(x>>8)&255;u[p+2]=x&255;p+=3;}else{v.setInt16(p,x);p+=2;}}}
+  return buf;
 }
 /* ---- サンプルレート変換（窓付き sinc・有理比の多相フィルタ） ----
    出力サンプル m の位置は入力の m·M/L（L/M = 出力レート/入力レートを約分した比）。小数部は L 通りしかないので、
@@ -3983,6 +3999,7 @@ async function run(chs,fs,info){
 // 保存用の書き出し。音声データはワーカーへ移して処理し、終わったら戻してもらう
 // 保存用の書き出し。音声データはワーカーへ移して処理し、終わったら戻してもらう（その間は busy）
 async function encodeRaw(raw,s0,s1,fmt){
+  if(SAVE_FORMATS[fmt].lossy)return (await lossyEncode(raw.chs.map(c=>c.subarray(s0,s1)),raw.fs,fmt,(p,t)=>edMsg(t))).buf;
   try{
     const out=await runJob({cmd:"encode",chs:raw.chs,fs:raw.fs,fmt,s0,s1},raw.chs.map(c=>c.buffer),setStatus,()=>({buf:encodeAudio(raw.chs.map(c=>c.subarray(s0,s1)),raw.fs,fmt),chs:raw.chs}));
     raw.chs=out.chs;return out.buf;
@@ -6647,9 +6664,10 @@ $("albumRun").onclick=async()=>{
   const R=msRefObj(),key=$("albumGenre").value,mode=$("albumMode").value,fmt=$("albumFmt").value,fm=SAVE_FORMATS[fmt],genreL=R?Math.max(-24,Math.min(-5,R.lufs)):+$("msLufs").value;
   stopPlay();busy=true;updateButtons();albumZip=null;albumStopReq=false;$("albumDl").hidden=true;$("albumStop").hidden=false;$("albumRun").disabled=true;
   const rows=list.map(x=>({name:x.name,st:"待機中"})),bufs=new Array(list.length).fill(null);renderAlbum(rows,null);
-  const enc=async(r,i)=>{const t=Object.assign({},tagsNow(),{title:list[i].name.replace(/\\.[^.]+$/,""),track:String(i+1)});
+  const enc=async(r,i)=>{const t=Object.assign({},tagsNow(),{title:list[i].name.replace(/\.[^.]+$/,""),track:String(i+1)});
     // CD 用（16bit）は 44.1 kHz に変換してから
     if(fmt==="wav16"&&r.fs!==44100){r.chs=await resampleChs(r.chs,r.fs,44100);r.fs=44100;}
+    if(fm.lossy){const q=await lossyEncode(r.chs,r.fs,fmt,(p,t)=>{rows[i].st=t;renderAlbum(rows,null);});return new Uint8Array(addTags(q.buf,fmt,t));}
     const o=await runJob({cmd:"encode",chs:r.chs,fs:r.fs,fmt,s0:0,s1:r.chs[0].length},r.chs.map(c=>c.buffer),null,()=>({buf:encodeAudio(r.chs,r.fs,fmt),chs:r.chs}));
     return new Uint8Array(addTags(o.buf,fmt,t));};
   try{
@@ -7053,9 +7071,9 @@ async function msExport(fmt,rate){
   if(MS.planning){msMsg("仕上げの計算が終わるのを待っています（終わったら、そのまま保存します）…");await MS.planDone;if(!MS||!MS.P||busy)return false;}
   const fm=SAVE_FORMATS[fmt];busy=true;updateButtons();msMsg("書き出しの準備中（仕上げた音を最後まで処理しています）…");
   try{
-    const chs=await msFull(),raw={chs,fs:MS.fs},enc=await encodeAt(raw,0,chs[0].length,fmt,rate),buf=addTags(enc.buf,fmt,tagsNow());
+    const chs=await msFull(),n=chs[0].length,raw={chs,fs:MS.fs},enc=await encodeAt(raw,0,n,fmt,rate),buf=addTags(enc.buf,fmt,tagsNow());
     download(new Blob([buf],{type:fm.mime}),outBase()+"_master."+fm.ext);
-    msMsg(fm.name+" / "+(enc.fs/1000)+" kHz / "+fmtT(chs[0].length/MS.fs)+" / "+(buf.byteLength/1048576).toFixed(1)+" MB を保存しました");return true;
+    msMsg(fm.name+" / "+(enc.fs/1000)+" kHz / "+fmtT(n/MS.fs)+" / "+(buf.byteLength/1048576).toFixed(1)+" MB を保存しました"+lossyNote(enc.peak));return true;
   }catch(e){console.error(e);msMsg("書き出せませんでした: "+e.message,true);return false;}
   finally{busy=false;updateButtons();}
 }
@@ -7713,9 +7731,65 @@ async function readTags(file){
 }
 const utf8=s=>new TextEncoder().encode(s);
 // 書き出した WAV（LIST INFO）/ FLAC（Vorbis コメント）にタグを書き足す
+// ID3v2.3（MP3・AIFF 用）：文字は UTF-16（BOM 付き）。Windows のエクスプローラーや iTunes でも読める版
+function id3Tag(ent){
+  const u16=s=>{const b=new Uint8Array(2+s.length*2);b[0]=0xFF;b[1]=0xFE;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);b[2+i*2]=c&255;b[3+i*2]=c>>8;}return b;};
+  const F={title:"TIT2",artist:"TPE1",album:"TALB",year:"TYER",track:"TRCK",genre:"TCON",comment:"COMM"};
+  const frames=ent.map(([k,v])=>{const id=F[k];let body;
+    if(id==="COMM"){const d=u16(""),t=u16(v);body=new Uint8Array(1+3+d.length+2+t.length);body[0]=1;body.set([0x6A,0x70,0x6E],1);body.set(d,4);body.set(t,4+d.length+2);}
+    else{const t=u16(v);body=new Uint8Array(1+t.length);body[0]=1;body.set(t,1);}
+    const f=new Uint8Array(10+body.length),dv=new DataView(f.buffer);for(let i=0;i<4;i++)f[i]=id.charCodeAt(i);dv.setUint32(4,body.length);f.set(body,10);return f;});
+  const n=frames.reduce((a,f)=>a+f.length,0),t=new Uint8Array(10+n);t.set([0x49,0x44,0x33,3,0,0,(n>>21)&127,(n>>14)&127,(n>>7)&127,n&127]);let p=10;for(const f of frames){t.set(f,p);p+=f.length;}return t;
+}
+// M4A：moov の中に udta/meta/ilst（iTunes 形式のタグ）を足す。moov は最後に置いてあるので、音のデータの位置は変わらない
+function m4aTags(u,ent){
+  const te=s=>new TextEncoder().encode(s),A={title:"\xA9nam",artist:"\xA9ART",album:"\xA9alb",year:"\xA9day",genre:"\xA9gen",comment:"\xA9cmt"};
+  const typ=s=>{const b=new Uint8Array(4);for(let i=0;i<4;i++)b[i]=s.charCodeAt(i)&255;return b;};
+  const box=(t,...ps)=>{let n=8;for(const x of ps)n+=x.length;const b=new Uint8Array(n);new DataView(b.buffer).setUint32(0,n);b.set(typ(t),4);let p=8;for(const x of ps){b.set(x,p);p+=x.length;}return b;};
+  const items=ent.map(([k,v])=>{
+    if(k==="track"){const m=/^(\d+)(?:\s*\/\s*(\d+))?/.exec(v);if(!m)return null;const d=new Uint8Array(8);new DataView(d.buffer).setUint16(2,+m[1]);if(m[2])new DataView(d.buffer).setUint16(4,+m[2]);return box("trkn",box("data",be(0,4),be(0,4),d));}
+    return box(A[k],box("data",be(1,4),be(0,4),te(v)));}).filter(Boolean);
+  const meta=box("meta",be(0,4),box("hdlr",be(0,4),be(0,4),te("mdir"),te("appl"),be(0,8),new Uint8Array(1)),box("ilst",...items)),udta=box("udta",meta);
+  // 一番外側の箱をたどって moov を探す
+  const dv=new DataView(u.buffer,u.byteOffset,u.byteLength);let p=0,mv=-1;while(p+8<=u.length){const n=dv.getUint32(p);if(n<8)break;if(String.fromCharCode(u[p+4],u[p+5],u[p+6],u[p+7])==="moov")mv=p;p+=n;}
+  if(mv<0||mv+dv.getUint32(mv)!==u.length)return u.buffer;// 想定と違う形：タグを付けずに返す
+  const out=new Uint8Array(u.length+udta.length);out.set(u);out.set(udta,u.length);new DataView(out.buffer).setUint32(mv,dv.getUint32(mv)+udta.length);return out.buffer;
+}
+// Ogg Vorbis：2 番目のヘッダー（コメント）を作り直し、ページに詰め直す（後ろのページは通し番号と CRC を直す）
+const OGG_CRC=(()=>{const t=new Uint32Array(256);for(let i=0;i<256;i++){let r=i<<24;for(let k=0;k<8;k++)r=r&0x80000000?(r<<1)^0x04C11DB7:r<<1;t[i]=r>>>0;}return t;})();
+function oggCrc(b){let c=0;for(let i=0;i<b.length;i++)c=((c<<8)^OGG_CRC[((c>>>24)^b[i])&255])>>>0;return c;}
+function oggTags(u,ent){
+  const V={title:"TITLE",artist:"ARTIST",album:"ALBUM",year:"DATE",track:"TRACKNUMBER",genre:"GENRE",comment:"COMMENT"};
+  const pages=[];let p=0;
+  while(p+27<=u.length){if(u[p]!==0x4F||u[p+1]!==0x67||u[p+2]!==0x67||u[p+3]!==0x53)return u.buffer;const ns=u[p+26],segs=u.subarray(p+27,p+27+ns);let bl=0;for(const s of segs)bl+=s;const hl=27+ns;pages.push({p,hl,len:hl+bl,segs});p+=hl+bl;}
+  if(p!==u.length||pages.length<3)return u.buffer;
+  // 頭の 3 つのパケット（識別・コメント・設定）を取り出す
+  const pk=[];let cur=[],pi=0,endPage=-1;
+  for(;pi<pages.length&&pk.length<3;pi++){const g=pages[pi];let o=g.p+g.hl;for(let s=0;s<g.segs.length;s++){cur.push(u.subarray(o,o+g.segs[s]));o+=g.segs[s];if(g.segs[s]<255){const n=cur.reduce((a,x)=>a+x.length,0),b=new Uint8Array(n);let q=0;for(const x of cur){b.set(x,q);q+=x.length;}pk.push(b);cur=[];if(pk.length===3){if(s!==g.segs.length-1)return u.buffer;endPage=pi;break;}}}}
+  if(pk.length<3||pk[1][0]!==3||pk[0][0]!==1)return u.buffer;
+  const c=pk[1],dv=new DataView(c.buffer,c.byteOffset,c.byteLength),vl=dv.getUint32(7,true),vendor=c.subarray(11,11+vl),items=ent.map(([k,v])=>utf8(V[k]+"="+v));
+  const nc=new Uint8Array(7+4+vl+4+items.reduce((a,x)=>a+4+x.length,0)+1),nd=new DataView(nc.buffer);nc.set(c.subarray(0,7));nd.setUint32(7,vl,true);nc.set(vendor,11);let q=11+vl;nd.setUint32(q,items.length,true);q+=4;
+  for(const x of items){nd.setUint32(q,x.length,true);q+=4;nc.set(x,q);q+=x.length;}nc[q]=1;
+  // ページ 0（識別ヘッダー）はそのまま、コメントと設定を新しいページに
+  const serial=new DataView(u.buffer,u.byteOffset+pages[0].p).getUint32(14,true),out=[u.subarray(0,pages[0].len)];let seq=1;
+  const mk=(lace,data,cont,granEnd)=>{const h=new Uint8Array(27+lace.length+data.length),hv=new DataView(h.buffer);h.set([0x4F,0x67,0x67,0x53,0,cont?1:0]);
+    if(granEnd){hv.setUint32(6,0,true);hv.setUint32(10,0,true);}else{hv.setUint32(6,0xFFFFFFFF,true);hv.setUint32(10,0xFFFFFFFF,true);}
+    hv.setUint32(14,serial,true);hv.setUint32(18,seq++,true);h[26]=lace.length;h.set(lace,27);h.set(data,27+lace.length);hv.setUint32(22,oggCrc(h),true);return h;};
+  {const lace=[],data=[];for(const b of [nc,pk[2]]){let n=b.length;for(;n>=255;n-=255)lace.push({v:255,end:false});lace.push({v:n,end:true});data.push(b);}
+    const all=new Uint8Array(nc.length+pk[2].length);all.set(nc);all.set(pk[2],nc.length);let off=0,cont=false;
+    for(let i=0;i<lace.length;i+=255){const L=lace.slice(i,i+255),sz=L.reduce((a,x)=>a+x.v,0);out.push(mk(L.map(x=>x.v),all.subarray(off,off+sz),cont,L.some(x=>x.end)));off+=sz;cont=!L[L.length-1].end;}}
+  // 残りのページ：通し番号を振り直して CRC を計算し直す
+  for(let i=endPage+1;i<pages.length;i++){const g=pages[i],h=u.slice(g.p,g.p+g.len),hv=new DataView(h.buffer);hv.setUint32(18,seq++,true);hv.setUint32(22,0,true);hv.setUint32(22,oggCrc(h),true);out.push(h);}
+  const n=out.reduce((a,x)=>a+x.length,0),r=new Uint8Array(n);let o=0;for(const x of out){r.set(x,o);o+=x.length;}return r.buffer;
+}
 function addTags(buf,fmt,tg){
   const ent=Object.entries(tg).filter(([k,v])=>v);if(!ent.length)return buf;
-  const u=new Uint8Array(buf);
+  const u=new Uint8Array(buf),F=SAVE_FORMATS[fmt];
+  if(F.lossy==="mp3"){const t=id3Tag(ent),out=new Uint8Array(t.length+u.length);out.set(t);out.set(u,t.length);return out.buffer;}
+  if(F.lossy==="aac")return m4aTags(u,ent);
+  if(F.lossy==="ogg")return oggTags(u,ent);
+  if(F.aiff){const t=id3Tag(ent),pad=t.length&1,out=new Uint8Array(u.length+8+t.length+pad),dv=new DataView(out.buffer);out.set(u);
+    out.set([0x49,0x44,0x33,0x20],u.length);dv.setUint32(u.length+4,t.length);out.set(t,u.length+8);dv.setUint32(4,dv.getUint32(4)+8+t.length+pad);return out.buffer;}
   if(SAVE_FORMATS[fmt].flac){
     const V={title:"TITLE",artist:"ARTIST",album:"ALBUM",year:"DATE",track:"TRACKNUMBER",genre:"GENRE",comment:"COMMENT"},vendor=utf8("music-analyzer"),items=ent.map(([k,v])=>utf8(V[k]+"="+v));
     const len=4+vendor.length+4+items.reduce((a,x)=>a+4+x.length,0),blk=new Uint8Array(4+len),dv=new DataView(blk.buffer);
@@ -7738,9 +7812,145 @@ function addTags(buf,fmt,tg){
 
 // 書き出し
 for(const k in SAVE_FORMATS)$("exFmt").add(new Option(SAVE_FORMATS[k].name,k));
+// M4A（AAC）はブラウザ内蔵のエンコーダーを使うので、使えないブラウザでは選べないようにしておく
+aacSupported(48000,2).then(ok=>{aacOk=ok;if(ok)return;for(const id of ["exFmt","saveFmt","easyFmt","rkFmt","albumFmt"])for(const o of $(id).options)if(SAVE_FORMATS[o.value]&&SAVE_FORMATS[o.value].lossy==="aac"){o.disabled=true;o.textContent+="（このブラウザでは使えません）";if($(id).value===o.value)$(id).value=$(id).options[0].value;}});
 const outBase=()=>($("tgTitle").value.trim()||safeName(current.label)).replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,60);
 // s0〜s1 を、必要ならサンプルレートを変えてから（変換は窓付き sinc）、指定の形式に書き出す。16bit のディザは変換の後にかかる
+/* ---------- 圧縮形式での保存（MP3・Ogg Vorbis・M4A） ----------
+   MP3・Ogg Vorbis：wasm-media-encoders 0.7.0（LAME・libvorbis を WebAssembly にしたもの。ラッパーは MIT、LAME は LGPL、libvorbis は BSD）を
+   jsDelivr から取り、大きさと SHA-256 を照合してから、照合したバイト列そのものを専用の Worker で使う。
+   M4A（AAC）：ブラウザ内蔵のエンコーダー（WebCodecs の AudioEncoder）で作り、MP4 の入れ物はここで組み立てる */
+const LOSSY_BASE="https://cdn.jsdelivr.net/npm/wasm-media-encoders@0.7.0/";
+const LOSSY_FILES={js:{name:"dist/umd/WasmMediaEncoder.min.js",size:5887,sha256:"dd4e17abf5377dfecc726d6ec5e7b72dab01cf3522974278e5347f4e68480fb3"},
+  mp3:{name:"wasm/mp3.wasm",size:132999,sha256:"85e81719250b9a667b1258143f689dda70e3e57a7e7c29ab0b4cef65c8f6eb9a"},
+  ogg:{name:"wasm/ogg.wasm",size:450589,sha256:"cd1f50349e58e650e33e3f0b850a785ed612c4abaa4756e520e50b2583cf07ed"}};
+const lossyCache={};
+async function lossyFile(k){
+  if(lossyCache[k])return lossyCache[k];const f=LOSSY_FILES[k];
+  const r=await fetch(LOSSY_BASE+f.name,{credentials:"omit"});if(!r.ok)throw new Error("エンコーダーを取得できませんでした（"+f.name+"：HTTP "+r.status+"）");
+  const b=await r.arrayBuffer();if(b.byteLength!==f.size||await sha256hex(b)!==f.sha256)throw new Error("エンコーダー（"+f.name+"）が本来のものと一致しません。改ざんや配信の不具合の可能性があるため使用を中止しました");
+  return lossyCache[k]=b;
+}
+const LOSSY_WORKER=`
+self.onmessage=async e=>{const d=e.data;try{
+  const enc=await WasmMediaEncoder.createEncoder(d.mime,d.wasm);
+  enc.configure(Object.assign({channels:d.chs.length,sampleRate:d.fs},d.cfg));
+  const n=d.chs[0].length,B=1152*32,parts=[];let tot=0,k=0;
+  for(let i=0;i<n;i+=B){const o=enc.encode(d.chs.map(c=>c.subarray(i,Math.min(n,i+B))));if(o.length){parts.push(o.slice());tot+=o.length;}if(++k%20===0)self.postMessage({type:"progress",p:i/n});}
+  const f=enc.finalize();if(f.length){parts.push(f.slice());tot+=f.length;}
+  const out=new Uint8Array(tot);let p=0;for(const x of parts){out.set(x,p);p+=x.length;}
+  self.postMessage({type:"done",buf:out.buffer},[out.buffer]);
+}catch(err){self.postMessage({type:"error",message:String(err&&err.message||err)});}};`;
+async function wmeEncode(kind,chs,fs,cfg,onProg){
+  const js=await lossyFile("js"),wasm=(await lossyFile(kind)).slice(0);
+  const url=URL.createObjectURL(new Blob([js,LOSSY_WORKER],{type:"text/javascript"})),w=new Worker(url);
+  try{return await new Promise((res,rej)=>{
+    w.onmessage=e=>{const d=e.data;if(d.type==="progress"){if(onProg)onProg(d.p);}else if(d.type==="done")res(d.buf);else rej(new Error(d.message));};
+    w.onerror=e=>{if(e.preventDefault)e.preventDefault();rej(new Error("エンコードが異常終了しました"));};
+    // ±1 を超える値はエンコーダーに渡せないので、そこで止める（仕上げた音は上限より下なので、ふつうは触れない）
+    const cl=chs.map(c=>{const y=new Float32Array(c.length);for(let i=0;i<c.length;i++){const v=c[i];y[i]=v>1?1:v<-1?-1:v;}return y;});
+    w.postMessage({mime:kind==="mp3"?"audio/mpeg":"audio/ogg",wasm,chs:cl,fs,cfg},[wasm].concat(cl.map(c=>c.buffer)));});}
+  finally{w.terminate();URL.revokeObjectURL(url);}
+}
+// MP3：このエンコーダーは曲の情報フレーム（Xing / Info）を書かないので、先頭に足す。
+// 中身は、フレーム数・バイト数・シーク用の目次と、LAME 形式の拡張（エンコーダーの遅延とおしりの埋め草＝ギャップレス再生用）。
+// delay は、エンコーダーが頭に足す分（LAME は 576）。読み戻しで実際にずれがないことを確かめてある（README 参照）
+const MP3_DELAY=576;
+function mp3Finish(buf,nSamples){
+  const u=new Uint8Array(buf),BR=[0,32,40,48,56,64,80,96,112,128,160,192,224,256,320],SR=[44100,48000,32000];
+  if(u.length<4||u[0]!==0xFF||(u[1]&0xFE)!==0xFA)return buf; // MPEG-1 Layer III 以外（予想外の形）は何もしない
+  const sr=SR[(u[2]>>2)&3],mono=((u[3]>>6)&3)===3;if(!sr)return buf;
+  const sizes=[];let q=0;
+  while(q+4<=u.length&&u[q]===0xFF&&(u[q+1]&0xE0)===0xE0){const bri=u[q+2]>>4;if(bri===0||bri===15)break;const len=Math.floor(144*BR[bri]*1000/sr)+((u[q+2]>>1)&1);sizes.push(len);q+=len;}
+  if(sizes.length<1||q!==u.length)return buf;
+  const frames=sizes.length;let cbr=true;for(let i=0,o=0;i<frames;o+=sizes[i++])if((u[o+2]>>4)!==(u[2]>>4)){cbr=false;break;}
+  // 情報フレーム：CBR は同じビットレート（"Info"）、VBR は 128 kbps（"Xing"）。CRC なし・パディングなし
+  const bri=cbr?u[2]>>4:9,flen=Math.floor(144*BR[bri]*1000/sr),t=new Uint8Array(flen),dv=new DataView(t.buffer);
+  t[0]=0xFF;t[1]=0xFB;t[2]=(bri<<4)|(u[2]&0x0C);t[3]=u[3];
+  const x=4+(mono?17:32),total=flen+u.length,padding=Math.max(0,frames*1152-nSamples-MP3_DELAY);
+  t.set([...(cbr?"Info":"Xing")].map(c=>c.charCodeAt(0)),x);dv.setUint32(x+4,0x0F);dv.setUint32(x+8,frames);dv.setUint32(x+12,total);
+  {const cum=[0];for(let i=0;i<frames;i++)cum.push(cum[i]+sizes[i]);for(let i=0;i<100;i++){const k=Math.min(frames-1,Math.floor(i/100*frames));t[x+16+i]=Math.min(255,Math.floor((flen+cum[k])/total*256));}}
+  const L=x+120;t.set([..."LAME3.100"].map(c=>c.charCodeAt(0)),L);
+  t[L+21]=(MP3_DELAY>>4)&255;t[L+22]=((MP3_DELAY&15)<<4)|((padding>>8)&15);t[L+23]=padding&255;dv.setUint32(L+28,total);
+  let crc=0;for(let i=0;i<L+34;i++){let c=t[i];for(let k=0;k<8;k++){const b=(crc^c)&1;crc>>>=1;if(b)crc^=0xA001;c>>>=1;}}dv.setUint16(L+34,crc);
+  const out=new Uint8Array(total);out.set(t);out.set(u,flen);return out.buffer;
+}
+// M4A（ISO BMFF）：ftyp・mdat・moov の順（moov を最後に置くので、タグを足しても mdat の位置が変わらない）
+function mp4Box(type,...parts){let n=8;for(const x of parts)n+=x.length;const b=new Uint8Array(n),dv=new DataView(b.buffer);dv.setUint32(0,n);for(let i=0;i<4;i++)b[4+i]=type.charCodeAt(i);let p=8;for(const x of parts){b.set(x,p);p+=x.length;}return b;}
+function mp4Full(type,ver,flags,...parts){return mp4Box(type,new Uint8Array([ver,(flags>>16)&255,(flags>>8)&255,flags&255]),...parts);}
+const be=(n,bytes)=>{const b=new Uint8Array(bytes);for(let i=bytes-1;i>=0;i--){b[i]=n&255;n=Math.floor(n/256);}return b;};
+function m4aMux(frames,asc,fs,nc,nSamples,delay,br){
+  const total=frames.reduce((a,f)=>a+f.length,0),ftyp=mp4Box("ftyp",new TextEncoder().encode("M4A "),be(0,4),new TextEncoder().encode("M4A mp42isom")),mdatH=8,mdatOff=ftyp.length+mdatH;
+  const mat=new Uint8Array([0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0x40,0,0,0]);
+  const mediaDur=frames.length*1024,movDur=nSamples;
+  const desc=(tag,...parts)=>{let n=0;for(const x of parts)n+=x.length;const h=new Uint8Array([tag,0x80,0x80,0x80,n&127]);const b=new Uint8Array(5+n);b.set(h);let p=5;for(const x of parts){b.set(x,p);p+=x.length;}return b;};
+  const esds=mp4Full("esds",0,0,desc(3,be(1,2),new Uint8Array([0]),desc(4,new Uint8Array([0x40,0x15]),be(6144*nc,3),be(br,4),be(br,4),desc(5,asc)),desc(6,new Uint8Array([2]))));
+  const mp4a=mp4Box("mp4a",new Uint8Array(6),be(1,2),new Uint8Array(8),be(nc,2),be(16,2),be(0,2),be(0,2),be(fs>65535?0:fs,2),be(0,2),esds);
+  const stsz=mp4Full("stsz",0,0,be(0,4),be(frames.length,4),...frames.map(f=>be(f.length,4)));
+  const stbl=mp4Box("stbl",mp4Full("stsd",0,0,be(1,4),mp4a),mp4Full("stts",0,0,be(1,4),be(frames.length,4),be(1024,4)),mp4Full("stsc",0,0,be(1,4),be(1,4),be(frames.length,4),be(1,4)),stsz,mp4Full("stco",0,0,be(1,4),be(mdatOff,4)));
+  const minf=mp4Box("minf",mp4Full("smhd",0,0,be(0,4)),mp4Box("dinf",mp4Full("dref",0,0,be(1,4),mp4Full("url ",0,1))),stbl);
+  const mdia=mp4Box("mdia",mp4Full("mdhd",0,0,be(0,4),be(0,4),be(fs,4),be(mediaDur,4),be(0x55C4,2),be(0,2)),mp4Full("hdlr",0,0,be(0,4),new TextEncoder().encode("soun"),new Uint8Array(12),new TextEncoder().encode("SoundHandler\0")),minf);
+  // 編集リスト：エンコーダーが頭に足した分（delay）を飛ばし、元の長さ（nSamples）だけ再生させる（対応するプレーヤーではギャップレス）
+  const edts=delay>=0?mp4Box("edts",mp4Full("elst",0,0,be(1,4),be(movDur,4),be(delay,4),be(1,2),be(0,2))):new Uint8Array(0);
+  const tkhd=mp4Full("tkhd",0,7,be(0,4),be(0,4),be(1,4),be(0,4),be(movDur,4),new Uint8Array(8),be(0,2),be(0,2),be(0x0100,2),be(0,2),mat,be(0,4),be(0,4));
+  const mvhd=mp4Full("mvhd",0,0,be(0,4),be(0,4),be(fs,4),be(movDur,4),be(0x00010000,4),be(0x0100,2),new Uint8Array(10),mat,new Uint8Array(24),be(2,4));
+  const moov=mp4Box("moov",mvhd,mp4Box("trak",tkhd,edts,mdia));
+  const out=new Uint8Array(ftyp.length+mdatH+total+moov.length);let p=0;out.set(ftyp,p);p+=ftyp.length;out.set(be(mdatH+total,4),p);out.set(new TextEncoder().encode("mdat"),p+4);p+=8;
+  for(const f of frames){out.set(f,p);p+=f.length;}out.set(moov,p);return out.buffer;
+}
+let aacOk=null;
+async function aacSupported(fs,nc){
+  if(typeof AudioEncoder==="undefined")return false;
+  try{const r=await AudioEncoder.isConfigSupported({codec:"mp4a.40.2",sampleRate:fs||48000,numberOfChannels:nc||2,bitrate:256000});return !!r.supported;}catch(e){return false;}
+}
+async function aacEncode(chs,fs,br,onProg){
+  const nc=chs.length,n=chs[0].length,cfg={codec:"mp4a.40.2",sampleRate:fs,numberOfChannels:nc,bitrate:br};
+  if(!(await aacSupported(fs,nc)))throw new Error("このブラウザでは M4A（AAC）を作れません（Windows・Mac の Chrome / Edge などで使えます）。MP3 か Ogg Vorbis を選んでください");
+  const frames=[];let asc=null,err=null;
+  const enc=new AudioEncoder({output:(ch,meta)=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);frames.push(b);if(!asc&&meta&&meta.decoderConfig&&meta.decoderConfig.description){const d=meta.decoderConfig.description;asc=new Uint8Array(d.buffer?d.buffer.slice(d.byteOffset||0,(d.byteOffset||0)+d.byteLength):d);}},error:e=>{err=e;}});
+  enc.configure(cfg);const B=4096;
+  for(let s=0;s<n&&!err;s+=B){const m=Math.min(B,n-s),buf=new Float32Array(m*nc);for(let c=0;c<nc;c++)buf.set(chs[c].subarray(s,s+m),c*m);
+    const ad=new AudioData({format:"f32-planar",sampleRate:fs,numberOfFrames:m,numberOfChannels:nc,timestamp:Math.round(s*1e6/fs),data:buf});enc.encode(ad);ad.close();
+    if(enc.encodeQueueSize>32)await new Promise(r=>setTimeout(r,0));if(onProg&&(s/B)%64===0)onProg(s/n);}
+  await enc.flush();enc.close();if(err)throw err;if(!frames.length)throw new Error("AAC のエンコードに失敗しました");
+  // AudioSpecificConfig（受け取れなければ AAC-LC として組み立てる）
+  if(!asc){const SR=[96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000],si=SR.indexOf(fs);asc=new Uint8Array([(2<<3)|(si>>1),((si&1)<<7)|(nc<<3)]);}
+  // 頭の遅延を測る：最初の 32 フレームを読み戻し、元の音と相互相関で合わせる（測れなければ遅延 0 として扱う）
+  let delay=0;try{delay=await aacDelay(frames.slice(0,32),asc,chs,fs,nc);}catch(e){console.warn(e);delay=0;}
+  return m4aMux(frames,asc,fs,nc,n,delay,br);
+}
+async function aacDelay(fr,asc,chs,fs,nc){
+  if(typeof AudioDecoder==="undefined")return 0;const out=[];let err=null;
+  const dec=new AudioDecoder({output:ad=>{const m=ad.numberOfFrames,a=new Float32Array(m);ad.copyTo(a,{planeIndex:0,format:"f32-planar"});out.push(a);ad.close();},error:e=>{err=e;}});
+  dec.configure({codec:"mp4a.40.2",sampleRate:fs,numberOfChannels:nc,description:asc});
+  fr.forEach((b,i)=>dec.decode(new EncodedAudioChunk({type:"key",timestamp:Math.round(i*1024*1e6/fs),duration:Math.round(1024*1e6/fs),data:b})));await dec.flush();dec.close();if(err)throw err;
+  const y=new Float32Array(out.reduce((a,x)=>a+x.length,0));let p=0;for(const x of out){y.set(x,p);p+=x.length;}
+  const x=chs[0],W=Math.min(8192,x.length,y.length-4096);if(W<2048)return 0;let e0=0;for(let i=0;i<W;i++)e0+=x[i]*x[i];if(e0<1e-6)return 0;
+  let best=0,bl=0;for(let lag=0;lag<=4096&&lag+W<=y.length;lag++){let xy=0,yy=0;for(let i=0;i<W;i+=2){xy+=x[i]*y[i+lag];yy+=y[i+lag]*y[i+lag];}const r=xy/Math.sqrt(e0/2*yy+1e-20);if(r>best){best=r;bl=lag;}}
+  return best>0.8?bl:0;
+}
+// 圧縮形式のサンプルレート：44.1 / 48 kHz はそのまま、それより高いものは同じ系列（44.1 の倍数は 44.1、ほかは 48）に下げ、低いものは 44.1 に上げる
+const lossyRate=fs=>fs===44100||fs===48000?fs:fs>48000?(fs%44100===0?44100:48000):44100;
+async function lossyEncode(chs,fs,fmt,onProg){
+  const f=SAVE_FORMATS[fmt];if(chs.length>2)throw new Error(f.short+" はステレオまでです（"+chs.length+" ch の曲は WAV / FLAC で保存してください）");
+  const to=lossyRate(fs);if(to!==fs){if(onProg)onProg(-1,"サンプルレートを "+(to/1000)+" kHz に変換中…");chs=await resampleChs(chs.map(c=>c.slice()),fs,to);fs=to;}
+  const say=p=>{if(onProg)onProg(p,f.short+" に変換中… "+Math.round(p*100)+"%");};say(0);
+  let buf;
+  if(f.lossy==="aac")buf=await aacEncode(chs,fs,f.br,say);
+  else{buf=await wmeEncode(f.lossy,chs,fs,f.cfg,say);if(f.lossy==="mp3")buf=mp3Finish(buf,chs[0].length);}
+  return {buf,fs};
+}
+// 保存したファイルを読み戻してピークを確かめる（圧縮でサンプル間のピークが増えることがあるため）。読めなければ null
+async function lossyPeak(buf,fs){
+  try{const ab=await new OfflineAudioContext(1,1,fs).decodeAudioData(buf.slice(0));let tp=-Infinity;for(let c=0;c<ab.numberOfChannels;c++){const r=truePeak(ab.getChannelData(c));tp=Math.max(tp,toDb(r.tp));}return {tp,dur:ab.duration};}
+  catch(e){return null;}
+}
+const lossyNote=pk=>!pk?"":"（読み戻したピーク "+f1(pk.tp)+" dBTP"+(pk.tp>-0.3?"。⚠ 圧縮でピークが増えています。リミッターの上限を −1.5 dBTP 以下にすると安全です":"")+"）";
 async function encodeAt(raw,s0,s1,fmt,fsOut){
+  if(SAVE_FORMATS[fmt].lossy){const say=(p,t)=>{edMsg(t);msMsg(t);};let chs=raw.chs.map(c=>c.subarray(s0,s1)),fs=raw.fs;
+    // 44.1 / 48 kHz の指定はそのとおりに（それ以外の指定・元のままは、圧縮形式で使えるレートに自動で合わせる）
+    if((fsOut===44100||fsOut===48000)&&fsOut!==fs){say(-1,"サンプルレートを "+(fsOut/1000)+" kHz に変換中…");chs=await resampleChs(chs.map(c=>c.slice()),fs,fsOut);fs=fsOut;}
+    const r=await lossyEncode(chs,fs,fmt,say);r.peak=await lossyPeak(r.buf,r.fs);return r;}
   if(!fsOut||fsOut===raw.fs)return {buf:await encodeRaw(raw,s0,s1,fmt),fs:raw.fs};
   edMsg("サンプルレートを "+(fsOut/1000)+" kHz に変換中…");
   const rs=await resampleChs(raw.chs.map(c=>c.subarray(s0,s1)),raw.fs,fsOut);
@@ -7759,7 +7969,7 @@ $("exRun").onclick=async()=>{
     const rate=+$("exRate").value||0,enc=await encodeAt(raw,s0,s1,fmt,rate),buf=addTags(enc.buf,fmt,tagsNow());
     // おまかせで仕上げた音は、元のファイルと取り違えないよう名前に _master を付ける
     download(new Blob([buf],{type:fm.mime}),outBase()+(msLast&&msLast.after===current?"_master":"")+suf+"."+fm.ext);
-    edMsg("");const unc=MS&&MS.on&&MS.committedVer!==MS.ver;$("exInfo").textContent=(unc?"⚠ マスタリングのラックの設定は入っていません（入れるには、ラックの「💾 書き出す」か「🔍 仕上がりを解析」のあとに書き出してください）　":"")+fm.name+" / "+(enc.fs/1000)+" kHz"+(enc.fs!==raw.fs?"（"+(raw.fs/1000)+" kHz から変換）":"")+" / "+fmtT((s1-s0)/raw.fs)+" / "+(buf.byteLength/1048576).toFixed(1)+" MB を保存しました";
+    edMsg("");const unc=MS&&MS.on&&MS.committedVer!==MS.ver;$("exInfo").textContent=(unc?"⚠ マスタリングのラックの設定は入っていません（入れるには、ラックの「💾 書き出す」か「🔍 仕上がりを解析」のあとに書き出してください）　":"")+fm.name+" / "+(enc.fs/1000)+" kHz"+(enc.fs!==raw.fs?"（"+(raw.fs/1000)+" kHz から変換）":"")+" / "+fmtT((s1-s0)/raw.fs)+" / "+(buf.byteLength/1048576).toFixed(1)+" MB を保存しました"+lossyNote(enc.peak);
   }catch(e){console.error(e);edMsg("書き出せませんでした: "+e.message,true);}
   finally{busy=false;updateButtons();}
 };
