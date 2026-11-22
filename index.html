@@ -323,6 +323,9 @@ body.loaded #drop{padding:14px}
 .ezCards{grid-template-columns:repeat(9,minmax(0,1fr))}.ezCard .nm{font-size:12.5px;white-space:nowrap}
 @media (max-width:1000px){.ezCards{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (max-width:560px){.ezCards{grid-template-columns:repeat(3,minmax(0,1fr))}.easySeek{flex-wrap:wrap}.ezHold{margin:0;flex:1 1 100%}.ezLbl .sub{display:none}}
+.tb-br{display:none}
+/* 名前が長いので、狭い幅では 2 行に積んで上のバーの 1 段目に収める */
+@media (max-width:1080px){.tb-br{display:inline}.tb-name{font-size:12px;line-height:1.15;letter-spacing:.06em}}
 @media (max-width:640px){.tb-name{display:none}.tb-title{display:flex}}
 @media (max-width:640px){.modeTop button{padding:5px 7px;font-size:12.5px}.tb-right select{max-width:70px}.tb-right button{padding:6px 9px}.tb-in{gap:5px;padding:6px 8px}}
 .ezKnob .kv{width:100%;text-align:center}.ezGIn .num b{color:#fff}
@@ -336,7 +339,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
 <body>
 <div id="topbar">
   <div class="tb-in">
-    <h1 class="tb-title"><span class="logo" aria-hidden="true"></span><span class="tb-name">おまかせマスタリング</span></h1>
+    <h1 class="tb-title"><span class="logo" aria-hidden="true"></span><span class="tb-name">おまかせ<br class="tb-br">マスタリング</span></h1>
     <span class="modeTop" id="modeSw" role="group" aria-label="画面"><button data-m="simple" title="かんたん画面：すぐ音を良くする">🎮<span class="lbl"> かんたん</span></button><button data-m="full" title="プロ画面：EQ・コンプ・リミッターを細かく調整">🎛<span class="lbl"> プロ</span></button></span>
     <nav id="tbNav" aria-label="セクション"></nav>
     <span class="tb-right"><span id="tbAB" hidden><button id="tbPlay" title="再生 / 停止（Space）">▶</button><button id="tbA" class="ab" title="A を聴く（X で切り替え）">A</button><button id="tbB" class="ab" title="B を聴く（X で切り替え）">B</button></span><label class="sub"><span class="lbl">再生機器 </span><select id="devSim" title="再生機器のシミュレーション（大まかな近似）"></select></label><label class="sub adv"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbTools" title="ツール（ピッチ・音符・コード・分離・音響解析など）">🧰<span class="lbl"> ツール</span></button><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
