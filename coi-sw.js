@@ -1,4 +1,4 @@
-// 楽曲アナライザ：クロスオリジン分離（crossOriginIsolated）のための Service Worker。
+// おまかせマスタリング：クロスオリジン分離（crossOriginIsolated）のための Service Worker。
 // GitHub Pages などヘッダーを設定できない場所でも、同じオリジンのページとスクリプトへの応答に
 // COOP / COEP を付けて分離された状態にする。分離されると SharedArrayBuffer が使え、
 // AI のパート分離（ONNX Runtime Web の WASM）を複数のスレッドで動かせる。

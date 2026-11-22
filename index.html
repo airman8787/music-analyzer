@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- CSP：インラインのスクリプトを編集したら python3 tools/update-csp.py でハッシュを更新すること -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-nvja3InybQOQ46DQMgZM2DIKbQsdc3m7VtL11fw5Ddw=' 'sha256-hhqw7iHEJXGuGiLYssJajfJ0I4s1xfK37LUhpFxdKKE=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>楽曲アナライザ — マスタリングスタジオ</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-nvja3InybQOQ46DQMgZM2DIKbQsdc3m7VtL11fw5Ddw=' 'sha256-bCjFRFv6TljX5BHO7R7+3w/wC5kSkAqU+6fur7gJ4pA=' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>おまかせマスタリング — 解析もできるブラウザのマスタリングツール</title>
 <style>
 :root{--bg:#14151a;--panel:#1e2028;--panel2:#262932;--line:#343846;--text:#e6e8ef;--sub:#9aa0b4;--acc:#8ab4ff;--acc2:#c58aff;--ok:#5ad19a;--warn:#f5c04a;--bad:#ff6b6b}
 *{box-sizing:border-box}
@@ -336,7 +336,7 @@ body:not(.loaded) main>section.panel:first-child>h2{display:none}
 <body>
 <div id="topbar">
   <div class="tb-in">
-    <h1 class="tb-title"><span class="logo" aria-hidden="true"></span><span class="tb-name">楽曲アナライザ</span></h1>
+    <h1 class="tb-title"><span class="logo" aria-hidden="true"></span><span class="tb-name">おまかせマスタリング</span></h1>
     <span class="modeTop" id="modeSw" role="group" aria-label="画面"><button data-m="simple" title="かんたん画面：すぐ音を良くする">🎮<span class="lbl"> かんたん</span></button><button data-m="full" title="プロ画面：EQ・コンプ・リミッターを細かく調整">🎛<span class="lbl"> プロ</span></button></span>
     <nav id="tbNav" aria-label="セクション"></nav>
     <span class="tb-right"><span id="tbAB" hidden><button id="tbPlay" title="再生 / 停止（Space）">▶</button><button id="tbA" class="ab" title="A を聴く（X で切り替え）">A</button><button id="tbB" class="ab" title="B を聴く（X で切り替え）">B</button></span><label class="sub"><span class="lbl">再生機器 </span><select id="devSim" title="再生機器のシミュレーション（大まかな近似）"></select></label><label class="sub adv"><span class="lbl">比較対象 </span><select id="tbRef" title="比較対象"><option value="">比較なし</option></select></label><button id="tbTools" title="ツール（ピッチ・音符・コード・分離・音響解析など）">🧰<span class="lbl"> ツール</span></button><button id="tbHelp" title="操作とショートカット（? キー）">?</button></span>
@@ -6130,7 +6130,7 @@ $("scSave").onclick=()=>{
   L.push("コード譜"+(scRes.edits&&Object.keys(scRes.edits).length?"（自動推定＋手動編集）":"（自動推定）")+": "+scRes.label,"キー: "+scRes.key.name+"　テンポ: "+f1(scRes.bpm,1)+" BPM　拍子: "+scRes.meter+"/4"+(scRes.key.cents?"　チューニング: A4 = "+f1(440*Math.pow(2,scRes.key.cents/1200),1)+" Hz":""),"");
   for(let i=0;i<bars.length;i+=4)L.push("| "+bars.slice(i,i+4).map(b=>b.padEnd(w)).join(" | ")+" |");
   const sl=shapeList(),ins=instNow();if(sl.length){L.push("","押さえ方（"+ins.name+(ins.capo?"・カポ "+ins.capo:"")+"、低い弦から、x は鳴らさない）");for(const [n,v] of sl)L.push(n.padEnd(8)+v);}
-  L.push("","楽曲アナライザで自動推定。誤りを含むことがあります。");
+  L.push("","おまかせマスタリングで自動推定。誤りを含むことがあります。");
   download(new Blob(["\ufeff"+L.join("\r\n")],{type:"text/plain;charset=utf-8"}),"chords-"+safeName(scRes.label)+".txt");
 };
 $("tabRun").onclick=async()=>{
@@ -6150,7 +6150,7 @@ $("tabRun").onclick=async()=>{
   $("tabOut").textContent=tabRes.text;$("tabOut").hidden=false;$("tabSave").disabled=!out.notes.length;$("tabEdit").disabled=false;$("tabEdit").checked=false;$("tabOut").removeAttribute("contenteditable");
   $("tabInfo").textContent=out.notes.length?"音符 "+out.notes.length+" 個"+(out.dropped?"（弾けない音 "+out.dropped+" 個を省略）":""):"音符は見つかりませんでした";
 };
-$("tabSave").onclick=()=>{if(!tabRes)return;download(new Blob(["\ufeff"+("TAB 譜"+(tabRes.edited?"（自動推定＋手動編集）":"（自動推定）")+": "+tabRes.label+"\n"+tabRes.text+"\n楽曲アナライザで自動推定。誤りを含むことがあります。\n").replace(/\n/g,"\r\n")],{type:"text/plain;charset=utf-8"}),"tab-"+safeName(tabRes.label)+".txt");};
+$("tabSave").onclick=()=>{if(!tabRes)return;download(new Blob(["\ufeff"+("TAB 譜"+(tabRes.edited?"（自動推定＋手動編集）":"（自動推定）")+": "+tabRes.label+"\n"+tabRes.text+"\nおまかせマスタリングで自動推定。誤りを含むことがあります。\n").replace(/\n/g,"\r\n")],{type:"text/plain;charset=utf-8"}),"tab-"+safeName(tabRes.label)+".txt");};
 /* ---------- 8. 基本編集・書き出し・結合・分割 ---------- */
 const cloneChs=chs=>chs.map(c=>new Float32Array(c));
 // 編集した音を新しい解析結果にする（長さが変わる編集用。「元の音に戻す」で戻せる）
